@@ -1,0 +1,24 @@
+# ~/.config/zsh/zshrc.local
+# This file is for machine-specific and sensitive configuration
+# Copy this template to ~/.config/zsh/zshrc.local and customize
+
+# API Keys and sensitive environment variables
+# export OPENAI_API_KEY="your-key-here"
+# export GITHUB_TOKEN="your-token-here"
+# export AWS_ACCESS_KEY_ID="your-key-here"
+# export AWS_SECRET_ACCESS_KEY="your-secret-here"
+
+# Machine-specific paths
+# export PATH="$HOME/custom-tools/bin:$PATH"
+
+# Work-specific configuration
+# alias work-vpn="sudo openvpn /path/to/work.ovpn"
+
+# Personal aliases and functions
+# alias myserver="ssh user@my-server.com"
+
+# Override Oh My Zsh theme if desired
+# ZSH_THEME="powerlevel10k/powerlevel10k"
+
+# Additional plugins for this machine
+# plugins+=(docker kubectl)
