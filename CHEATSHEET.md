@@ -3,21 +3,34 @@
 > **Philosophy**: Neovim-centric consistent keybindings across all tools  
 > **Leader key**: `Space` (Neovim only)
 
-## 🎯 Universal Key Patterns
+## 🎯 Universal Key Patterns (Conflict-Free Design)
 
-### Core Navigation (Works Everywhere)
-- **`<C-h>`** → Move left (windows, panes, etc.)
-- **`<C-j>`** → Move down
-- **`<C-k>`** → Move up  
-- **`<C-l>`** → Move right
+### Core Navigation (Sacred - Never Override)
+- **`<C-h>`** → Move left (windows, panes, etc.) - RESERVED
+- **`<C-j>`** → Move down - RESERVED  
+- **`<C-k>`** → Move up - RESERVED
+- **`<C-l>`** → Move right - RESERVED
 
 ### Next/Previous (Universal)
 - **`<S-h>`** → Previous (buffers, tabs, etc.)
 - **`<S-l>`** → Next (buffers, tabs, etc.)
 
+### Terminal-Specific Actions (Alt/Meta to avoid conflicts)
+- **`<M-v>`** → Vertical split (Alt+v)
+- **`<M-s>`** → Horizontal split (Alt+s)  
+- **`<M-x>`** → Close window (Alt+x)
+
 ### System Operations
 - **`q`** → Quick quit (shell alias matches `<leader>q`)
 - **`e`** → Quick edit (shell alias matches editor preference)
+
+### Key Conflict Resolution Applied
+- ❌ **Old**: `<C-S-v>` for both split AND paste (conflict!)
+- ✅ **New**: `<M-v>` for split, `<C-S-v>` only for paste
+- ❌ **Old**: `<C-h>` for both navigation AND signature help  
+- ✅ **New**: `<C-h>` only for navigation, `<C-k>` for signature help
+- ❌ **Old**: `<C-l>` for both navigation AND clear highlights
+- ✅ **New**: `<C-l>` only for navigation, `<leader>ch` for clear highlights
 
 ---
 
@@ -39,14 +52,14 @@
 | `<S-l>` | Next tab | Go to next tab |
 | `<C-S-q>` | Close tab | Close current tab |
 
-## Split Management
+## Split Management (Clean separation - no conflicts)
 | Key | Action | Description |
 |-----|--------|-------------|
-| `<C-S-v>` | Vertical split | Create vertical split |
-| `<C-S-s>` | Horizontal split | Create horizontal split |
-| `<C-S-x>` | Close window | Close current split/window |
+| `<M-v>` (Alt+v) | Vertical split | Create vertical split |
+| `<M-s>` (Alt+s) | Horizontal split | Create horizontal split |
+| `<M-x>` (Alt+x) | Close window | Close current split/window |
 
-## Copy/Paste & Font
+## Copy/Paste & Font (Universal clipboard)
 | Key | Action | Description |
 |-----|--------|-------------|
 | `<C-S-c>` | Copy | Copy to system clipboard |
@@ -297,7 +310,7 @@
 | `<leader>rn` | Rename | Rename symbol | **R**e**n**ame |
 | `<leader>ca` | Code action | Show available code actions | **C**ode **A**ction |
 | `<leader>f` | Format | Format current buffer | **F**ormat |
-| `<C-h>` | Signature help | Show signature (insert mode) | **h**elp |
+| `<C-k>` | Signature help | Show signature (insert mode) | **K**nowledge |
 
 ### Diagnostics (d = Diagnostics)
 | Key | Action | Description | Mnemonic |
@@ -446,7 +459,7 @@
 | `<leader>W` | Save all | Save all buffers | **W**rite all |
 | `<leader>q` | Quit | Close current window | **Q**uit |
 | `<leader>Q` | Quit all | Exit Neovim (force) | **Q**uit all |
-| `<C-l>` | Clear highlights | Remove search highlighting | Ctrl + **L**ight |
+| `<leader>ch` | Clear highlights | Remove search highlighting | **C**lear **H**ighlights |
 
 ## Which Key Help
 
