@@ -1,2 +1,5 @@
 # Ignore local configuration files containing sensitive information
 *config/zsh/zshrc.local
+
+# Ignore zsh completion dump files
+*config/zsh/.zcompdump*
