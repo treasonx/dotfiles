@@ -42,6 +42,7 @@ CONFIG_FILES=(
     ".config/zsh/aliases"
     ".config/btop/btop.conf"
     ".config/lazygit/config.yml"
+    ".config/lazydocker/config.yml"
 )
 
 # Config directories that may cause stow conflicts
@@ -52,6 +53,8 @@ CONFIG_DIRS=(
     ".config/btop"
     ".config/nvim"
     ".config/lazygit"
+    ".config/lazydocker"
+    ".config/zsh/oh-my-zsh-custom"
 )
 
 # Backup home directory files

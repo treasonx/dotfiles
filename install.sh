@@ -70,6 +70,7 @@ backup_existing() {
         ".config/zsh/aliases"
         ".config/btop/btop.conf"
         ".config/lazygit/config.yml"
+        ".config/lazydocker/config.yml"
     )
     
     for file in "${FILES_TO_BACKUP[@]}"; do

@@ -1,0 +1,179 @@
+gui:
+  scrollHeight: 2
+  language: "auto"
+  border: "rounded"
+  theme:
+    activeBorderColor:
+      - '#89b4fa'
+      - bold
+    inactiveBorderColor:
+      - '#a6adc8'
+    selectedLineBgColor:
+      - '#313244'
+    optionsTextColor:
+      - '#89b4fa'
+    menuBgColor:
+      - '#1e1e2e'
+    menuFgColor:
+      - '#cdd6f4'
+    cherryPickedCommitBgColor:
+      - '#45475a'
+    cherryPickedCommitFgColor:
+      - '#89b4fa'
+    unstagedChangesColor:
+      - '#f38ba8'
+    defaultFgColor:
+      - '#cdd6f4'
+    searchingActiveBorderColor:
+      - '#f9e2af'
+    # Additional Catppuccin colors for container states
+    runningContainerColor:
+      - '#a6e3a1'
+    stoppedContainerColor:
+      - '#f38ba8'
+    errorColor:
+      - '#f38ba8'
+    warningColor:
+      - '#f9e2af'
+    successColor:
+      - '#a6e3a1'
+  returnImmediately: false
+  wrapMainPanel: true
+  sidePanelWidth: 0.333
+  expandFocusedSidePanel: false
+  screenMode: "normal"
+  mouseEvents: true
+  skipDiscardChangeWarning: false
+  skipStashWarning: false
+  showFileTree: true
+  showListFooter: true
+  showCommandLog: true
+  commandLogSize: 8
+
+logs:
+  timestamps: false
+  since: '60m'
+  tail: '200'
+
+commandTemplates:
+  dockerCompose: docker compose
+  restartService: '{{ .DockerCompose }} restart {{ .Service.Name }}'
+  up: '{{ .DockerCompose }} up -d'
+  down: '{{ .DockerCompose }} down'
+  downWithVolumes: '{{ .DockerCompose }} down --volumes'
+  upService: '{{ .DockerCompose }} up -d {{ .Service.Name }}'
+  startService: '{{ .DockerCompose }} start {{ .Service.Name }}'
+  stopService: '{{ .DockerCompose }} stop {{ .Service.Name }}'
+  serviceLogs: '{{ .DockerCompose }} logs --since=60m --follow {{ .Service.Name }}'
+  viewServiceLogs: '{{ .DockerCompose }} logs --follow {{ .Service.Name }}'
+  rebuildService: '{{ .DockerCompose }} up -d --build {{ .Service.Name }}'
+  dockerComposeConfig: '{{ .DockerCompose }} config'
+  pullImages: '{{ .DockerCompose }} pull'
+  buildImages: '{{ .DockerCompose }} build'
+  removeOrphanContainers: '{{ .DockerCompose }} down --remove-orphans'
+  # Custom container commands
+  execContainer: 'docker exec -it {{ .Container.Name }} /bin/bash'
+  execContainerSh: 'docker exec -it {{ .Container.Name }} /bin/sh'
+  inspectContainer: 'docker inspect {{ .Container.Name }}'
+  statsContainer: 'docker stats {{ .Container.Name }}'
+  # Custom image commands
+  inspectImage: 'docker inspect {{ .Image.Name }}'
+  historyImage: 'docker history {{ .Image.Name }}'
+  # Custom volume commands
+  inspectVolume: 'docker volume inspect {{ .Volume.Name }}'
+
+stats:
+  graphs:
+    - caption: "CPU (%)"
+      statPath: "DerivedStats.CPUPercentage"
+      color: '#89b4fa'
+    - caption: "Memory (%)"
+      statPath: "DerivedStats.MemoryPercentage"
+      color: '#a6e3a1'
+
+customCommands:
+  containers:
+    - name: 'bash'
+      attach: true
+      command: 'docker exec -it {{ .Container.Name }} /bin/bash'
+      serviceNames: []
+    - name: 'sh'
+      attach: true
+      command: 'docker exec -it {{ .Container.Name }} /bin/sh'
+      serviceNames: []
+    - name: 'logs-1000'
+      attach: false
+      command: 'docker logs --tail=1000 -f {{ .Container.Name }}'
+      serviceNames: []
+  services:
+    - name: 'bash'
+      attach: true
+      command: 'docker exec -it {{ .Service.Name }} /bin/bash'
+      serviceNames: []
+    - name: 'sh'
+      attach: true
+      command: 'docker exec -it {{ .Service.Name }} /bin/sh'
+      serviceNames: []
+    - name: 'logs-1000'
+      attach: false
+      command: 'docker logs --tail=1000 -f {{ .Service.Name }}'
+      serviceNames: []
+
+oS:
+  openCommand: 'open {{filename}}'
+  openLinkCommand: 'open {{link}}'
+
+update:
+  method: "prompt"
+  days: 14
+
+# Keybindings similar to lazygit for consistency
+keybinding:
+  quit: 'q'
+  quit-alt1: '<c-c>'
+  return: '<esc>'
+  togglePanel: '<tab>'
+  prevItem: '<up>'
+  nextItem: '<down>'
+  prevItem-alt: 'k'
+  nextItem-alt: 'j'
+  prevPage: ','
+  nextPage: '.'
+  gotoTop: '<'
+  gotoBottom: '>'
+  prevBlock: '<left>'
+  nextBlock: '<right>'
+  prevBlock-alt: 'h'
+  nextBlock-alt: 'l'
+  jumpToBlock: ['1', '2', '3', '4', '5']
+  nextMatch: 'n'
+  prevMatch: 'N'
+  optionMenu: 'x'
+  optionMenu-alt1: '?'
+  select: '<space>'
+  goInto: '<enter>'
+  confirm: '<enter>'
+  confirm-alt1: 'y'
+  remove: 'd'
+  new: 'n'
+  edit: 'e'
+  openFile: 'o'
+  scrollUpMain: '<pgup>'
+  scrollDownMain: '<pgdown>'
+  scrollUpMain-alt1: 'K'
+  scrollDownMain-alt1: 'J'
+  scrollUpMain-alt2: '<c-u>'
+  scrollDownMain-alt2: '<c-d>'
+  executeCustomCommand: ':'
+  pushFiles: 'P'
+  pullFiles: 'p'
+  refresh: 'R'
+  nextTab: ']'
+  prevTab: '['
+  nextScreenMode: '+'
+  prevScreenMode: '_'
+  undo: 'z'
+  redo: '<c-z>'
+  filteringMenu: '<c-s>'
+  copyToClipboard: '<c-o>'
+  extrasMenu: '@'

@@ -4,11 +4,17 @@
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
 
+# Set custom Oh My Zsh directory for themes, plugins, and other customizations
+export ZSH_CUSTOM="$HOME/.config/zsh/oh-my-zsh-custom"
+
+# Catppuccin Zsh Theme Configuration
 # Set name of the theme to load --- if set to "random", it will
 # load a random theme each time oh-my-zsh is loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
-ZSH_THEME="xiong-chiamiov-plus"
+ZSH_THEME="catppuccin"
+CATPPUCCIN_FLAVOR="mocha"  # Options: mocha, frappe, macchiato, latte
+CATPPUCCIN_SHOW_TIME=true  # Show current time in prompt
 
 # Set list of themes to pick from when loading at random
 # Setting this variable when ZSH_THEME=random will cause zsh to load
