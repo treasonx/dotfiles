@@ -8,7 +8,7 @@ alias ~='cd ~'
 
 # Listing (consistent patterns)
 alias ll='ls -alF'
-alias la='ls -A' 
+alias la='ls -A'
 alias l='ls -CF'
 alias ls='ls --color=auto'
 
@@ -41,7 +41,7 @@ alias kittyconfig="nvim ~/.config/kitty/kitty.conf"
 alias q='exit'  # Quick quit (matches leader+q)
 alias reload='source ~/.config/zsh/.zshrc'  # Reload config
 
-# Directory operations (matches Neovim buffer operations)  
+# Directory operations (matches Neovim buffer operations)
 alias md='mkdir -p'  # Make directory
 alias rd='rmdir'     # Remove directory
 
@@ -52,3 +52,21 @@ alias ka='killall'
 
 # Oh My Zsh specific
 alias ohmyzsh="nvim ~/.oh-my-zsh"
+
+# lazy
+alias lg='lazygit'
+alias ld='lazydocker'
+
+# Git utilities
+alias git-remove-untracked="git fetch -p ; git branch -r | awk '{print $1}' | egrep -v -f /dev/fd/0 <(git branch -vv | grep origin) | awk '{print $1}' | xargs git branch -D"
+
+# Application shortcuts
+alias tidal="cd ~/new_music && tidal-dl -g &"
+alias claude="$HOME/.claude/local/claude"
+
+# Claude model variants
+alias claude-dumb="claude --model claude-3-haiku"
+alias claude-average="claude --model claude-3-opus"
+alias claude-dumb-yolo="claude --model claude-3-haiku --dangerously-skip-permissions"
+alias claude-average-yolo="claude --model claude-3-opus --dangerously-skip-permissions"
+alias claude-ultimate-yolo="claude --dangerously-skip-permissions"

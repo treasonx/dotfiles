@@ -95,6 +95,18 @@ main() {
     log_info "Running stow..."
     make stow
     
+    log_info "Creating zsh symlinks..."
+    # Create symlink for .zshrc (not handled by stow)
+    if [ -f "$HOME/.zshrc" ] && [ ! -L "$HOME/.zshrc" ]; then
+        log_warn "Moving existing .zshrc to backup"
+        mv "$HOME/.zshrc" "$HOME/.zshrc.backup-$(date +%Y%m%d-%H%M%S)"
+    fi
+    
+    if [ ! -L "$HOME/.zshrc" ]; then
+        ln -sf "$HOME/.dotfiles/config/zsh/zshrc" "$HOME/.zshrc"
+        log_info "Created symlink: ~/.zshrc -> ~/.dotfiles/config/zsh/zshrc"
+    fi
+    
     log_info "Setting up local configuration..."
     # Create local zsh config for sensitive data
     mkdir -p "$HOME/.config/zsh"
