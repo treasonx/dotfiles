@@ -1,2 +1,2 @@
 # Ignore local configuration files containing sensitive information
-*.local
+*config/zsh/zshrc.local
