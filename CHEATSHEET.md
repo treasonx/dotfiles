@@ -6,23 +6,23 @@
 ## 🎯 Universal Key Patterns (Conflict-Free Design)
 
 ### Core Navigation (Sacred - Never Override)
-- **`<C-h>`** → Move left (windows, panes, etc.) - RESERVED
-- **`<C-j>`** → Move down - RESERVED  
-- **`<C-k>`** → Move up - RESERVED
-- **`<C-l>`** → Move right - RESERVED
+- **`<C-h>`** → Move left (windows, panes, etc.) - RESERVED | *Mnemonic: **H**jkl navigation*
+- **`<C-j>`** → Move down - RESERVED | *Mnemonic: **J** = down in vim*
+- **`<C-k>`** → Move up - RESERVED | *Mnemonic: **K** = up in vim*
+- **`<C-l>`** → Move right - RESERVED | *Mnemonic: **L**jkl navigation*
 
 ### Next/Previous (Universal)
-- **`<S-h>`** → Previous (buffers, tabs, etc.)
-- **`<S-l>`** → Next (buffers, tabs, etc.)
+- **`<S-h>`** → Previous (buffers, tabs, etc.) | *Mnemonic: **H** = left/back*
+- **`<S-l>`** → Next (buffers, tabs, etc.) | *Mnemonic: **L** = right/forward*
 
 ### Terminal-Specific Actions (Alt/Meta to avoid conflicts)
-- **`<M-v>`** → Vertical split (Alt+v)
-- **`<M-s>`** → Horizontal split (Alt+s)  
-- **`<M-x>`** → Close window (Alt+x)
+- **`<M-v>`** → Vertical split (Alt+v) | *Mnemonic: **V**ertical*
+- **`<M-s>`** → Horizontal split (Alt+s) | *Mnemonic: **S**plit horizontal*
+- **`<M-x>`** → Close window (Alt+x) | *Mnemonic: e**X**it/close*
 
 ### System Operations
-- **`q`** → Quick quit (shell alias matches `<leader>q`)
-- **`e`** → Quick edit (shell alias matches editor preference)
+- **`q`** → Quick quit (shell alias matches `<leader>q`) | *Mnemonic: **Q**uit*
+- **`e`** → Quick edit (shell alias matches editor preference) | *Mnemonic: **E**dit*
 
 ### Key Conflict Resolution Applied
 - ❌ **Old**: `<C-S-v>` for both split AND paste (conflict!)
@@ -37,104 +37,104 @@
 # 🖥️ Terminal (Kitty) Keybindings
 
 ## Window Navigation
-| Key | Action | Description |
-|-----|--------|-------------|
-| `<C-h>` | Move left | Switch to left window |
-| `<C-j>` | Move down | Switch to window below |
-| `<C-k>` | Move up | Switch to window above |
-| `<C-l>` | Move right | Switch to right window |
+| Key | Action | Description | Mnemonic |
+|-----|--------|-------------|----------|
+| `<C-h>` | Move left | Switch to left window | **H**jkl left |
+| `<C-j>` | Move down | Switch to window below | **J** = down |
+| `<C-k>` | Move up | Switch to window above | **K** = up |
+| `<C-l>` | Move right | Switch to right window | **L**jkl right |
 
 ## Tab Management
-| Key | Action | Description |
-|-----|--------|-------------|
-| `<C-S-t>` | New tab | Create new tab |
-| `<S-h>` | Previous tab | Go to previous tab |
-| `<S-l>` | Next tab | Go to next tab |
-| `<C-S-q>` | Close tab | Close current tab |
+| Key | Action | Description | Mnemonic |
+|-----|--------|-------------|----------|
+| `<C-S-t>` | New tab | Create new tab | **T**ab new |
+| `<S-h>` | Previous tab | Go to previous tab | **H** = left/back |
+| `<S-l>` | Next tab | Go to next tab | **L** = right/forward |
+| `<C-S-q>` | Close tab | Close current tab | **Q**uit tab |
 
 ## Split Management (Clean separation - no conflicts)
-| Key | Action | Description |
-|-----|--------|-------------|
-| `<M-v>` (Alt+v) | Vertical split | Create vertical split |
-| `<M-s>` (Alt+s) | Horizontal split | Create horizontal split |
-| `<M-x>` (Alt+x) | Close window | Close current split/window |
+| Key | Action | Description | Mnemonic |
+|-----|--------|-------------|----------|
+| `<M-v>` (Alt+v) | Vertical split | Create vertical split | **V**ertical |
+| `<M-s>` (Alt+s) | Horizontal split | Create horizontal split | **S**plit |
+| `<M-x>` (Alt+x) | Close window | Close current split/window | e**X**it |
 
 ## Copy/Paste & Font (Universal clipboard)
-| Key | Action | Description |
-|-----|--------|-------------|
-| `<C-S-c>` | Copy | Copy to system clipboard |
-| `<C-S-v>` | Paste | Paste from system clipboard |
-| `<C-+>` | Font larger | Increase font size |
-| `<C-->` | Font smaller | Decrease font size |
-| `<C-0>` | Font reset | Reset font size |
+| Key | Action | Description | Mnemonic |
+|-----|--------|-------------|----------|
+| `<C-S-c>` | Copy | Copy to system clipboard | **C**opy |
+| `<C-S-v>` | Paste | Paste from system clipboard | Paste (**V** sounds like "paste") |
+| `<C-+>` | Font larger | Increase font size | **+** = bigger |
+| `<C-->` | Font smaller | Decrease font size | **-** = smaller |
+| `<C-0>` | Font reset | Reset font size | **0** = default |
 
 ---
 
 # 🐚 Shell (Zsh) Aliases & Functions
 
 ## Navigation Shortcuts
-| Alias | Command | Description |
-|-------|---------|-------------|
-| `..` | `cd ..` | Go up one directory |
-| `...` | `cd ../..` | Go up two directories |
-| `....` | `cd ../../..` | Go up three directories |
-| `~` | `cd ~` | Go to home directory |
+| Alias | Command | Description | Mnemonic |
+|-------|---------|-------------|----------|
+| `..` | `cd ..` | Go up one directory | Two dots = one level up |
+| `...` | `cd ../..` | Go up two directories | Three dots = two levels up |
+| `....` | `cd ../../..` | Go up three directories | Four dots = three levels up |
+| `~` | `cd ~` | Go to home directory | **~** = home symbol |
 
 ## Editor Shortcuts (Neovim-centric)
-| Alias | Command | Description |
-|-------|---------|-------------|
-| `e` | `nvim` | Quick edit (matches leader+e pattern) |
-| `vim` | `nvim` | Use Neovim instead of vim |
-| `vi` | `nvim` | Use Neovim instead of vi |
+| Alias | Command | Description | Mnemonic |
+|-------|---------|-------------|----------|
+| `e` | `nvim` | Quick edit (matches leader+e pattern) | **E**dit |
+| `vim` | `nvim` | Use Neovim instead of vim | Upgrade to **N**eo**vim** |
+| `vi` | `nvim` | Use Neovim instead of vi | Upgrade to Neo**vi**m |
 
 ## System Operations (Consistent with Neovim)
-| Alias | Command | Description |
-|-------|---------|-------------|
-| `q` | `exit` | Quick quit (matches leader+q) |
-| `reload` | `source ~/.config/zsh/.zshrc` | Reload shell config |
+| Alias | Command | Description | Mnemonic |
+|-------|---------|-------------|----------|
+| `q` | `exit` | Quick quit (matches leader+q) | **Q**uit |
+| `reload` | `source ~/.config/zsh/.zshrc` | Reload shell config | **Reload** config |
 
 ## File Operations
-| Alias | Command | Description |
-|-------|---------|-------------|
-| `ll` | `ls -alF` | Detailed list |
-| `la` | `ls -A` | List almost all |
-| `l` | `ls -CF` | Classify files |
-| `md` | `mkdir -p` | Make directory (with parents) |
-| `rd` | `rmdir` | Remove directory |
+| Alias | Command | Description | Mnemonic |
+|-------|---------|-------------|----------|
+| `ll` | `ls -alF` | Detailed list | **L**ong **L**ist |
+| `la` | `ls -A` | List almost all | **L**ist **A**ll |
+| `l` | `ls -CF` | Classify files | **L**ist |
+| `md` | `mkdir -p` | Make directory (with parents) | **M**ake **D**irectory |
+| `rd` | `rmdir` | Remove directory | **R**emove **D**irectory |
 
 ## Git Shortcuts (Matches Neovim Git Plugin)
-| Alias | Command | Description |
-|-------|---------|-------------|
-| `gs` | `git status` | Git status |
-| `ga` | `git add` | Git add |
-| `gc` | `git commit` | Git commit |
-| `gp` | `git push` | Git push |
-| `gl` | `git log --oneline --graph --decorate` | Git log |
-| `gd` | `git diff` | Git diff |
-| `gb` | `git branch` | Git branch |
-| `gco` | `git checkout` | Git checkout |
+| Alias | Command | Description | Mnemonic |
+|-------|---------|-------------|----------|
+| `gs` | `git status` | Git status | **G**it **S**tatus |
+| `ga` | `git add` | Git add | **G**it **A**dd |
+| `gc` | `git commit` | Git commit | **G**it **C**ommit |
+| `gp` | `git push` | Git push | **G**it **P**ush |
+| `gl` | `git log --oneline --graph --decorate` | Git log | **G**it **L**og |
+| `gd` | `git diff` | Git diff | **G**it **D**iff |
+| `gb` | `git branch` | Git branch | **G**it **B**ranch |
+| `gco` | `git checkout` | Git checkout | **G**it **C**heck**o**ut |
 
 ## Configuration Editing
-| Alias | Command | Description |
-|-------|---------|-------------|
-| `zshconfig` | `nvim ~/.config/zsh/.zshrc` | Edit zsh config |
-| `nvimconfig` | `nvim ~/.config/nvim/` | Edit nvim config |
-| `kittyconfig` | `nvim ~/.config/kitty/kitty.conf` | Edit kitty config |
+| Alias | Command | Description | Mnemonic |
+|-------|---------|-------------|----------|
+| `zshconfig` | `nvim ~/.config/zsh/.zshrc` | Edit zsh config | **Zsh** **config** |
+| `nvimconfig` | `nvim ~/.config/nvim/` | Edit nvim config | **Nvim** **config** |
+| `kittyconfig` | `nvim ~/.config/kitty/kitty.conf` | Edit kitty config | **Kitty** **config** |
 
 ---
 
 # 📂 Dotfiles Management
 
 ## Make Commands
-| Command | Action | Description |
-|---------|--------|-------------|
-| `make install` | Full installation | Backup + stow symlinks |
-| `make backup` | Backup configs | Create timestamped backup |
-| `make stow` | Create symlinks | Link configs to home |
-| `make unstow` | Remove symlinks | Unlink all configs |
-| `make update` | Update dotfiles | Git pull + re-stow |
-| `make check` | Check conflicts | Dry run to detect issues |
-| `make clean` | Remove backups | Clean old backup files |
+| Command | Action | Description | Mnemonic |
+|---------|--------|-------------|----------|
+| `make install` | Full installation | Backup + stow symlinks | **Install** everything |
+| `make backup` | Backup configs | Create timestamped backup | **Backup** files |
+| `make stow` | Create symlinks | Link configs to home | **Stow** = organize/link |
+| `make unstow` | Remove symlinks | Unlink all configs | **Un**-stow = remove links |
+| `make update` | Update dotfiles | Git pull + re-stow | **Update** to latest |
+| `make check` | Check conflicts | Dry run to detect issues | **Check** for problems |
+| `make clean` | Remove backups | Clean old backup files | **Clean** up old files |
 
 ---
 

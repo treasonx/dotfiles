@@ -20,10 +20,14 @@ make install
   - `git/` - Git configuration with Neovim-friendly settings
   - `zsh/` - Zsh configuration with XDG compliance
   - `kitty/` - Terminal configuration with Neovim-consistent keybindings
+  - `btop/` - System monitor with matching theme
+  - `lazygit/` - Git TUI with consistent keybindings
+  - `lazydocker/` - Docker TUI with consistent keybindings
 - `home/` - Home directory dotfiles (symlinked to `~/`)
 - `scripts/` - Utility scripts for automation
 - `templates/` - Template files for customization
 - `host-specific/` - Machine-specific configurations
+- `logs/` - Theme sync and automation logs
 
 ## Commands
 
@@ -65,6 +69,8 @@ make clean      # Remove backup files
 2. Run `make stow` to create symlinks
 3. Commit and push changes
 
+See `ADDING_DOTFILES.md` for detailed instructions on adding new configurations.
+
 ## Configuration Details
 
 ### Shell (Zsh)
@@ -78,6 +84,11 @@ make clean      # Remove backup files
 - Window navigation with `<C-hjkl>` (matches Neovim)
 - Tab management with `<S-hl>` (matches buffer navigation)
 - Split management consistent with Neovim patterns
+
+### Development Tools
+- **LazyGit**: Git TUI with Neovim-consistent keybindings and theme
+- **LazyDocker**: Docker TUI with consistent navigation patterns
+- **btop**: System monitor with matching colorscheme
 
 ### Git
 - Neovim as default editor
@@ -96,6 +107,11 @@ make clean      # Remove backup files
 - [Git](https://git-scm.com/) - Version control
 - [Make](https://www.gnu.org/software/make/) - Task automation
 - [Neovim](https://neovim.io/) - Primary editor and configuration driver
+- [Zsh](https://www.zsh.org/) - Shell with Oh My Zsh integration
+- [Kitty](https://sw.kovidgoyal.net/kitty/) - Terminal emulator
+- [LazyGit](https://github.com/jesseduffield/lazygit) - Git TUI
+- [LazyDocker](https://github.com/jesseduffield/lazydocker) - Docker TUI
+- [btop](https://github.com/aristocratos/btop) - System monitor
 
 ## Neovim Configuration
 
@@ -105,7 +121,7 @@ The Neovim configuration is a modular setup using Lua and lazy.nvim plugin manag
 - Plugin management with lazy loading
 - Comprehensive cheatsheet and documentation
 
-See `config/nvim/` for detailed Neovim configuration.
+See `config/nvim/` for detailed Neovim configuration and `CHEATSHEET.md` for complete keybinding reference.
 
 ## Local Configuration
 
