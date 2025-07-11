@@ -1,0 +1,1 @@
+/home/james/.dotfiles/config/zsh/zshrc
