@@ -1,0 +1,39 @@
+# ~/.config/zsh/zshrc.local.template
+# Copy this file to ~/.config/zsh/zshrc.local and customize for your machine
+
+# API Keys and sensitive environment variables
+# export BRAVE_API_KEY="your-brave-api-key-here"
+
+# Database URLs and connections (example for HYPERJIVE project)
+# HYPERJIVE_STAGE_PSQL_URL="postgresql://user:pass@host:port/db_staging"
+# HYPERJIVE_STAGE_PROD_URL="postgresql://user:pass@host:port/db_prod"
+# HYPERJIVE_VPS="user@your-vps-server"
+
+# Other API keys you might need
+# export OPENAI_API_KEY="your-openai-key"
+# export GITHUB_TOKEN="your-github-token"
+# export AWS_ACCESS_KEY_ID="your-aws-key"
+# export AWS_SECRET_ACCESS_KEY="your-aws-secret"
+
+# Machine-specific paths
+# export PATH="$HOME/custom-tools/bin:$PATH"
+# export PATH="/opt/local/bin:$PATH"
+
+# Work-specific configuration
+# alias work-vpn="sudo openvpn /path/to/work.ovpn"
+# alias staging-db="psql $HYPERJIVE_STAGE_PSQL_URL"
+
+# Personal aliases and functions
+# alias myserver="ssh user@my-server.com"
+
+# Override Oh My Zsh theme if desired for this machine
+# ZSH_THEME="powerlevel10k/powerlevel10k"
+
+# Additional plugins for this machine only
+# plugins+=(docker kubectl aws)
+
+# Custom functions for this machine
+# function deploy-staging() {
+#     echo "Deploying to staging..."
+#     # Your deployment commands here
+# }
