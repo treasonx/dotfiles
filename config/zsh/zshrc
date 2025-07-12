@@ -76,26 +76,6 @@ export PATH=$PATH:/usr/local/go/bin
 
 
 # =============================================================================
-# FUNCTIONS
-# =============================================================================
-
-# Check backup status on shell startup
-check_backup_status() {
-    LOG_FILE="/home/username/backup.log"
-    if [ -f "$LOG_FILE" ]; then
-        LAST_BACKUP=$(tail -n 1 "$LOG_FILE")
-        if [[ $LAST_BACKUP == *"failed"* ]]; then
-            echo -e "\033[0;31mWARNING: Last backup failed! Check $LOG_FILE\033[0m"
-        else
-            echo -e "\033[0;32mLast backup: $LAST_BACKUP\033[0m"
-        fi
-    fi
-}
-
-# Add backup check to precmd functions
-precmd_functions+=(check_backup_status)
-
-# =============================================================================
 # PYTHON VIRTUAL ENVIRONMENT AUTO-ACTIVATION
 # =============================================================================
 
@@ -106,7 +86,7 @@ CURRENT_VENV_PATH=""
 auto_activate_venv() {
     local dir="$PWD"
     local found_venv=""
-    
+
     # Search up the directory tree for venv directories
     while [[ "$dir" != "/" ]]; do
         if [[ -f "$dir/venv/bin/activate" ]]; then
@@ -118,14 +98,14 @@ auto_activate_venv() {
         fi
         dir="$(dirname "$dir")"
     done
-    
+
     # Only change venv if different from current
     if [[ "$found_venv" != "$CURRENT_VENV_PATH" ]]; then
         # Deactivate current venv if active
         if [[ -n "$VIRTUAL_ENV" ]]; then
             deactivate
         fi
-        
+
         # Activate new venv if found
         if [[ -n "$found_venv" ]]; then
             source "$found_venv/bin/activate"
