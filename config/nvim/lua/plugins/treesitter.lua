@@ -5,15 +5,16 @@ return {
   lazy = false,
   dependencies = {
     "nvim-treesitter/nvim-treesitter-textobjects",
+    "OXY2DEV/markview.nvim",
   },
   config = function()
     require("nvim-treesitter.configs").setup {
-      ensure_installed = { 
-        "python", 
-        "javascript", 
-        "typescript", 
-        "lua", 
-        "markdown", 
+      ensure_installed = {
+        "python",
+        "javascript",
+        "typescript",
+        "lua",
+        "markdown",
         "markdown_inline",
         "html",
         "css",
