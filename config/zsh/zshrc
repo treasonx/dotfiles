@@ -164,3 +164,6 @@ export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 export PLAYDATE_SDK_PATH="$HOME/PlaydateSDK-2.7.5/"
 export PATH="$PLAYDATE_SDK_PATH/bin:$PATH"
+
+# opencode
+export PATH=/home/james/.opencode/bin:$PATH
