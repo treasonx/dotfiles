@@ -47,6 +47,58 @@ install_packages() {
     done
 }
 
+# Select machine type for Hyprland configuration
+select_machine_type() {
+    log_info "Configuring Hyprland for machine type..."
+    
+    # Check if HYPR_MACHINE environment variable is set
+    if [ -n "$HYPR_MACHINE" ]; then
+        MACHINE_TYPE="$HYPR_MACHINE"
+        log_info "Using machine type from environment: $MACHINE_TYPE"
+    else
+        # Interactive selection
+        echo "Select your machine type:"
+        echo "1) Desktop (multi-monitor setup with NVIDIA)"
+        echo "2) Laptop (single monitor with integrated graphics)"
+        echo "3) Skip Hyprland configuration"
+        
+        while true; do
+            read -p "Enter your choice (1-3): " choice
+            case $choice in
+                1) MACHINE_TYPE="desktop"; break;;
+                2) MACHINE_TYPE="laptop"; break;;
+                3) log_info "Skipping Hyprland configuration"; return 0;;
+                *) echo "Please enter 1, 2, or 3";;
+            esac
+        done
+    fi
+    
+    # Validate machine type
+    if [ "$MACHINE_TYPE" != "desktop" ] && [ "$MACHINE_TYPE" != "laptop" ]; then
+        log_error "Invalid machine type: $MACHINE_TYPE"
+        return 1
+    fi
+    
+    log_info "Selected machine type: $MACHINE_TYPE"
+    
+    # Create machine symlinks
+    HYPR_DIR="$HOME/.config/hypr"
+    MACHINE_DIR="$HOME/.dotfiles/config/hypr/machines/$MACHINE_TYPE"
+    
+    # Remove existing machine symlink if it exists
+    if [ -L "$HYPR_DIR/machine" ]; then
+        rm "$HYPR_DIR/machine"
+    fi
+    
+    # Create new machine symlink
+    ln -sf "$MACHINE_DIR" "$HYPR_DIR/machine"
+    log_info "Created machine configuration symlink for $MACHINE_TYPE"
+    
+    # Write machine type to a file for future reference
+    echo "$MACHINE_TYPE" > "$HYPR_DIR/.machine_type"
+    log_info "Machine type saved to $HYPR_DIR/.machine_type"
+}
+
 # Create backup of existing dotfiles
 backup_existing() {
     log_info "Creating backup of existing dotfiles..."
@@ -71,6 +123,7 @@ backup_existing() {
         ".config/btop/btop.conf"
         ".config/lazygit/config.yml"
         ".config/lazydocker/config.yml"
+        ".config/hypr"
     )
     
     for file in "${FILES_TO_BACKUP[@]}"; do
@@ -94,6 +147,9 @@ main() {
     
     log_info "Running stow..."
     make stow
+    
+    # Configure Hyprland machine type
+    select_machine_type
     
     log_info "Creating zsh symlinks..."
     # Create symlink for .zshrc (not handled by stow)
