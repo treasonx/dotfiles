@@ -3,3 +3,4 @@
 
 # Ignore zsh completion dump files
 *config/zsh/.zcompdump*
+.zsh_history

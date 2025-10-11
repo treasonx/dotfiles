@@ -74,7 +74,6 @@ export PATH=$HOME/.cargo/bin:$PATH
 # Go
 export PATH=$PATH:/usr/local/go/bin
 
-
 # =============================================================================
 # PYTHON VIRTUAL ENVIRONMENT AUTO-ACTIVATION
 # =============================================================================
@@ -167,3 +166,24 @@ export PATH="$PLAYDATE_SDK_PATH/bin:$PATH"
 
 # opencode
 export PATH=/home/james/.opencode/bin:$PATH
+
+# jj auto completions
+autoload -U compinit
+compinit
+source <(jj util completion zsh)
+
+
+# Attempt to resolve copy paste over SSH
+clip() {
+  if [ -n "$SSH_TTY" ]; then
+    # Over SSH: use OSC 52
+    printf "\033]52;c;$(cat | base64 -w0)\a"
+  else
+    # Local: use wl-copy
+    wl-copy
+  fi
+}
+
+alias core="cd ~/projects/typelink/typelink-core/"
+alias startcore="core && set -a && source .env && set +a && ./gradlew :rest:run"
+alias wezconnect="wezterm start --new-tab --attach --domain unit"
