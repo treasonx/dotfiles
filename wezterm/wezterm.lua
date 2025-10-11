@@ -25,7 +25,7 @@ config.unix_domains = {
 config.font = wezterm.font('JetBrains Mono')
 config.font_size = 12.0
 config.color_scheme = 'Catppuccin Mocha (Gogh)'
-config.window_background_image = "/home/james/Pictures/walls/minimal/a_drawing_of_a_bear_and_a_campfire.png"
+config.window_background_image = wezterm.config_dir .. "/a_drawing_of_a_bear_and_a_campfire.png"
 -- config.window_background_image = "/home/james/Pictures/walls/nord/a_blue_and_white_logo.png"
 -- config.text_background_opacity = 0.8
 
