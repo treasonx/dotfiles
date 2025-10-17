@@ -4,3 +4,6 @@
 
 -- Disable autoformat on save
 vim.g.autoformat = false
+
+-- Enable system clipboard integration
+vim.opt.clipboard = "unnamedplus"
