@@ -10,32 +10,21 @@ return {
 
     local cmp = require("cmp")
 
-    opts.mapping = vim.tbl_extend("force", opts.mapping, {
-      ["<Tab>"] = cmp.mapping(function(fallback)
-        if cmp.visible() then
-          -- You could replace select_next_item() with confirm({ select = true }) to get VS Code autocompletion behavior
-          cmp.select_next_item()
-        elseif vim.snippet.active({ direction = 1 }) then
-          vim.schedule(function()
-            vim.snippet.jump(1)
-          end)
-        elseif has_words_before() then
-          cmp.complete()
-        else
-          fallback()
-        end
-      end, { "i", "s" }),
-      ["<S-Tab>"] = cmp.mapping(function(fallback)
-        if cmp.visible() then
-          cmp.select_prev_item()
-        elseif vim.snippet.active({ direction = -1 }) then
-          vim.schedule(function()
-            vim.snippet.jump(-1)
-          end)
-        else
-          fallback()
-        end
-      end, { "i", "s" }),
-    })
+    -- Ensure first item is preselected
+    opts.preselect = cmp.PreselectMode.Item
+    opts.completion = opts.completion or {}
+    opts.completion.completeopt = "menu,menuone,noinsert"
+
+    -- Disable Enter key in completion menu
+    opts.mapping = opts.mapping or {}
+    opts.mapping["<CR>"] = cmp.mapping(function(fallback)
+      if cmp.visible() then
+        -- Do nothing when completion menu is visible
+        return
+      else
+        fallback()
+      end
+    end, { "i", "s", "c" })
+
   end,
 }
