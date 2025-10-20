@@ -34,11 +34,12 @@ git:
   autoFetch: true
   autoRefresh: true
   branchLogCmd: 'git log --oneline --decorate --graph --all {{branchName}} --'
-  allBranchesLogCmd: 'git log --oneline --decorate --graph --all'
   overrideGpg: false
   disableForcePushing: false
   parseEmoji: false
   diffContextSize: 3
+  allBranchesLogCmds:
+    - git log --oneline --decorate --graph --all
 gui:
   authorColors:
     '*': '#b4befe'
