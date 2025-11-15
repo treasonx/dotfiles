@@ -1,7 +1,7 @@
 local wezterm = require('wezterm')
 local config = wezterm.config_builder()
 local tabline = wezterm.plugin.require("https://github.com/michaelbrusegard/tabline.wez")
-config.enable_wayland = false
+config.enable_wayland = true
 
 config.ssh_domains = {
 	{
