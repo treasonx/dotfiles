@@ -46,4 +46,4 @@ keybind = ctrl+shift+j=goto_split:down
 keybind = ctrl+shift+k=goto_split:up
 keybind = ctrl+shift+l=goto_split:right
 keybind = ctrl+shift+-=new_split:down
-keybind = ctrl+shift+\=new_split:down
+keybind = ctrl+shift+\=new_split:right

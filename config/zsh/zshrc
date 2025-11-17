@@ -50,6 +50,9 @@ export EDITOR='nvim'
 # Language environment
 # export LANG=en_US.UTF-8
 
+# Docker API version for lazydocker compatibility
+export DOCKER_API_VERSION=1.44
+
 # Manual path (if needed)
 # export MANPATH="/usr/local/man:$MANPATH"
 
@@ -187,3 +190,5 @@ clip() {
 alias core="cd ~/projects/typelink/typelink-core/"
 alias startcore="core && set -a && source .env && set +a && ./gradlew :rest:run"
 alias wezconnect="wezterm start --new-tab --attach --domain unit"
+
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
