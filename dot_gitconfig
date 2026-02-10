@@ -2,7 +2,7 @@
 
 [user]
 	name = James Morrin
-	email = james@morr.in
+	email = treasonx@users.noreply.github.com
 [filter "lfs"]
 	smudge = git-lfs smudge -- %f
 	process = git-lfs filter-process
@@ -18,5 +18,3 @@
     
 [pull]
 	rebase = true
-[coderabbit]
-	machineId = cli/1b95ae08151c4112a2623d13625b7ea2

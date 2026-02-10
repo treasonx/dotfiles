@@ -12,9 +12,17 @@ cat <<'TEMPLATE'
 # export GITHUB_TOKEN="your-token-here"
 
 # Database URLs
-# HYPERJIVE_STAGE_PSQL_URL="postgresql://user:pass@host:port/db"
-# HYPERJIVE_STAGE_PROD_URL="postgresql://user:pass@host:port/db"
-# HYPERJIVE_VPS="user@your-vps"
+# DB_STAGING_URL="postgresql://user:pass@host:port/db"
+# DB_PROD_URL="postgresql://user:pass@host:port/db"
+# VPS_HOST="user@your-vps"
+
+# Weather location (used by ~/.local/bin/weather)
+# export WEATHER_LAT="your-latitude"
+# export WEATHER_LON="your-longitude"
+
+# Project aliases
+# alias core="cd ~/projects/your-project/"
+# source "/path/to/project-specific-shell-script.zsh"
 
 # Machine-specific paths
 # export PATH="$HOME/custom-tools/bin:$PATH"

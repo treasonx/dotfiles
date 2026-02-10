@@ -140,8 +140,6 @@ chpwd() { auto_activate_venv }
 # ALIASES
 # =============================================================================
 
-alias core="cd ~/projects/typelink/typelink-core/"
-alias startcore="core && set -a && source .env && set +a && ./gradlew :rest:run"
 alias wezconnect="wezterm start --new-tab --attach --domain unit"
 
 # Load shared aliases file
@@ -162,5 +160,4 @@ alias wezconnect="wezterm start --new-tab --attach --domain unit"
 # Activate venv after all PATH modifications are complete
 auto_activate_venv
 
-# ShiftUp scratch org auto-switch
-source "/home/james/projects/shiftupai/guided-selling/scripts/shell/org-auto-switch.zsh"
+# Project-specific scripts (loaded from zshrc.local if needed)

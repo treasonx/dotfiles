@@ -1,3 +1,8 @@
 #!/usr/bin/env bash
 
-rustormy --lat 38.338389 --lon -120.771356 --colors -u imperial
+if [ -z "$WEATHER_LAT" ] || [ -z "$WEATHER_LON" ]; then
+    echo "Set WEATHER_LAT and WEATHER_LON in ~/.config/zsh/zshrc.local"
+    exit 1
+fi
+
+rustormy --lat "$WEATHER_LAT" --lon "$WEATHER_LON" --colors -u imperial
