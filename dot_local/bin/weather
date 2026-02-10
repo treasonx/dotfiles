@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+rustormy --lat 38.338389 --lon -120.771356 --colors -u imperial

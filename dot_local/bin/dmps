@@ -1,0 +1,11 @@
+#!/bin/sh
+
+
+    # Turning screen off...
+    # Top Portable Monitor
+ddccontrol -r 0xd6 -w 5 dev:/dev/i2c-5
+ddccontrol -r 0xd6 -w 5 dev:/dev/i2c-6
+sleep 2
+ddccontrol -r 0xd6 -w 1 dev:/dev/i2c-5
+ddccontrol -r 0xd6 -w 1 dev:/dev/i2c-6
+

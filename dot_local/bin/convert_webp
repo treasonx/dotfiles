@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# Check if the correct number of arguments is provided
+if [ "$#" -ne 1 ]; then
+  echo "Usage: $0 input_file.webp"
+  exit 1
+fi
+
+# Input file path
+input_file="$1"
+
+# Check if the input file exists
+if [ ! -f "$input_file" ]; then
+  echo "Error: Input file $input_file does not exist."
+  exit 1
+fi
+
+# Get the directory and base name of the input file
+input_dir=$(dirname "$input_file")
+base_name=$(basename "$input_file" .webp)
+
+# Define the output file path
+output_file="$input_dir/$base_name.png"
+
+# Convert the .webp image to .png
+convert "$input_file" "$output_file"
+
+echo "Converted $input_file to $output_file"

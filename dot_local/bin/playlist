@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Check if beets is installed
+if ! command -v beet &> /dev/null; then
+    echo "Beets is not installed. Please install Beets first."
+    exit 1
+fi
+
+# Function to create an M3U playlist
+create_playlist() {
+    local query="$1"
+    local playlist_name="$2"
+
+    # Create playlist directory if it doesn't exist
+    mkdir -p playlists
+
+    # Use beets to generate the playlist
+    beet ls -f '$path' "$query" > "playlists/$playlist_name.m3u"
+
+    echo "Playlist 'playlists/$playlist_name.m3u' created successfully."
+}
+
+# Main script
+if [ "$#" -ne 2 ]; then
+    echo "Usage: $0 <query> <playlist_name>"
+    exit 1
+fi
+
+query="$1"
+playlist_name="$2"
+
+create_playlist "$query" "$playlist_name"

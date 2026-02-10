@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Remove a git worktree using fzf for selection
+# Usage: git wtr
+
+worktrees=$(git worktree list | grep -v "(bare)" | tail -n +2)
+
+if [ -z "$worktrees" ]; then
+    echo "No worktrees to remove"
+    exit 0
+fi
+
+selected=$(echo "$worktrees" | fzf --prompt="Remove worktree: ")
+
+if [ -n "$selected" ]; then
+    path=$(echo "$selected" | awk '{print $1}')
+    git worktree remove "$path"
+fi

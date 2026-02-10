@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Create a git worktree in ../ with slashes replaced by dashes
+
+usage() {
+    echo "Usage: git wt <branch> [-d directory] [-b base-branch]"
+    echo ""
+    echo "Creates a worktree in ../ relative to the repo root."
+    echo "Directory is prefixed with repo name, slashes become dashes."
+    echo ""
+    echo "Options:"
+    echo "  -d directory    Custom directory suffix (default: branch name)"
+    echo "  -b base-branch  Create new branch from base-branch"
+    echo ""
+    echo "Examples (in repo 'guided-selling'):"
+    echo "  git wt main                    # ../guided-selling-main"
+    echo "  git wt feat/login              # ../guided-selling-feat-login"
+    echo "  git wt feat/login -d mydir     # ../guided-selling-mydir"
+    echo "  git wt feat/new -b main        # ../guided-selling-feat-new"
+    exit 1
+}
+
+[ -z "$1" ] && usage
+
+branch="$1"
+shift
+
+while getopts "d:b:" opt; do
+    case $opt in
+        d) dir="$OPTARG" ;;
+        b) base="$OPTARG" ;;
+        *) usage ;;
+    esac
+done
+
+repo=$(basename "$(git rev-parse --show-toplevel)")
+suffix="${dir:-$branch}"
+suffix=$(echo "$suffix" | tr "/" "-")
+dir="${repo}-${suffix}"
+
+if [ -n "$base" ]; then
+    git worktree add -b "$branch" "../$dir" "$base"
+else
+    git worktree add "../$dir" "$branch"
+fi
+
+if [ $? -eq 0 ]; then
+    echo ""
+    echo "cd ../$dir"
+fi
