@@ -1,0 +1,408 @@
+#!/usr/bin/env python3
+"""
+Camera Viewer for Hyprland
+
+Shows a rofi menu to select a camera, then displays the livestream.
+Press Super+V again to close the stream.
+
+Usage:
+    ./camera_toggle.py
+"""
+
+import asyncio
+import json
+import os
+import signal
+import subprocess
+import sys
+from pathlib import Path
+
+try:
+    import websockets
+except ImportError:
+    print("Error: websockets library not installed")
+    sys.exit(1)
+
+WS_URL = "ws://localhost:3777"
+PID_FILE = Path("/tmp/camera_viewer.pid")
+SCHEMA_VERSION = 21
+
+# Logging
+def log(msg):
+    print(f"[camera] {msg}", flush=True)
+
+
+def notify(title: str, body: str = "", urgency: str = "normal"):
+    """Send a desktop notification."""
+    try:
+        cmd = ["notify-send", "-a", "Camera", "-u", urgency, title]
+        if body:
+            cmd.append(body)
+        subprocess.run(cmd, timeout=5)
+    except Exception:
+        pass
+
+
+def get_active_monitor_geometry() -> tuple[int, int, int, int]:
+    """Get geometry of active monitor (x, y, width, height)."""
+    try:
+        result = subprocess.run(
+            ["hyprctl", "activeworkspace", "-j"],
+            capture_output=True, text=True, timeout=5
+        )
+        workspace = json.loads(result.stdout)
+        monitor_name = workspace.get("monitor", "")
+
+        result = subprocess.run(
+            ["hyprctl", "monitors", "-j"],
+            capture_output=True, text=True, timeout=5
+        )
+        monitors = json.loads(result.stdout)
+
+        for mon in monitors:
+            if mon.get("name") == monitor_name:
+                return (mon.get("x", 0), mon.get("y", 0),
+                        mon.get("width", 1920), mon.get("height", 1080))
+        if monitors:
+            mon = monitors[0]
+            return (mon.get("x", 0), mon.get("y", 0),
+                    mon.get("width", 1920), mon.get("height", 1080))
+    except Exception:
+        pass
+    return (0, 0, 1920, 1080)
+
+
+def is_running() -> bool:
+    """Check if camera viewer is already running."""
+    if not PID_FILE.exists():
+        return False
+    try:
+        pid = int(PID_FILE.read_text().strip())
+        os.kill(pid, 0)
+        return True
+    except (ValueError, ProcessLookupError, PermissionError):
+        PID_FILE.unlink(missing_ok=True)
+        return False
+
+
+def stop_viewer():
+    """Stop the running camera viewer."""
+    if PID_FILE.exists():
+        try:
+            pid = int(PID_FILE.read_text().strip())
+            log(f"Stopping viewer (pid {pid})")
+            os.kill(pid, signal.SIGTERM)
+        except (ValueError, ProcessLookupError, PermissionError):
+            pass
+        PID_FILE.unlink(missing_ok=True)
+
+
+async def get_cameras() -> dict:
+    """Get list of cameras from eufy-security-ws."""
+    log("Connecting to eufy-security-ws...")
+    notify("Camera", "Connecting...")
+
+    async with websockets.connect(WS_URL) as ws:
+        await ws.send(json.dumps({
+            "messageId": "1",
+            "command": "set_api_schema",
+            "schemaVersion": SCHEMA_VERSION
+        }))
+        await ws.recv()
+
+        await ws.send(json.dumps({
+            "messageId": "2",
+            "command": "start_listening"
+        }))
+        await ws.recv()  # result without state
+
+        msg = await ws.recv()  # result with state
+        data = json.loads(msg)
+        serials = data.get("result", {}).get("state", {}).get("devices", [])
+
+        log(f"Found {len(serials)} devices, filtering cameras...")
+
+        cameras = {}
+        msg_id = 3
+
+        for serial in serials:
+            # Skip locks and base stations
+            if serial.startswith("T8520") or serial.startswith("T8200") or serial.startswith("T8010"):
+                continue
+
+            await ws.send(json.dumps({
+                "messageId": str(msg_id),
+                "command": "device.get_properties",
+                "serialNumber": serial
+            }))
+            msg_id += 1
+
+            try:
+                resp = await asyncio.wait_for(ws.recv(), timeout=2)
+                resp_data = json.loads(resp)
+                if resp_data.get("success"):
+                    props = resp_data.get("result", {}).get("properties", {})
+                    name = props.get("name", serial)
+                    cameras[serial] = name
+                    log(f"  Camera: {name}")
+            except asyncio.TimeoutError:
+                continue
+
+        return cameras
+
+
+def show_camera_picker(cameras: dict) -> tuple[str, str] | None:
+    """Show rofi menu to pick a camera."""
+    if not cameras:
+        log("No cameras available")
+        return None
+
+    # Build menu
+    options = "\n".join(cameras.values())
+
+    try:
+        result = subprocess.run(
+            ["rofi", "-dmenu", "-p", "Camera", "-i"],
+            input=options,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            log("Camera selection cancelled")
+            return None
+
+        selected_name = result.stdout.strip()
+
+        # Find serial for selected name
+        for serial, name in cameras.items():
+            if name == selected_name:
+                return (serial, name)
+
+        return None
+    except subprocess.TimeoutExpired:
+        log("Rofi timed out")
+        return None
+    except FileNotFoundError:
+        log("Rofi not found, trying wofi...")
+        try:
+            result = subprocess.run(
+                ["wofi", "--dmenu", "-p", "Camera"],
+                input=options,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            if result.returncode == 0:
+                selected_name = result.stdout.strip()
+                for serial, name in cameras.items():
+                    if name == selected_name:
+                        return (serial, name)
+        except:
+            pass
+        return None
+
+
+class CameraViewer:
+    def __init__(self, serial: str, name: str):
+        self.serial = serial
+        self.name = name
+        self.ws = None
+        self.process = None
+        self.running = True
+        self.message_id = 0
+
+    def next_message_id(self) -> str:
+        self.message_id += 1
+        return f"msg_{self.message_id}"
+
+    async def send_command(self, command: str, **params):
+        msg = {
+            "messageId": self.next_message_id(),
+            "command": command,
+            **params
+        }
+        await self.ws.send(json.dumps(msg))
+
+    def start_player(self):
+        """Start ffplay for the video stream."""
+        mon_x, mon_y, mon_w, mon_h = get_active_monitor_geometry()
+
+        # Center the window
+        win_w, win_h = 800, 600
+        win_x = mon_x + (mon_w - win_w) // 2
+        win_y = mon_y + (mon_h - win_h) // 2
+
+        ffplay_cmd = [
+            "ffplay",
+            "-autoexit",
+            "-window_title", f"[Camera] {self.name}",
+            "-x", str(win_w),
+            "-y", str(win_h),
+            "-left", str(win_x),
+            "-top", str(win_y),
+            "-fflags", "nobuffer",
+            "-flags", "low_delay",
+            "-framedrop",
+            "-f", "h264",
+            "-i", "pipe:0"
+        ]
+
+        self.process = subprocess.Popen(
+            ffplay_cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        log(f"Started player for {self.name}")
+
+    def write_video(self, data: bytes):
+        """Write video data to ffplay."""
+        if self.process and self.process.poll() is None:
+            try:
+                self.process.stdin.write(data)
+                self.process.stdin.flush()
+            except (BrokenPipeError, OSError):
+                self.running = False
+
+    def cleanup(self):
+        """Clean up resources."""
+        if self.process:
+            try:
+                self.process.stdin.close()
+            except:
+                pass
+            if self.process.poll() is None:
+                self.process.terminate()
+                try:
+                    self.process.wait(timeout=2)
+                except:
+                    self.process.kill()
+        PID_FILE.unlink(missing_ok=True)
+        log("Cleaned up")
+
+    async def run(self):
+        """Main loop - stream video from camera."""
+        PID_FILE.write_text(str(os.getpid()))
+
+        def handle_signal(sig, frame):
+            log("Received stop signal")
+            self.running = False
+
+        signal.signal(signal.SIGTERM, handle_signal)
+        signal.signal(signal.SIGINT, handle_signal)
+
+        try:
+            log(f"Connecting for stream: {self.name}")
+
+            async with websockets.connect(WS_URL) as ws:
+                self.ws = ws
+
+                await self.send_command("set_api_schema", schemaVersion=SCHEMA_VERSION)
+                await ws.recv()
+
+                await self.send_command("start_listening")
+
+                # Start the player
+                self.start_player()
+
+                # Request livestream
+                log(f"Requesting livestream...")
+                await self.send_command(
+                    "device.start_livestream",
+                    serialNumber=self.serial
+                )
+
+                video_started = False
+
+                while self.running:
+                    # Check if player was closed (Escape, Q, or window close)
+                    if self.process and self.process.poll() is not None:
+                        log("Player window closed")
+                        notify("Camera", "Stopped")
+                        break
+
+                    try:
+                        msg = await asyncio.wait_for(ws.recv(), timeout=0.5)
+                        data = json.loads(msg)
+
+                        if data.get("type") == "result":
+                            if not data.get("success"):
+                                err = data.get("error", {})
+                                err_msg = err.get("message", str(err))
+                                log(f"Error: {err_msg}")
+                                notify("Camera Error", err_msg, "critical")
+
+                        elif data.get("type") == "event":
+                            event = data.get("event", {})
+                            evt_type = event.get("event")
+
+                            if evt_type == "livestream started":
+                                log("Stream started!")
+                                notify("Camera", f"Streaming: {self.name}")
+
+                            elif evt_type == "livestream stopped":
+                                log("Stream stopped by server")
+                                notify("Camera", "Stream ended")
+                                break
+
+                            elif evt_type == "livestream video data":
+                                if not video_started:
+                                    log("Receiving video data...")
+                                    video_started = True
+
+                                buffer_data = event.get("buffer", {})
+                                if isinstance(buffer_data, dict):
+                                    data_array = buffer_data.get("data", [])
+                                    if data_array:
+                                        self.write_video(bytes(data_array))
+
+                    except asyncio.TimeoutError:
+                        continue
+
+                # Stop the stream
+                log("Stopping stream...")
+                await self.send_command(
+                    "device.stop_livestream",
+                    serialNumber=self.serial
+                )
+
+        except Exception as e:
+            log(f"Error: {e}")
+            notify("Camera Error", str(e), "critical")
+        finally:
+            self.cleanup()
+
+
+async def main():
+    if is_running():
+        log("Viewer already running, stopping it")
+        stop_viewer()
+        return
+
+    try:
+        cameras = await get_cameras()
+    except Exception as e:
+        log(f"Failed to get cameras: {e}")
+        notify("Camera Error", f"Connection failed: {e}", "critical")
+        return
+
+    if not cameras:
+        log("No cameras found")
+        notify("Camera", "No cameras found")
+        return
+
+    selection = show_camera_picker(cameras)
+    if not selection:
+        return
+
+    serial, name = selection
+    log(f"Selected: {name}")
+
+    viewer = CameraViewer(serial, name)
+    await viewer.run()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

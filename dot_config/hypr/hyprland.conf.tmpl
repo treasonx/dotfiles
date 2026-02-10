@@ -271,7 +271,7 @@ bind = $mainMods, s, exec, flatpak run io.github.seadve.Kooha
 bind = $mainMod, Z, exec, pypr zoom
 
 # Custom Scripts
-bind = $mainMod, V, exec, $HOME/linux-admin/scripts/camera_toggle.py
+bind = $mainMod, V, exec, $HOME/.local/bin/camera_toggle.py
 bind = $mainMod, C, exec, $UserScripts/rescue_floating_windows.py
 
 # Audio
@@ -338,5 +338,5 @@ exec-once = wl-paste --type image --watch cliphist store
 exec-once = hypridle &
 exec-once = pypr &
 exec-once = vicinae server
-exec-once = $HOME/linux-admin/scripts/doorbell_popup.py &
+exec-once = $HOME/.local/bin/doorbell_popup.py &
 exec-once = $scriptsDir/startup_layout.sh &

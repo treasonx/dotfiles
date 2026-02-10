@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+"""
+Eufy 2FA Code Entry
+
+Prompts for a verification code and sends it to eufy-security-ws.
+
+Usage:
+    ./eufy_2fa.py
+"""
+
+import asyncio
+import json
+import sys
+
+try:
+    import websockets
+except ImportError:
+    print("Error: websockets library not installed")
+    print("Run: pip install websockets")
+    sys.exit(1)
+
+WS_URL = "ws://localhost:3777"
+
+
+async def send_verify_code(code: str):
+    """Send verification code to eufy-security-ws."""
+    try:
+        async with websockets.connect(WS_URL) as ws:
+            msg = {
+                "messageId": "2fa_verify",
+                "command": "driver.set_verify_code",
+                "verifyCode": code
+            }
+            await ws.send(json.dumps(msg))
+
+            # Wait for response
+            response = await asyncio.wait_for(ws.recv(), timeout=10)
+            data = json.loads(response)
+
+            if data.get("type") == "result":
+                if data.get("success"):
+                    print("Success! 2FA verification complete.")
+                    return True
+                else:
+                    error = data.get("error", {})
+                    print(f"Failed: {error.get('message', 'Unknown error')}")
+                    return False
+            else:
+                print(f"Unexpected response: {data}")
+                return False
+
+    except ConnectionRefusedError:
+        print("Error: Cannot connect to eufy-security-ws")
+        print("Make sure the container is running: docker compose up -d")
+        return False
+    except asyncio.TimeoutError:
+        print("Timeout waiting for response")
+        return False
+    except Exception as e:
+        print(f"Error: {e}")
+        return False
+
+
+def main():
+    code = input("Enter 2FA code from email: ").strip()
+
+    if not code.isdigit() or len(code) != 6:
+        print("Error: Code must be exactly 6 digits")
+        sys.exit(1)
+
+    success = asyncio.run(send_verify_code(code))
+    sys.exit(0 if success else 1)
+
+
+if __name__ == "__main__":
+    main()

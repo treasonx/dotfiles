@@ -1,0 +1,15 @@
+services:
+  eufy-security-ws:
+    image: bropat/eufy-security-ws:latest
+    container_name: eufy-security-ws
+    network_mode: host  # Required for local station auto-discovery via UDP
+    restart: unless-stopped
+    environment:
+      - USERNAME=${EUFY_USERNAME}
+      - PASSWORD=${EUFY_PASSWORD}
+      - COUNTRY=US
+      - PORT=3777
+      - EVENT_DURATION_SECONDS=10
+      - TRUSTED_DEVICE_NAME=linux-admin
+    volumes:
+      - ./data/eufy:/data
