@@ -1,7 +1,7 @@
-# ~/.config/zsh/zshrc
+# ~/.config/zsh/.zshrc
 # Main zsh configuration file
 #
-# This file is symlinked to ~/.zshrc and contains all main shell configuration
+# Loaded via ZDOTDIR set in ~/.zshenv
 # For sensitive data (API keys, tokens), use ~/.config/zsh/zshrc.local
 
 # =============================================================================
@@ -140,6 +140,8 @@ chpwd() { auto_activate_venv }
 # ALIASES
 # =============================================================================
 
+alias core="cd ~/projects/typelink/typelink-core/"
+alias startcore="core && set -a && source .env && set +a && ./gradlew :rest:run"
 alias wezconnect="wezterm start --new-tab --attach --domain unit"
 
 # Load shared aliases file
@@ -160,4 +162,5 @@ alias wezconnect="wezterm start --new-tab --attach --domain unit"
 # Activate venv after all PATH modifications are complete
 auto_activate_venv
 
-# Project-specific scripts (loaded from zshrc.local if needed)
+# ShiftUp scratch org auto-switch
+source "/home/james/projects/shiftupai/guided-selling/scripts/shell/org-auto-switch.zsh"

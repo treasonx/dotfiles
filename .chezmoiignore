@@ -1,7 +1,6 @@
 # Zsh cache and history (machine-local, never sync)
 .config/zsh/.zcompdump*
 .config/zsh/.zsh_history
-.config/zsh/.zshrc
 
 # Claude Code runtime data (only CLAUDE.md is managed)
 .claude/credentials.json
