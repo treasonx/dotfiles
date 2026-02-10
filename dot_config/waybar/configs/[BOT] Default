@@ -1,0 +1,49 @@
+/* ---- 💫 https://github.com/JaKooLit 💫 ---- */
+// ### DEFAULT Bottom ### //
+{
+  "include": "~/.config/waybar/modules",
+  "layer": "top",
+  "height": 36,
+  //"mode": "dock",
+  "exclusive": true,
+  "passthrough": false,
+  "position": "bottom",
+  "spacing": 3,
+  "fixed-center": true,
+  "ipc": true,
+  "margin-left": 8,
+  "margin-right": 8,
+  "modules-left": [
+    "hyprland/workspaces#pacman",
+    "custom/separator#dot-line",
+    "group/mobo_drawer",
+    "custom/separator#dot-line",
+    //"custom/cava_mviz",
+    "network#speed"
+  ],
+  "modules-center": [
+    "custom/menu",
+    "custom/separator#dot-line",
+    "clock#4"
+    //"custom/hint",
+  ],
+  "modules-right": [
+    "tray",
+    "custom/separator#dot-line",
+    "bluetooth",
+    "custom/separator#dot-line",
+    "pulseaudio",
+    "custom/separator#dot-line",
+    "pulseaudio#microphone",
+    "custom/separator#dot-line",
+    "keyboard-state",
+    "custom/separator#dot-line",
+    "custom/keyboard",
+    "custom/separator#dot-line",
+    "custom/power",
+    "custom/swaync",
+  ],
+  "temperature": {
+    "format": "{temperatureF}°F"
+  },
+}

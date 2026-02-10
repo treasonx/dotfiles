@@ -1,0 +1,195 @@
+/**
+ * Wallpaper Picker - Catppuccin Mocha theme
+ * List view with large thumbnail previews
+ **/
+
+/*****----- Configuration -----*****/
+configuration {
+    show-icons:                 true;
+    display-dmenu:              " Wallpapers";
+}
+
+/*****----- Global Properties -----*****/
+* {
+    background:     #1e1e2eFF;
+    background-alt: #313244FF;
+    foreground:     #cdd6f4FF;
+    selected:       #cba6f7FF;
+    active:         #a6e3a1FF;
+    urgent:         #f38ba8FF;
+
+    border-colour:               var(selected);
+    handle-colour:               var(selected);
+    background-colour:           var(background);
+    foreground-colour:           var(foreground);
+    alternate-background:        var(background-alt);
+    normal-background:           var(background);
+    normal-foreground:           var(foreground);
+    selected-normal-background:  var(selected);
+    selected-normal-foreground:  var(background);
+    alternate-normal-background: var(background);
+    alternate-normal-foreground: var(foreground);
+
+    font: "JetBrainsMono Nerd Font 12";
+}
+
+/*****----- Main Window -----*****/
+window {
+    transparency:                "real";
+    location:                    center;
+    anchor:                      center;
+    fullscreen:                  false;
+    width:                       1000px;
+    height:                      920px;
+    x-offset:                    0px;
+    y-offset:                    0px;
+    enabled:                     true;
+    margin:                      0px;
+    padding:                     0px;
+    border:                      2px solid;
+    border-radius:               12px;
+    border-color:                @border-colour;
+    cursor:                      "default";
+    background-color:            @background-colour;
+}
+
+/*****----- Main Box -----*****/
+mainbox {
+    enabled:                     true;
+    spacing:                     10px;
+    margin:                      0px;
+    padding:                     20px;
+    border:                      0px solid;
+    border-radius:               0px;
+    border-color:                @border-colour;
+    background-color:            transparent;
+    children:                    [ "inputbar", "message", "listview" ];
+}
+
+/*****----- Inputbar -----*****/
+inputbar {
+    enabled:                     true;
+    spacing:                     10px;
+    margin:                      0px;
+    padding:                     8px 12px;
+    border:                      1px solid;
+    border-radius:               8px;
+    border-color:                @border-colour;
+    background-color:            @alternate-background;
+    text-color:                  @foreground-colour;
+    children:                    [ "textbox-prompt-colon", "entry" ];
+}
+
+textbox-prompt-colon {
+    enabled:                     true;
+    padding:                     0px;
+    expand:                      false;
+    str:                         " ";
+    background-color:            inherit;
+    text-color:                  @selected;
+}
+
+entry {
+    enabled:                     true;
+    padding:                     0px;
+    background-color:            inherit;
+    text-color:                  inherit;
+    cursor:                      text;
+    placeholder:                 "Search wallpapers...";
+    placeholder-color:           #6c7086;
+}
+
+/*****----- Listview -----*****/
+listview {
+    enabled:                     true;
+    columns:                     4;
+    lines:                       4;
+    cycle:                       true;
+    dynamic:                     true;
+    scrollbar:                   true;
+    layout:                      vertical;
+    reverse:                     false;
+    fixed-height:                true;
+    fixed-columns:               true;
+    spacing:                     10px;
+    margin:                      0px;
+    padding:                     0px;
+    border:                      0px solid;
+    border-radius:               0px;
+    border-color:                @border-colour;
+    background-color:            transparent;
+    text-color:                  @foreground-colour;
+    cursor:                      "default";
+}
+
+scrollbar {
+    handle-width:                8px;
+    handle-color:                @selected;
+    border-radius:               8px;
+    background-color:            @alternate-background;
+}
+
+/*****----- Elements -----*****/
+element {
+    enabled:                     true;
+    spacing:                     15px;
+    margin:                      0px;
+    padding:                     10px;
+    border:                      0px solid;
+    border-radius:               10px;
+    border-color:                @border-colour;
+    background-color:            transparent;
+    text-color:                  @foreground-colour;
+    cursor:                      pointer;
+    orientation:                 horizontal;
+}
+
+element normal.normal {
+    background-color:            var(normal-background);
+    text-color:                  var(normal-foreground);
+}
+
+element selected.normal {
+    background-color:            var(selected-normal-background);
+    text-color:                  var(selected-normal-foreground);
+}
+
+element alternate.normal {
+    background-color:            var(alternate-normal-background);
+    text-color:                  var(alternate-normal-foreground);
+}
+
+element-icon {
+    background-color:            transparent;
+    text-color:                  inherit;
+    size:                        200px;
+    cursor:                      inherit;
+    border-radius:               6px;
+}
+
+element-text {
+    enabled:                     false;
+}
+
+/*****----- Message -----*****/
+message {
+    enabled:                     true;
+    margin:                      0px;
+    padding:                     0px;
+    border:                      0px solid;
+    border-radius:               0px;
+    border-color:                @border-colour;
+    background-color:            transparent;
+    text-color:                  @foreground-colour;
+}
+
+textbox {
+    padding:                     12px;
+    border:                      0px solid;
+    border-radius:               8px;
+    border-color:                @border-colour;
+    background-color:            @alternate-background;
+    text-color:                  @foreground-colour;
+    vertical-align:              0.5;
+    horizontal-align:            0.0;
+}

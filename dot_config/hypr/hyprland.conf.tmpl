@@ -1,0 +1,342 @@
+# Hyprland Configuration
+# =====================
+
+# Environment Variables
+env = XCURSOR_THEME,Adwaita
+env = XCURSOR_SIZE,24
+env = HYPRCURSOR_THEME,Adwaita
+env = HYPRCURSOR_SIZE,24
+env = CLUTTER_BACKEND,wayland
+env = GDK_BACKEND,wayland,x11
+env = QT_AUTO_SCREEN_SCALE_FACTOR,1
+env = QT_QPA_PLATFORM,wayland;xcb
+env = QT_QPA_PLATFORMTHEME,qt6ct
+env = QT_SCALE_FACTOR,1
+env = QT_WAYLAND_DISABLE_WINDOWDECORATION,1
+env = XDG_CURRENT_DESKTOP,Hyprland
+env = XDG_SESSION_DESKTOP,Hyprland
+env = XDG_SESSION_TYPE,wayland
+env = MOZ_ENABLE_WAYLAND,1
+env = ELECTRON_OZONE_PLATFORM_HINT,auto
+{{- if eq .machine "desktop" }}
+# NVIDIA (desktop only)
+env = LIBVA_DRIVER_NAME,nvidia
+env = __GLX_VENDOR_LIBRARY_NAME,nvidia
+env = NVD_BACKEND,direct
+{{- end }}
+
+# Plugin - hy3 for i3-style manual tiling
+plugin = $HOME/.local/share/hyprload/plugins/libhy3.so
+
+# Path Variables
+$scriptsDir = $HOME/.config/hypr/scripts
+$UserScripts = $HOME/.config/hypr/UserScripts
+$files = thunar
+$term = $HOME/.local/bin/ghostty
+$wallDIR = $HOME/Pictures/wallpapers
+
+# Monitor Configuration
+source = ~/.config/hypr/monitors.conf
+
+{{- if eq .machine "desktop" }}
+workspace = 1, monitor:HDMI-A-1, default:true
+workspace = 2, monitor:HDMI-A-1
+workspace = 3, monitor:HDMI-A-1
+workspace = 4, monitor:HDMI-A-1
+workspace = 6, monitor:DP-2, default:true
+workspace = 7, monitor:DP-3, default:true
+{{- else if eq .machine "laptop" }}
+workspace = 1, default:true
+workspace = 2
+workspace = 3
+workspace = 4
+workspace = 5
+workspace = 6
+workspace = 7
+workspace = 8
+workspace = 9
+{{- end }}
+
+# General Settings
+general {
+  border_size = 4
+  gaps_in = 12
+  gaps_out = 12
+  resize_on_border = true
+  col.active_border = rgba(1A0A2E99)
+  col.inactive_border = rgba(1A0A2E66)
+  layout = hy3
+}
+
+$color0 = rgb(050507)
+$color12 = rgb(7C8BA1)
+$color15 = rgb(D8E4EF)
+
+dwindle {
+  pseudotile = yes
+  preserve_split = yes
+  special_scale_factor = 0.8
+}
+
+master {
+  new_status = master
+  new_on_top = 1
+  mfact = 0.5
+}
+
+# hy3 Plugin Configuration
+plugin {
+  hy3 {
+    tabs {
+      height = 44
+      padding = 8
+      render_text = true
+      text_center = true
+      text_font = Sans
+      text_height = 14
+      col.active = rgba(1a1a2ecc)
+      col.active.border = rgba(3a3a5eee)
+      col.inactive = rgba(0d0d1599)
+      col.inactive.border = rgba(2a2a4a99)
+    }
+  }
+}
+
+decoration {
+  rounding = 15
+  active_opacity = 1.0
+  inactive_opacity = 0.98
+  fullscreen_opacity = 1.0
+  dim_inactive = true
+  dim_strength = 0.1
+  dim_special = 0.8
+
+  blur {
+    enabled = true
+    xray = true
+    size = 6
+    passes = 2
+    ignore_opacity = true
+    new_optimizations = true
+    special = true
+  }
+}
+
+animations {
+  enabled = yes
+  bezier = wind, 0.05, 0.9, 0.1, 1.05
+  bezier = winIn, 0.1, 1.1, 0.1, 1.1
+  bezier = winOut, 0.3, -0.3, 0, 1
+  bezier = liner, 1, 1, 1, 1
+  animation = windows, 1, 6, wind, slide
+  animation = windowsIn, 1, 6, winIn, slide
+  animation = windowsOut, 1, 5, winOut, slide
+  animation = windowsMove, 1, 5, wind, slide
+  animation = border, 1, 1, liner
+  animation = fade, 1, 10, default
+  animation = workspaces, 0
+  workspace_wraparound = true
+}
+
+input {
+  kb_layout = us
+  kb_options = caps:escape
+  repeat_rate = 50
+  repeat_delay = 300
+  numlock_by_default = true
+  left_handed = false
+  follow_mouse = true
+  float_switch_override_focus = false
+}
+
+group {
+  col.border_active = $color15
+  groupbar {
+    col.active = $color0
+  }
+}
+
+misc {
+  disable_hyprland_logo = true
+  disable_splash_rendering = true
+  vfr = true
+  mouse_move_enables_dpms = true
+  enable_swallow = true
+  swallow_regex = ^(kitty)$
+  focus_on_activate = true
+  initial_workspace_tracking = 0
+  middle_click_paste = false
+}
+
+binds {
+  workspace_back_and_forth = true
+  allow_workspace_cycles = true
+  pass_mouse_when_bound = false
+}
+
+xwayland {
+  force_zero_scaling = true
+}
+
+cursor {
+  no_hardware_cursors = false
+  enable_hyprcursor = true
+  warp_on_change_workspace = false
+}
+
+# Keybindings
+$mainMod = SUPER
+
+# Session
+bind = CTRL ALT, Delete, exec, hyprctl dispatch exit 0
+bind = CTRL ALT, L, exec, $scriptsDir/LockScreen.sh
+bind = CTRL ALT, P, exec, $scriptsDir/Wlogout.sh
+
+# Window Management
+bind = $mainMod, Q, killactive,
+bind = $mainMod SHIFT, Q, exec, $scriptsDir/KillActiveProcess.sh
+bind = $mainMod, F, exec, $scriptsDir/float_center.py
+
+# Applications
+bind = $mainMod, Return, exec, $term
+bind = $mainMod, T, exec, $files
+bind = $mainMod, SPACE, exec, vicinae
+bind = $mainMod ALT, C, exec, $UserScripts/RofiCalc.sh
+
+# Features
+bind = $mainMod, H, exec, $scriptsDir/KeyHints.sh
+bind = $mainMod ALT, R, exec, $scriptsDir/Refresh.sh
+bind = $mainMod ALT, E, exec, $scriptsDir/RofiEmoji.sh
+bind = $mainMod ALT, V, exec, $scriptsDir/ClipManager.sh
+bind = $mainMod SHIFT, N, exec, swaync-client -t -sw
+bind = $mainMod, E, exec, $UserScripts/QuickEdit.sh
+bind = $mainMod, W, exec, $UserScripts/WallpaperSelect.sh
+bind = $mainMod, B, exec, killall -SIGUSR1 waybar
+bind = $mainMod, L, exec, hyprctl dispatch dpms off
+
+# Layout (dwindle/master)
+bind = $mainMod ALT, L, exec, $scriptsDir/ChangeLayout.sh
+bind = $mainMod CTRL, D, layoutmsg, removemaster
+bind = $mainMod, I, layoutmsg, addmaster
+bind = $mainMod, J, layoutmsg, cyclenext
+bind = $mainMod, K, layoutmsg, cycleprev
+bind = $mainMod, M, exec, hyprctl dispatch splitratio 0.3
+bind = $mainMod, P, pseudo,
+bind = $mainMod CTRL, Return, layoutmsg, swapwithmaster
+
+# hy3: Groups and Splits
+bind = $mainMod, D, hy3:makegroup, h
+bind = $mainMod SHIFT, D, hy3:makegroup, v
+bind = $mainMod, A, hy3:makegroup, tab
+bind = $mainMod SHIFT, A, hy3:changegroup, untab
+bind = $mainMod, O, hy3:changegroup, opposite
+
+# hy3: Tab Navigation
+bind = $mainMod, Tab, hy3:focustab, r, wrap
+bind = $mainMod SHIFT, Tab, hy3:focustab, l, wrap
+
+# Window Cycling
+bind = ALT, Tab, cyclenext
+bind = ALT, Tab, bringactivetotop
+
+# Move Windows (hy3)
+bind = $mainMod CTRL, left, hy3:movewindow, l
+bind = $mainMod CTRL, right, hy3:movewindow, r
+bind = $mainMod CTRL, up, hy3:movewindow, u
+bind = $mainMod CTRL, down, hy3:movewindow, d
+
+# Resize Windows
+binde = $mainMod SHIFT, left, resizeactive,-50 0
+binde = $mainMod SHIFT, right, resizeactive,50 0
+binde = $mainMod SHIFT, up, resizeactive,0 -50
+binde = $mainMod SHIFT, down, resizeactive,0 50
+
+# Mouse Bindings
+bindm = $mainMod, mouse:272, movewindow
+bindm = $mainMod, mouse:273, resizewindow
+
+# Workspaces
+bind = $mainMod, 1, workspace, 1
+bind = $mainMod, 2, workspace, 2
+bind = $mainMod, 3, workspace, 3
+bind = $mainMod, 4, workspace, 4
+bind = $mainMod, right, exec, $scriptsDir/workspace_switch.sh +1
+bind = $mainMod, left, exec, $scriptsDir/workspace_switch.sh -1
+
+# Screenshot
+bind = $mainMod SHIFT, S, exec, $scriptsDir/ScreenShot.sh --swappy
+bind = $mainMods, s, exec, flatpak run io.github.seadve.Kooha
+
+# pyprland
+bind = $mainMod, Z, exec, pypr zoom
+
+# Custom Scripts
+bind = $mainMod, V, exec, $HOME/linux-admin/scripts/camera_toggle.py
+bind = $mainMod, C, exec, $UserScripts/rescue_floating_windows.py
+
+# Audio
+bind = , XF86AudioRaiseVolume, exec, wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 0.01+
+bind = , XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.01-
+bind = , XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+
+# Window Rules
+windowrulev2 = center, class:([Tt]hunar), title:(File Operation Progress)
+windowrulev2 = center, class:([Tt]hunar), title:(Confirm to replace files)
+
+windowrulev2 = idleinhibit fullscreen, class:^(*)$
+windowrulev2 = idleinhibit fullscreen, title:^(*)$
+windowrulev2 = idleinhibit fullscreen, fullscreen:1
+
+windowrulev2 = float, class:([Tt]hunar), title:(File Operation Progress)
+windowrulev2 = float, class:([Tt]hunar), title:(Confirm to replace files)
+windowrulev2 = float, class:(xdg-desktop-portal-gtk)
+windowrulev2 = float, class:(org.gnome.Calculator), title:(Calculator)
+windowrulev2 = float, class:(codium|codium-url-handler|VSCodium), title:(Add Folder to Workspace)
+windowrulev2 = float, class:^([Rr]ofi)$
+windowrulev2 = float, class:^(eog)$
+windowrulev2 = float, class:^(pavucontrol|org.pulseaudio.pavucontrol)$
+windowrulev2 = float, class:^(nwg-look|qt5ct|qt6ct|mpv)$
+windowrulev2 = float, class:^(nm-applet|nm-connection-editor|blueman-manager)$
+windowrulev2 = float, class:^(gnome-system-monitor|org.gnome.SystemMonitor)$
+windowrulev2 = float, class:^(yad)$
+windowrulev2 = float, class:^(file-roller|org.gnome.FileRoller)$
+windowrulev2 = float, class:^([Bb]aobab|org.gnome.[Bb]aobab)$
+windowrulev2 = float, title:(Kvantum Manager)
+windowrulev2 = float, class:^([Qq]alculate-gtk)$
+
+# Doorbell video popup
+windowrulev2 = float, title:^\[Doorbell\]
+windowrulev2 = pin, title:^\[Doorbell\]
+windowrulev2 = noborder, title:^\[Doorbell\]
+windowrulev2 = noinitialfocus, title:^\[Doorbell\]
+windowrulev2 = opacity 1.0 override, title:^\[Doorbell\]
+
+# Camera grid feeds
+windowrulev2 = float, title:^\[Camera\]
+windowrulev2 = pin, title:^\[Camera\]
+windowrulev2 = noborder, title:^\[Camera\]
+windowrulev2 = opacity 1.0 override, title:^\[Camera\]
+
+# Layer Rules
+layerrule = ignorezero, overview
+layerrule = blur, overview
+layerrule = blur, vicinae
+layerrule = ignorealpha 0, vicinae
+layerrule = noanim, vicinae
+
+# Startup Applications
+exec-once = swww-daemon --format xrgb
+exec-once = dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP
+exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP
+exec-once = $scriptsDir/Polkit.sh
+exec-once = waybar &
+exec-once = nm-applet --indicator &
+exec-once = swaync &
+exec-once = ags &
+exec-once = wl-paste --type text --watch cliphist store
+exec-once = wl-paste --type image --watch cliphist store
+exec-once = hypridle &
+exec-once = pypr &
+exec-once = vicinae server
+exec-once = $HOME/linux-admin/scripts/doorbell_popup.py &
+exec-once = $scriptsDir/startup_layout.sh &

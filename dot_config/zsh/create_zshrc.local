@@ -1,0 +1,30 @@
+#!/bin/sh
+# This script only runs if ~/.config/zsh/zshrc.local doesn't exist yet.
+# It creates a starter template for machine-specific secrets and config.
+cat <<'TEMPLATE'
+# ~/.config/zsh/zshrc.local
+# Machine-specific and sensitive configuration — NOT tracked by git
+# Edit this file directly on each machine.
+
+# API Keys
+# export BRAVE_API_KEY="your-key-here"
+# export OPENAI_API_KEY="your-key-here"
+# export GITHUB_TOKEN="your-token-here"
+
+# Database URLs
+# HYPERJIVE_STAGE_PSQL_URL="postgresql://user:pass@host:port/db"
+# HYPERJIVE_STAGE_PROD_URL="postgresql://user:pass@host:port/db"
+# HYPERJIVE_VPS="user@your-vps"
+
+# Machine-specific paths
+# export PATH="$HOME/custom-tools/bin:$PATH"
+
+# Machine-specific aliases
+# alias cursor_p='cursor --user-data-dir "$HOME/.config/Cursor-personal" --extensions-dir "$HOME/.cursor-personal/extensions"'
+
+# Override Oh My Zsh theme if desired
+# ZSH_THEME="powerlevel10k/powerlevel10k"
+
+# Additional plugins for this machine
+# plugins+=(docker kubectl)
+TEMPLATE

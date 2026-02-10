@@ -1,0 +1,10 @@
+{{- if eq .machine "desktop" }}
+# Desktop: 4K + dual 1080p side monitors
+monitor=HDMI-A-1,3840x2160@60.0,0x0,1.0
+monitor=DP-2,1920x1080@60.0,3840x410,1.0
+monitor=DP-3,1920x1080@60.0,3840x1490,1.0
+{{- else if eq .machine "laptop" }}
+# Laptop: built-in display + optional external
+monitor=eDP-1,preferred,auto,1
+monitor=,preferred,auto,1
+{{- end }}

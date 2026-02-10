@@ -1,0 +1,33 @@
+[user]
+	name = treasonx
+	email = james@morr.in
+
+[init]
+	defaultBranch = main
+
+[core]
+	editor = nvim
+	autocrlf = input
+	excludesfile = ~/.config/git/ignore
+
+[push]
+	default = simple
+
+[pull]
+	rebase = false
+
+[filter "lfs"]
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+	clean = git-lfs clean -- %f
+
+[credential]
+	helper = store
+
+[alias]
+	st = status
+	co = checkout
+	br = branch
+	ci = commit
+	lg = log --oneline --graph --decorate --all

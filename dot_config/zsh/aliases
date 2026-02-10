@@ -1,0 +1,64 @@
+# ~/.config/zsh/aliases
+
+# Navigation (consistent with Neovim movement)
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias ~='cd ~'
+
+# Listing (consistent patterns)
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+alias ls='ls --color=auto'
+
+# Git shortcuts (matches Neovim git plugin patterns)
+alias gs='git status'
+alias ga='git add'
+alias gc='git commit'
+alias gp='git push'
+alias gl='git log --oneline --graph --decorate'
+alias gd='git diff'
+alias gb='git branch'
+alias gco='git checkout'
+
+# Safety (interactive confirmations)
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+
+# Editor (consistent with Neovim as primary)
+alias vim='nvim'
+alias vi='nvim'
+alias e='nvim'  # Quick edit (matches leader+e pattern)
+
+# Configuration editing (matches Neovim config patterns)
+alias zshconfig="nvim ~/.config/zsh/.zshrc"
+alias nvimconfig="nvim ~/.config/nvim/"
+alias kittyconfig="nvim ~/.config/kitty/kitty.conf"
+
+# System operations (consistent with Neovim save/quit patterns)
+alias q='exit'  # Quick quit (matches leader+q)
+alias reload='source ~/.config/zsh/.zshrc'  # Reload config
+
+# Directory operations (matches Neovim buffer operations)
+alias md='mkdir -p'  # Make directory
+alias rd='rmdir'     # Remove directory
+
+# Process management (consistent with Neovim patterns)
+alias ps='ps aux'
+alias k='kill'
+alias ka='killall'
+
+# Oh My Zsh specific
+alias ohmyzsh="nvim ~/.oh-my-zsh"
+
+# lazy
+alias lg='lazygit'
+alias ld='lazydocker'
+
+# Git utilities
+alias git-remove-untracked="git fetch -p ; git branch -r | awk '{print $1}' | egrep -v -f /dev/fd/0 <(git branch -vv | grep origin) | awk '{print $1}' | xargs git branch -D"
+
+# Application shortcuts
+alias tidal="cd ~/new_music && tidal-dl -g &"
