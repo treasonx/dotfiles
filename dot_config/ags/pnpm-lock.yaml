@@ -1,0 +1,93 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      ags:
+        specifier: github:aylur/ags
+        version: https://codeload.github.com/aylur/ags/tar.gz/e169694390548dfd38ff40f1ef2163d6c3ffe3ea(gnim@1.9.0)
+      es-toolkit:
+        specifier: ^1.44.0
+        version: 1.44.0
+      gnim:
+        specifier: ^1.9.0
+        version: 1.9.0
+      gnim-hooks:
+        specifier: ^1.0.0
+        version: 1.0.0(gnim@1.9.0)
+      marble:
+        specifier: github:marble-shell/kit
+        version: git+https://git@github.com:marble-shell/kit.git#0842703d4755836594decaa59162c47177fb6bbb(fuse.js@7.1.0)
+
+packages:
+
+  ags@https://codeload.github.com/aylur/ags/tar.gz/e169694390548dfd38ff40f1ef2163d6c3ffe3ea:
+    resolution: {tarball: https://codeload.github.com/aylur/ags/tar.gz/e169694390548dfd38ff40f1ef2163d6c3ffe3ea}
+    version: 3.1.0
+    engines: {gjs: '>=1.79.0'}
+    os: [linux]
+    peerDependencies:
+      gnim: ^1.9.0
+
+  es-toolkit@1.44.0:
+    resolution: {integrity: sha512-6penXeZalaV88MM3cGkFZZfOoLGWshWWfdy0tWw/RlVVyhvMaWSBTOvXNeiW3e5FwdS5ePW0LGEu17zT139ktg==}
+
+  fuse.js@7.1.0:
+    resolution: {integrity: sha512-trLf4SzuuUxfusZADLINj+dE8clK1frKdmqiJNb1Es75fmI5oY6X2mxLVUciLLjxqw/xr72Dhy+lER6dGd02FQ==}
+    engines: {node: '>=10'}
+
+  gnim-hooks@1.0.0:
+    resolution: {integrity: sha512-FGLqQoHU6yLC1bkNLarOakHssXg/MlLP/uYfu2WE3AqJ2V3+4Rw+YL+vbXC+5HfhPaNQse7EbK/asVHxp8s3SQ==}
+    engines: {gjs: '>=1.79.0'}
+    peerDependencies:
+      gnim: ^1.9.0
+
+  gnim@1.9.0:
+    resolution: {integrity: sha512-ubtl+BkcHFYImLQN/dg7XtM6VpOMZy1KlXOF+W/QlBVFG+c07lf+hC+bAkPqkyLwL1YUEIoLtk7iXlIuhbOYPA==}
+    engines: {gjs: '>=1.79.0'}
+
+  gnofi@1.3.2:
+    resolution: {integrity: sha512-R5msAQOF0UZKf4mvMt0jPYZZUlwPX80IwvKHfimCyNbGwgUH53YNxNM4cYTZAAWvZxa8oh1n7OimijKnvcmJZw==}
+    engines: {gjs: '>=1.79.0'}
+    peerDependencies:
+      fuse.js: ^7.1.0
+      gnim: ^1.9.0
+
+  marble@git+https://git@github.com:marble-shell/kit.git#0842703d4755836594decaa59162c47177fb6bbb:
+    resolution: {commit: 0842703d4755836594decaa59162c47177fb6bbb, repo: git@github.com:marble-shell/kit.git, type: git}
+    version: 0.2.0
+
+snapshots:
+
+  ags@https://codeload.github.com/aylur/ags/tar.gz/e169694390548dfd38ff40f1ef2163d6c3ffe3ea(gnim@1.9.0):
+    dependencies:
+      gnim: 1.9.0
+
+  es-toolkit@1.44.0: {}
+
+  fuse.js@7.1.0: {}
+
+  gnim-hooks@1.0.0(gnim@1.9.0):
+    dependencies:
+      gnim: 1.9.0
+
+  gnim@1.9.0: {}
+
+  gnofi@1.3.2(fuse.js@7.1.0)(gnim@1.9.0):
+    dependencies:
+      fuse.js: 7.1.0
+      gnim: 1.9.0
+
+  marble@git+https://git@github.com:marble-shell/kit.git#0842703d4755836594decaa59162c47177fb6bbb(fuse.js@7.1.0):
+    dependencies:
+      es-toolkit: 1.44.0
+      gnim: 1.9.0
+      gnim-hooks: 1.0.0(gnim@1.9.0)
+      gnofi: 1.3.2(fuse.js@7.1.0)(gnim@1.9.0)
+    transitivePeerDependencies:
+      - fuse.js

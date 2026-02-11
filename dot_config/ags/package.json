@@ -3,9 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "postinstall": "mkdir -p node_modules/ags/node_modules && ln -sfn ../../gnim node_modules/ags/node_modules/gnim"
+  },
   "dependencies": {
-    "ags": "*",
-    "gnim": "*"
+    "ags": "github:aylur/ags",
+    "es-toolkit": "^1.44.0",
+    "gnim": "^1.9.0",
+    "gnim-hooks": "^1.0.0",
+    "marble": "github:marble-shell/kit"
   },
   "prettier": {
     "semi": false,
