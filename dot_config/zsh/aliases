@@ -35,7 +35,7 @@ alias e='nvim'  # Quick edit (matches leader+e pattern)
 # Configuration editing (matches Neovim config patterns)
 alias zshconfig="nvim ~/.config/zsh/.zshrc"
 alias nvimconfig="nvim ~/.config/nvim/"
-alias kittyconfig="nvim ~/.config/kitty/kitty.conf"
+alias ghosttyconfig="nvim ~/.config/ghostty/config"
 
 # System operations (consistent with Neovim save/quit patterns)
 alias q='exit'  # Quick quit (matches leader+q)

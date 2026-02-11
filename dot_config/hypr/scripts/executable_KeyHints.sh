@@ -46,11 +46,10 @@ yad --width=$dynamic_width --height=$dynamic_height \
 " SHIFT F" "Float & Move To Reserve" "" \
 " Q" "close active window" "" \
 "" "" "" \
-" enter" "Terminal" "(kitty)" \
+" enter" "Terminal" "(ghostty)" \
 " Shift S" "screenshot region" "(swappy)" \
 " s" "screen record" "(kooha)" \
 " Z" "Desktop Zoom" "(pyprland)" \
-" SHIFT enter" "DropDown Terminal" "(kitty-pyprland)" \
 " D" "App Launcher" "(rofi-wayland)" \
 " T" "Open File Manager" "(Thunar)" \
 " Shift Q " "kills an active window" "(kill)" \

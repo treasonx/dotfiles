@@ -3,7 +3,7 @@
 
 # define your preferred text editor and terminal to use
 editor=nvim
-tty=kitty
+tty=ghostty
 
 configs="$HOME/.config/hypr/configs"
 UserConfigs="$HOME/.config/hypr/UserConfigs"
