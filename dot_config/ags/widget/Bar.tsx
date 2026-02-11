@@ -40,6 +40,9 @@ import {
 } from "marble/components"
 import { SystemMetrics } from "./SystemMetrics"
 import { AudioPopover } from "./AudioPopover"
+import { toggleSidebar } from "./sidebar-state"
+import Notifd from "gi://AstalNotifd"
+import { createBinding } from "gnim"
 
 
 function ClockWithCalendar() {
@@ -129,6 +132,14 @@ export default function StatusBar(gdkmonitor: Gdk.Monitor) {
           {hasBattery && <BatteryLabel hideOnFull />}
           {hasBattery && <PowerProfilesIndicator hideBalanced />}
           <BluetoothIndicator />
+          <Gtk.Button
+            onClicked={toggleSidebar}
+            css="border: none; box-shadow: none; background: none; padding: 0;"
+          >
+            <Icon icon={createBinding(Notifd.get_default(), "notifications").as(
+              (ns) => ns.length > 0 ? "notification-active-symbolic" : "notification-inactive-symbolic"
+            )} />
+          </Gtk.Button>
         </Box>
       }
     />

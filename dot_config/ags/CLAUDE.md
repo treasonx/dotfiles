@@ -21,7 +21,7 @@ A custom Wayland desktop shell built with AGS v3 (Aylur's GTK Shell), marble-kit
 ├── widget/
 │   ├── Bar.tsx         # Full status bar with marble components
 │   ├── launcher/       # Future: app launcher (replacing Rofi)
-│   ├── notifications/  # Future: notification popups (replacing SwayNC)
+│   ├── notifications/  # Notification popups + sidebar history (replaced SwayNC)
 │   ├── quicksettings/  # Future: quick settings panel
 │   └── session/        # Future: session/power menu (replacing Wlogout)
 ├── lib/                # Shared utilities
@@ -91,7 +91,7 @@ marble uses **Adwaita CSS variables** at runtime, not compiled SCSS. The theme s
 
 - **Bar**: marble-kit bar (top) — replacing Waybar
 - **Launcher**: Rofi via `vicinae` — not yet replaced
-- **Notifications**: SwayNC — not yet replaced (conflicts with marble's NotificationsIndicator)
+- **Notifications**: marble NotificationPopups + NotificationList in sidebar — replaced SwayNC
 - **Session menu**: Wlogout — not yet replaced
 
 ---
@@ -191,12 +191,6 @@ new App({ main() { ... } })
 import app from "ags/gtk4/app"
 app.start({ main() { app.get_monitors().map(Bar) } })
 ```
-
-### SwayNC conflicts with NotificationsIndicator
-
-marble's `NotificationsIndicator` imports Astal's `notifd` service, which tries to register as the notification daemon on DBus. If SwayNC is already running, this fails with: `proxy.vala:77: cannot get proxy: SwayNotificationCenter is already running`
-
-This CRITICAL error prevents the entire bar from rendering. **Remove `NotificationsIndicator` from Bar.tsx while SwayNC is running.** Once we build marble's own notification system to replace SwayNC, the indicator can be re-added.
 
 ### Layer shell requires LD_PRELOAD before GTK initialization
 

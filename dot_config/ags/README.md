@@ -111,7 +111,7 @@ chezmoi add ~/.config/ags/widget/Bar.tsx
 │   ├── Bar.tsx             # Current: hello-world bar (top edge)
 │   ├── bar/                # Future: real bar subcomponents
 │   ├── launcher/           # Future: app launcher (replacing Rofi)
-│   ├── notifications/      # Future: notification popups (replacing SwayNC)
+│   ├── notifications/      # Notification popups + sidebar history (replaced SwayNC)
 │   ├── quicksettings/      # Future: quick settings panel
 │   └── session/            # Future: session/power menu (replacing Wlogout)
 ├── lib/                    # Shared utilities
@@ -236,7 +236,7 @@ Components being incrementally replaced:
 |-----------|-------------|--------|------------|
 | Status bar | Waybar (bottom, Catppuccin Mocha) | Active | Super+B toggle |
 | App launcher | vicinae | Active | Super+SPACE |
-| Notifications | SwayNC | Active | Super+Shift+N |
+| Notifications | marble NotificationPopups + sidebar | Replaced SwayNC | Super+B |
 | Session menu | Wlogout | Active | Ctrl+Alt+P |
 | Emoji picker | Rofi | Active | Super+Alt+E |
 | Clipboard | Rofi + cliphist | Active | Super+Alt+V |

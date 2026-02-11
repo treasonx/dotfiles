@@ -1,7 +1,57 @@
 import { Astal, Gtk, Gdk } from "ags/gtk4"
 import app from "ags/gtk4/app"
-import { Box, Text } from "marble/components"
+import Notifd from "gi://AstalNotifd"
+import { Box, Text, Button, NotificationList } from "marble/components"
+import { NotificationCard } from "./notifications/NotificationCard"
 import { sidebarVisible } from "./sidebar-state"
+import { createBinding } from "gnim"
+
+function NotificationHistory() {
+  const notifd = Notifd.get_default()
+  const notifications = createBinding(notifd, "notifications")
+  const hasNotifications = notifications.as((ns) => ns.length > 0)
+
+  function clearAll() {
+    notifd.get_notifications().forEach((n) => n.dismiss())
+  }
+
+  return (
+    <Box vertical vexpand>
+      <Box css="padding: 0 0 8px 0;">
+        <Text size={1.1} bold>Notifications</Text>
+        <Box hexpand />
+        <Button
+          visible={hasNotifications}
+          onPrimaryClick={clearAll}
+          css="padding: 4px 8px;"
+        >
+          <Text size={0.8}>Clear All</Text>
+        </Button>
+      </Box>
+
+      <Gtk.ScrolledWindow
+        vexpand
+        hscrollbarPolicy={Gtk.PolicyType.NEVER}
+        vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+      >
+        <Box vertical gap={8}>
+          <NotificationList reversed>
+            {() => <NotificationCard />}
+          </NotificationList>
+        </Box>
+      </Gtk.ScrolledWindow>
+
+      <Box
+        visible={hasNotifications.as((has) => !has)}
+        vexpand
+        valign="center"
+        halign="center"
+      >
+        <Text size={0.9} opacity={0.4}>No notifications</Text>
+      </Box>
+    </Box>
+  )
+}
 
 export default function Sidebar(gdkmonitor: Gdk.Monitor) {
   const { RIGHT, TOP, BOTTOM } = Astal.WindowAnchor
@@ -29,9 +79,7 @@ export default function Sidebar(gdkmonitor: Gdk.Monitor) {
           vexpand
           css={`min-width: ${width}px; padding: 12px; background: alpha(@view_bg_color, 0.85); border-radius: 12px 0 0 12px;`}
         >
-          <Text size={1.1} bold>Sidebar</Text>
-          <Box vexpand />
-          <Text size={0.85} opacity={0.4}>Panel content goes here</Text>
+          <NotificationHistory />
         </Box>
       </Gtk.Revealer>
     </window>

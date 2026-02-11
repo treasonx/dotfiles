@@ -55,9 +55,8 @@ yad --width=$dynamic_width --height=$dynamic_height \
 " Shift Q " "kills an active window" "(kill)" \
 " Alt V" "Clipboard Manager" "(cliphist)" \
 " W" "Choose wallpaper" "(Wallpaper Menu)" \
-" B" "Hide/UnHide Waybar" "waybar" \
-" ALT R" "Reload Waybar swaync Rofi" "CHECK NOTIFICATION FIRST!!!" \
-" SHIFT N" "Launch Notification Panel" "swaync Notification Center" \
+" B" "Toggle Sidebar Panel" "Notification history" \
+" ALT R" "Reload AGS + Rofi" "Refresh shell components" \
 "CTRL ALT P" "power-menu" "(wlogout)" \
 "CTRL ALT L" "screen lock" "(hyprlock)" \
 "CTRL ALT Del" "Hyprland Exit" "(SAVE YOUR WORK!!!)" \
