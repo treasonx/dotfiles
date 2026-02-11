@@ -15,7 +15,7 @@ file_exists() {
 }
 
 # Kill already running processes
-_ps=(waybar rofi swaync ags)
+_ps=(rofi swaync ags)
 for _prs in "${_ps[@]}"; do
     if pidof "${_prs}" >/dev/null; then
         pkill "${_prs}"
@@ -23,18 +23,15 @@ for _prs in "${_ps[@]}"; do
 done
 
 # quit ags
-ags -q
+ags quit
 
 sleep 0.3
-# Relaunch waybar
-waybar &
 
 # relaunch swaync
-sleep 0.5
 swaync > /dev/null 2>&1 &
 
 # relaunch ags
-ags &
+ags run --gtk 4 &
 
 # Relaunching rainbow borders if the script exists
 sleep 1

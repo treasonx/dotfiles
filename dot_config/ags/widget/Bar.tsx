@@ -1,19 +1,21 @@
 import GLib from "gi://GLib"
 import Gdk from "gi://Gdk?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
-import { createState } from "gnim"
+import Hyprland from "gi://AstalHyprland"
+import "gnim"
 
 const hasBattery = GLib.file_test("/sys/class/power_supply/BAT0", GLib.FileTest.EXISTS)
+
+// Query Hyprland for configured workspace rules (runs once at startup)
+const hypr = Hyprland.get_default()
+const workspaceRules = JSON.parse(hypr.message("j/workspacerules"))
+const workspaceCount = workspaceRules.filter((r: any) => /^\d+$/.test(r.workspaceString)).length
 
 import {
   Bar,
   Box,
-  Button,
-  Popover,
   Calendar,
   HyprlandWorkspaces,
-  HyprlandClients,
-  HyprlandClientButton,
   ClockLabel,
   TrayItems,
   TrayButton,
@@ -22,7 +24,6 @@ import {
   MprisCoverArt,
   MprisTitle,
   MprisArtist,
-  MprisBrandIcon,
   MprisPositionSlider,
   MprisPlayPauseButton,
   MprisPrevButton,
@@ -32,27 +33,22 @@ import {
   MprisLengthLabel,
   Icon,
   NetworkIndicator,
-  SpeakerIndicator,
-  MicrophoneIndicator,
   BatteryIndicator,
   BatteryLabel,
   PowerProfilesIndicator,
   BluetoothIndicator,
 } from "marble/components"
 import { SystemMetrics } from "./SystemMetrics"
+import { AudioPopover } from "./AudioPopover"
 
 function ClockWithCalendar() {
-  const [open, setOpen] = createState(false)
-
   return (
-    <Box>
-      <Button flat onPrimaryClick={() => setOpen(!open.peek())}>
-        <ClockLabel format="%B %d | %I:%M %p" bold />
-      </Button>
-      <Popover open={open} onClose={() => setOpen(false)} hasArrow>
+    <Gtk.MenuButton css="border: none; box-shadow: none; background: none; padding: 0;">
+      <ClockLabel format="%B %d | %I:%M %p" bold />
+      <Gtk.Popover $type="popover">
         <Calendar />
-      </Popover>
-    </Box>
+      </Gtk.Popover>
+    </Gtk.MenuButton>
   )
 }
 
@@ -61,7 +57,7 @@ function MediaPlayerPopup() {
     <MprisList>
       {() => (
         <Gtk.MenuButton css="border: none; box-shadow: none; background: none; padding: 0;">
-          <MprisBrandIcon />
+          <MprisTitle truncate size={0.85} css="max-width: 200px;" />
           <Gtk.Popover $type="popover">
             <Box vertical gap={8} css="min-width: 280px;">
               <Box gap={12}>
@@ -103,31 +99,31 @@ export default function StatusBar(gdkmonitor: Gdk.Monitor) {
       position="bottom"
       start={
         <Box gap={12} css="padding: 6px 12px;">
-          <HyprlandWorkspaces />
-          <HyprlandClients gap={4}>
-            {(client) => <HyprlandClientButton client={client} />}
-          </HyprlandClients>
+          <HyprlandWorkspaces length={workspaceCount} />
           <SystemMetrics />
         </Box>
       }
       center={
-        <Box css="padding: 6px 12px;">
+        <Box gap={12} css="padding: 6px 12px;">
           <ClockWithCalendar />
+          <Box gap={8}>
+            <AudioPopover />
+            <MediaPlayerPopup />
+          </Box>
         </Box>
       }
       end={
         <Box gap={4} css="padding: 6px 12px;">
-          <TrayItems gap={4}>
-            {(item) => (
-              <TrayButton item={item}>
-                <TrayMenu item={item} />
-              </TrayButton>
-            )}
-          </TrayItems>
-          <MediaPlayerPopup />
+          <Box gap={4} css="background: alpha(currentColor, 0.1); border-radius: 8px; padding: 2px 6px;">
+            <TrayItems gap={4}>
+              {(item) => (
+                <TrayButton item={item}>
+                  <TrayMenu item={item} />
+                </TrayButton>
+              )}
+            </TrayItems>
+          </Box>
           <NetworkIndicator />
-          <SpeakerIndicator />
-          <MicrophoneIndicator />
           {hasBattery && <BatteryIndicator colored />}
           {hasBattery && <BatteryLabel hideOnFull />}
           {hasBattery && <PowerProfilesIndicator hideBalanced />}

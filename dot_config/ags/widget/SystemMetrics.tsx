@@ -80,10 +80,13 @@ function getNetSpeed(): { up: string; down: string } {
 
 function formatBytes(bps: number): string {
   if (bps < 0) bps = 0
-  if (bps < 1024) return `${Math.round(bps)} B/s`
-  if (bps < 1048576) return `${(bps / 1024).toFixed(1)} KB/s`
-  return `${(bps / 1048576).toFixed(1)} MB/s`
+  if (bps < 1024) return `${Math.round(bps).toString().padStart(3)} B/s`
+  if (bps < 1048576) return `${(bps / 1024).toFixed(1).padStart(5)} KB/s`
+  return `${(bps / 1048576).toFixed(1).padStart(5)} MB/s`
 }
+
+// Pad numbers to fixed width so the layout doesn't jump
+const pad = (n: number, w: number) => n.toString().padStart(w)
 
 // Initialize first samples
 getCpuUsage()
@@ -117,12 +120,12 @@ export function SystemMetrics() {
   })
 
   return (
-    <Box gap={12}>
-      <Text opacity={0.8}>{metrics((m) => `${m.cpu}% 󰍛`)}</Text>
-      <Text opacity={0.8}>{metrics((m) => `${m.temp}°F 󰈸`)}</Text>
-      <Text opacity={0.8}>{metrics((m) => `${m.mem} 󰾆`)}</Text>
-      <Text opacity={0.8}>{metrics((m) => `${m.disk}% 󰋊`)}</Text>
-      <Text opacity={0.8}>{metrics((m) => ` ${m.netUp}  ${m.netDown}`)}</Text>
+    <Box gap={12} css="background: alpha(currentColor, 0.1); border-radius: 8px; padding: 2px 6px; font-family: monospace;">
+      <Text opacity={0.8} tooltipText="CPU Usage">{metrics((m) => `${pad(m.cpu, 3)}% 󰍛`)}</Text>
+      <Text opacity={0.8} tooltipText="CPU Temperature">{metrics((m) => `${pad(m.temp, 3)}°F 󰈸`)}</Text>
+      <Text opacity={0.8} tooltipText="Memory Used">{metrics((m) => `${m.mem.padStart(5)} 󰘚`)}</Text>
+      <Text opacity={0.8} tooltipText="Disk Usage (/)">{metrics((m) => `${pad(m.disk, 3)}% 󰋊`)}</Text>
+      <Text opacity={0.8} tooltipText="Network (Upload / Download)">{metrics((m) => ` ${m.netUp}  ${m.netDown}`)}</Text>
     </Box>
   )
 }

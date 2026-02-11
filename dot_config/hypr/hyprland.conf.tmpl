@@ -38,24 +38,10 @@ $wallDIR = $HOME/Pictures/wallpapers
 # Monitor Configuration
 source = ~/.config/hypr/monitors.conf
 
-{{- if eq .machine "desktop" }}
-workspace = 1, monitor:HDMI-A-1, default:true
-workspace = 2, monitor:HDMI-A-1
-workspace = 3, monitor:HDMI-A-1
-workspace = 4, monitor:HDMI-A-1
-workspace = 6, monitor:DP-2, default:true
-workspace = 7, monitor:DP-3, default:true
-{{- else if eq .machine "laptop" }}
 workspace = 1, default:true
 workspace = 2
 workspace = 3
 workspace = 4
-workspace = 5
-workspace = 6
-workspace = 7
-workspace = 8
-workspace = 9
-{{- end }}
 
 # General Settings
 general {
