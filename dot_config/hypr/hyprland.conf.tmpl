@@ -332,7 +332,7 @@ exec-once = $scriptsDir/Polkit.sh
 exec-once = waybar &
 exec-once = nm-applet --indicator &
 exec-once = swaync &
-exec-once = ags &
+exec-once = LD_PRELOAD=/usr/lib64/libgtk4-layer-shell.so ags run &
 exec-once = wl-paste --type text --watch cliphist store
 exec-once = wl-paste --type image --watch cliphist store
 exec-once = hypridle &

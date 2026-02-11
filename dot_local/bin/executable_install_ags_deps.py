@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+"""Install AGS v2 and Astal dependencies on Fedora.
+
+AGS v2 (Aylur's GTK Shell) is a scaffolding CLI for building custom Wayland
+desktop shells using TypeScript/JSX and the Astal library ecosystem. This
+script handles removing the old AGS v1 package and installing v2 with all
+Astal service libraries.
+
+Usage:
+    install_ags_deps.py           # Install everything
+    install_ags_deps.py --check   # Just check what's installed/missing
+"""
+
+import argparse
+import subprocess
+import sys
+
+
+# AGS v1 package to remove (conflicts with v2)
+V1_PACKAGE = "aylurs-gtk-shell"
+
+# Required packages for AGS v2
+PACKAGES = [
+    "aylurs-gtk-shell2",   # AGS v2 CLI (Go-based, TypeScript/JSX bundler)
+    "astal",               # Core Astal library (GTK3 widget layer)
+    "astal-io",            # Astal IO library (core operations)
+    "astal-gtk4",          # GTK4 widget layer with layer-shell support
+    "astal-gjs",           # GJS (GNOME JavaScript) bindings for Astal
+    "astal-libs",          # All Astal service libraries:
+                           #   AstalApps, AstalBattery, AstalBluetooth,
+                           #   AstalHyprland, AstalMpris, AstalNetwork,
+                           #   AstalNotifd, AstalPowerProfiles, AstalTray,
+                           #   AstalWp (WirePlumber audio), AstalCava,
+                           #   AstalAuth, AstalGreet, AstalRiver
+    "gjs",                 # GNOME JavaScript runtime (SpiderMonkey-based)
+    "gtk4",                # GTK4 toolkit
+    "gtk4-layer-shell",    # Layer shell protocol for GTK4
+    "gobject-introspection",  # GObject type introspection
+]
+
+
+def run(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
+    return subprocess.run(cmd, capture_output=True, text=True, check=check)
+
+
+def is_installed(package: str) -> bool:
+    result = run(["rpm", "-q", package], check=False)
+    return result.returncode == 0
+
+
+def check_status():
+    """Show installation status of all dependencies."""
+    v1_present = is_installed(V1_PACKAGE)
+    if v1_present:
+        result = run(["rpm", "-q", V1_PACKAGE], check=False)
+        print(f"  WARNING: AGS v1 installed ({result.stdout.strip()}) — must be removed first")
+
+    missing = []
+    for pkg in PACKAGES:
+        installed = is_installed(pkg)
+        status = "installed" if installed else "MISSING"
+        print(f"  {pkg}: {status}")
+        if not installed:
+            missing.append(pkg)
+
+    return missing, v1_present
+
+
+def install(missing: list[str], remove_v1: bool):
+    """Install missing packages (requires sudo)."""
+    if remove_v1:
+        print(f"\nRemoving AGS v1 ({V1_PACKAGE})...")
+        subprocess.run(["sudo", "dnf", "remove", "-y", V1_PACKAGE], check=True)
+
+    if missing:
+        print(f"\nInstalling {len(missing)} packages...")
+        subprocess.run(["sudo", "dnf", "install", "-y", *missing], check=True)
+
+    print("\nDone. Verify with: ags --version")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Install AGS v2 + Astal dependencies")
+    parser.add_argument("--check", action="store_true", help="Only check status, don't install")
+    args = parser.parse_args()
+
+    print("AGS v2 + Astal dependency status:\n")
+    missing, v1_present = check_status()
+
+    if args.check:
+        if not missing and not v1_present:
+            print("\nAll dependencies satisfied.")
+        else:
+            print(f"\n{len(missing)} package(s) missing.")
+            if v1_present:
+                print("AGS v1 needs to be removed.")
+        sys.exit(0 if (not missing and not v1_present) else 1)
+
+    if not missing and not v1_present:
+        print("\nAll dependencies already installed.")
+        return
+
+    install(missing, v1_present)
+
+
+if __name__ == "__main__":
+    main()

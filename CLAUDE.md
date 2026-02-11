@@ -22,9 +22,10 @@ Keep explanations concise - a sentence or two is usually enough.
 │   ├── nvim/                  # Neovim
 │   ├── waybar/                # Status bar
 │   ├── rofi/                  # App launcher
+│   ├── ags/                   # AGS v2 custom shell (TypeScript/JSX)
 │   ├── ghostty/               # Terminal
 │   ├── zsh/                   # Shell config
-│   └── ...                    # kitty, btop, lazygit, etc.
+│   └── ...                    # btop, lazygit, etc.
 ├── dot_local/bin/             # -> ~/.local/bin/ (utility scripts)
 ├── dot_claude/                # -> ~/.claude/ (Claude Code global config)
 ├── dot_zshrc                  # -> ~/.zshrc
@@ -118,6 +119,16 @@ When performing admin tasks that could be reused, create a Python script in `dot
 6. **Apply after adding** - Run `chezmoi apply` to deploy
 
 ### Naming: lowercase with underscores, verb_noun pattern (`backup_configs.py`)
+
+## AGS v2 (Custom Desktop Shell)
+
+Located at `dot_config/ags/` -> `~/.config/ags/`. This project has its own `CLAUDE.md` and `.claude/skills/` with detailed AGS/Astal API reference. When working on the shell, set your working directory to `dot_config/ags/`.
+
+Quick reference:
+- `ags run` — Run the shell (bundles TypeScript on-the-fly)
+- `ags inspect` — GTK Inspector for CSS debugging
+- `ags request <msg>` — Send command to running instance
+- `install_ags_deps.py --check` — Verify AGS v2 + Astal dependencies
 
 ## Common Tasks
 

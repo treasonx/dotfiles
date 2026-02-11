@@ -13,3 +13,7 @@
 .claude/agents/
 .claude/skills/
 .claude/projects/
+
+# AGS v2 generated files (created by ags init / ags types)
+.config/ags/node_modules
+.config/ags/@girs

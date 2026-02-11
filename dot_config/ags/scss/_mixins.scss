@@ -1,0 +1,15 @@
+@use './catppuccin' as *;
+
+@mixin panel-section {
+  background: $ctp-base;
+  border: 1px solid $ctp-surface0;
+  border-radius: 10px;
+  padding: 4px 8px;
+}
+
+@mixin hover-effect {
+  transition: background-color 200ms;
+  &:hover {
+    background: $ctp-surface0;
+  }
+}
