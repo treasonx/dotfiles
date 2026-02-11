@@ -41,6 +41,7 @@ import {
 import { SystemMetrics } from "./SystemMetrics"
 import { AudioPopover } from "./AudioPopover"
 
+
 function ClockWithCalendar() {
   return (
     <Gtk.MenuButton css="border: none; box-shadow: none; background: none; padding: 0;">
