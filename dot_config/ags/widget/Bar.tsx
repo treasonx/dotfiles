@@ -33,6 +33,7 @@ import {
   MprisPlayStatusIcon,
   MprisPositionLabel,
   MprisLengthLabel,
+  Text,
   Icon,
   NetworkIndicator,
   BatteryIndicator,
@@ -53,6 +54,77 @@ function NowPlaying() {
       <MediaPlayerPopup />
       <CavaVisualizer />
     </Box>
+  )
+}
+
+const MARQUEE_TICK_MS = 30
+const MARQUEE_PAUSE_MS = 1000
+const MARQUEE_SPEED_PX = 18
+
+function setupMarquee(sw: Gtk.ScrolledWindow) {
+  const hadj = sw.get_hadjustment()
+  const step = (MARQUEE_SPEED_PX * MARQUEE_TICK_MS) / 1000
+  let direction = 1
+  let pausedUntil = 0
+
+  function reset() {
+    hadj.set_value(0)
+    direction = 1
+    pausedUntil = GLib.get_monotonic_time() / 1000 + MARQUEE_PAUSE_MS
+  }
+
+  const upperId = hadj.connect("notify::upper", reset)
+  const pageId = hadj.connect("notify::page-size", reset)
+
+  const tickId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, MARQUEE_TICK_MS, () => {
+    const max = hadj.get_upper() - hadj.get_page_size()
+    if (max <= 1) {
+      if (hadj.get_value() !== 0) hadj.set_value(0)
+      return true
+    }
+
+    const now = GLib.get_monotonic_time() / 1000
+    if (now < pausedUntil) return true
+
+    let next = hadj.get_value() + direction * step
+    if (next <= 0) {
+      next = 0
+      direction = 1
+      pausedUntil = now + MARQUEE_PAUSE_MS
+    } else if (next >= max) {
+      next = max
+      direction = -1
+      pausedUntil = now + MARQUEE_PAUSE_MS
+    }
+
+    hadj.set_value(next)
+    return true
+  })
+
+  const cleanupId = sw.connect("unrealize", () => {
+    try { GLib.source_remove(tickId) } catch {}
+    try { hadj.disconnect(upperId) } catch {}
+    try { hadj.disconnect(pageId) } catch {}
+    try { sw.disconnect(cleanupId) } catch {}
+  })
+}
+
+function NowPlayingTitle() {
+  return (
+    <Gtk.ScrolledWindow
+      hscrollbarPolicy={Gtk.PolicyType.NEVER}
+      vscrollbarPolicy={Gtk.PolicyType.NEVER}
+      propagateNaturalWidth
+      propagateNaturalHeight
+      css="max-width: 200px;"
+      onRealize={(self: Gtk.ScrolledWindow) => setupMarquee(self)}
+    >
+      <Box gap={4}>
+        <MprisArtist size={0.85} />
+        <Text size={0.85} opacity={0.7}>-</Text>
+        <MprisTitle size={0.85} />
+      </Box>
+    </Gtk.ScrolledWindow>
   )
 }
 
@@ -106,7 +178,7 @@ function MediaPlayerPopup() {
     <MprisList>
       {() => (
         <Gtk.MenuButton css="border: none; box-shadow: none; background: none; padding: 0;">
-          <MprisTitle truncate size={0.85} css="max-width: 200px;" />
+          <NowPlayingTitle />
           <Gtk.Popover $type="popover">
             <Box vertical gap={8} css="min-width: 280px;">
               <Box gap={12}>
