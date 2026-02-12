@@ -33,6 +33,8 @@ import {
   MprisPlayStatusIcon,
   MprisPositionLabel,
   MprisLengthLabel,
+  MprisRaiseButton,
+  MprisBrandIcon,
   Text,
   Icon,
   NetworkIndicator,
@@ -180,30 +182,37 @@ function MediaPlayerPopup() {
         <Gtk.MenuButton css="border: none; box-shadow: none; background: none; padding: 0;">
           <NowPlayingTitle />
           <Gtk.Popover $type="popover">
-            <Box vertical gap={8} css="min-width: 280px;">
+            <Box vertical gap={8} css="min-width: 320px;">
               <Box gap={12}>
                 <MprisCoverArt size={80} />
-                <Box vertical gap={4}>
-                  <MprisTitle bold truncate />
-                  <MprisArtist opacity={0.7} truncate />
+                <Box vertical gap={6}>
+                  <Box gap={8}>
+                    <Box vertical>
+                      <MprisTitle bold truncate />
+                      <MprisArtist opacity={0.7} truncate />
+                    </Box>
+                    <Box hexpand />
+                    <MprisRaiseButton flat>
+                      <MprisBrandIcon />
+                    </MprisRaiseButton>
+                  </Box>
+                  <MprisPositionSlider />
+                  <Gtk.CenterBox>
+                    <MprisPositionLabel $type="start" opacity={0.6} size={0.85} />
+                    <Box $type="center" gap={8}>
+                      <MprisPrevButton flat>
+                        <Icon icon="media-skip-backward" />
+                      </MprisPrevButton>
+                      <MprisPlayPauseButton flat>
+                        <MprisPlayStatusIcon />
+                      </MprisPlayPauseButton>
+                      <MprisNextButton flat>
+                        <Icon icon="media-skip-forward" />
+                      </MprisNextButton>
+                    </Box>
+                    <MprisLengthLabel $type="end" opacity={0.6} size={0.85} />
+                  </Gtk.CenterBox>
                 </Box>
-              </Box>
-              <MprisPositionSlider />
-              <Box gap={4}>
-                <MprisPositionLabel opacity={0.6} size={0.85} />
-                <Box hexpand />
-                <MprisLengthLabel opacity={0.6} size={0.85} />
-              </Box>
-              <Box halign="center" gap={8}>
-                <MprisPrevButton flat>
-                  <Icon icon="media-skip-backward" />
-                </MprisPrevButton>
-                <MprisPlayPauseButton flat>
-                  <MprisPlayStatusIcon />
-                </MprisPlayPauseButton>
-                <MprisNextButton flat>
-                  <Icon icon="media-skip-forward" />
-                </MprisNextButton>
               </Box>
             </Box>
           </Gtk.Popover>

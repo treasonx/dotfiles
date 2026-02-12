@@ -40,8 +40,10 @@ function getMemUsage(): string {
   const info = readFile("/proc/meminfo")
   const total = Number(info.match(/MemTotal:\s+(\d+)/)?.[1] ?? 0)
   const available = Number(info.match(/MemAvailable:\s+(\d+)/)?.[1] ?? 0)
-  const usedGb = ((total - available) / 1048576).toFixed(1)
-  return `${usedGb}G`
+  if (total === 0) return "0%"
+  const used = total - available
+  const pct = Math.round((used / total) * 100)
+  return `${pct}%`
 }
 
 // Disk usage from statfs
@@ -161,7 +163,7 @@ export function SystemMetrics({ compact = false }: { compact?: boolean } = {}) {
       <Box gap={compact ? 8 : 12} css="background: alpha(currentColor, 0.1); border-radius: 8px; padding: 2px 6px;">
         <Text opacity={0.8} tooltipText="CPU Usage">{metrics((m) => `${pad(m.cpu, 3)}% 󰍛`)}</Text>
         {!compact && <Text opacity={0.8} tooltipText="CPU Temperature">{metrics((m) => `${pad(m.temp, 3)}°F 󰈸`)}</Text>}
-        <Text opacity={0.8} tooltipText="Memory Used">{metrics((m) => `${m.mem.padStart(5)} 󰘚`)}</Text>
+        <Text opacity={0.8} tooltipText="Memory Used">{metrics((m) => `${m.mem.padStart(4)} 󰘚`)}</Text>
         {!compact && <Text opacity={0.8} tooltipText="Disk Usage (/)">{metrics((m) => `${pad(m.disk, 3)}% 󰋊`)}</Text>}
         {!compact && <Text opacity={0.8} tooltipText="Network (Upload / Download)">{metrics((m) => `󰁝 ${m.netUp} 󰁅 ${m.netDown}`)}</Text>}
         {compact && (

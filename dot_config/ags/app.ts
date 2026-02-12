@@ -2,6 +2,7 @@ import app from "ags/gtk4/app"
 import Gdk from "gi://Gdk?version=4.0"
 import "./theme"
 import Bar from "./widget/Bar"
+import { BarOsd } from "./widget/BarOsd"
 import Sidebar from "./widget/Sidebar"
 import Popups from "./widget/notifications/NotificationPopups"
 import { toggleSidebar } from "./widget/sidebar-state"
@@ -45,6 +46,7 @@ app.start({
 
     Sidebar(app.get_monitors()[0])
     Popups(app.get_monitors()[0])
+    BarOsd()
   },
   requestHandler(argv: string[], respond: (response: string) => void) {
     const command = argv[0]

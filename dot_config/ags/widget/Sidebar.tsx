@@ -3,13 +3,14 @@ import app from "ags/gtk4/app"
 import Notifd from "gi://AstalNotifd"
 import { Box, Text, Button, NotificationList } from "marble/components"
 import { NotificationCard } from "./notifications/NotificationCard"
-import { sidebarVisible, SIDEBAR_WIDTH_FRACTION } from "./sidebar-state"
+import { sidebarVisible, SIDEBAR_WIDTH_FRACTION, TABS, activeTab, switchTab } from "./sidebar-state"
 import { createBinding } from "gnim"
 
 function NotificationHistory() {
   const notifd = Notifd.get_default()
   const notifications = createBinding(notifd, "notifications")
   const hasNotifications = notifications.as((ns) => ns.length > 0)
+  const isActive = activeTab.as((t) => t === "notifications")
 
   function clearAll() {
     notifd.get_notifications().forEach((n) => n.dismiss())
@@ -23,7 +24,7 @@ function NotificationHistory() {
   }
 
   return (
-    <Box vertical vexpand>
+    <Box vertical vexpand visible={isActive}>
       <Box css="padding: 0 0 8px 0;">
         <Text size={1.1} bold>Notifications</Text>
       </Box>
@@ -64,6 +65,49 @@ function NotificationHistory() {
   )
 }
 
+function PlaceholderTab() {
+  return (
+    <Box
+      vertical
+      vexpand
+      valign="center"
+      halign="center"
+      visible={activeTab.as((t) => t === "placeholder")}
+    >
+      <Text size={1.2} opacity={0.3}>󰕰</Text>
+      <Text size={0.85} opacity={0.4}>Coming soon</Text>
+    </Box>
+  )
+}
+
+function TabButton({ tab }: { tab: (typeof TABS)[number] }) {
+  return (
+    <Button
+      onPrimaryClick={() => switchTab(tab.id)}
+      css={activeTab.as((t) =>
+        t === tab.id
+          ? "padding: 8px 16px; border-radius: 8px; background: alpha(@accent_bg_color, 0.3);"
+          : "padding: 8px 16px; border-radius: 8px; background: none; opacity: 0.5;"
+      )}
+    >
+      <Text size={1.1}>{tab.icon}</Text>
+    </Button>
+  )
+}
+
+function TabBar() {
+  return (
+    <Box
+      halign="center"
+      gap={4}
+      css="padding: 8px 0 0 0; border-top: 1px solid alpha(@view_fg_color, 0.1);"
+    >
+      <TabButton tab={TABS[0]} />
+      <TabButton tab={TABS[1]} />
+    </Box>
+  )
+}
+
 export default function Sidebar(gdkmonitor: Gdk.Monitor) {
   const { RIGHT, TOP, BOTTOM } = Astal.WindowAnchor
   const monitorWidth = gdkmonitor.get_geometry().width
@@ -91,6 +135,8 @@ export default function Sidebar(gdkmonitor: Gdk.Monitor) {
           css={`min-width: ${width}px; padding: 12px; background: alpha(@view_bg_color, 0.85); border-radius: 12px 0 0 12px;`}
         >
           <NotificationHistory />
+          <PlaceholderTab />
+          <TabBar />
         </Box>
       </Gtk.Revealer>
     </window>

@@ -9,7 +9,6 @@ import {
   NotificationDismissButton,
   NotificationImage,
   NotificationTimeoutBar,
-  Separator,
 } from "marble/components"
 import { Box, Icon } from "marble/components"
 import Hyprland from "gi://AstalHyprland"
@@ -27,7 +26,6 @@ export function NotificationCard() {
         vertical
         css={`min-width: ${width}px; background: alpha(@view_bg_color, 0.6); border-radius: 8px; overflow: hidden;`}
       >
-        <NotificationTimeoutBar width={3} length={width} p={0} r={0} />
         <Box gap={8} css="padding: 8px 12px;">
           <NotificationAppIcon css="min-width: 16px; min-height: 16px;" />
           <NotificationAppName size={0.8} opacity={0.8} />
@@ -37,7 +35,6 @@ export function NotificationCard() {
             <Icon icon="window-close" />
           </NotificationDismissButton>
         </Box>
-        <Separator />
         <Box gap={12} css="padding: 10px 12px;">
           <NotificationImage size={86} />
           <Box vertical gap={4}>
@@ -45,7 +42,6 @@ export function NotificationCard() {
             <NotificationBody size={0.9} opacity={0.8} />
           </Box>
         </Box>
-        <NotificationActions css="padding: 0 12px 8px;" />
       </Box>
     </NotificationRoot>
   )
