@@ -1,5 +1,6 @@
 import app from "ags/gtk4/app"
 import Gdk from "gi://Gdk?version=4.0"
+import "./theme"
 import Bar from "./widget/Bar"
 import Sidebar from "./widget/Sidebar"
 import Popups from "./widget/notifications/NotificationPopups"

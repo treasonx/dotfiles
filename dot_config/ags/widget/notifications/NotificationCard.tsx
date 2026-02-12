@@ -21,7 +21,7 @@ export function NotificationCard() {
   const width = Math.round(monitorWidth * SIDEBAR_WIDTH_FRACTION)
 
   return (
-    <NotificationRoot hideOnHover>
+    <NotificationRoot>
       <Box
         hexpand
         vertical
