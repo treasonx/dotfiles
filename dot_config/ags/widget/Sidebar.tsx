@@ -118,6 +118,7 @@ export default function Sidebar(gdkmonitor: Gdk.Monitor) {
       name="sidebar"
       visible={sidebarVisible}
       gdkmonitor={gdkmonitor}
+      defaultWidth={width}
       anchor={RIGHT | TOP | BOTTOM}
       exclusivity={Astal.Exclusivity.EXCLUSIVE}
       layer={Astal.Layer.TOP}
@@ -128,10 +129,12 @@ export default function Sidebar(gdkmonitor: Gdk.Monitor) {
         revealChild={sidebarVisible}
         transitionType={Gtk.RevealerTransitionType.SLIDE_LEFT}
         transitionDuration={250}
+        widthRequest={width}
       >
         <Box
           vertical
           vexpand
+          hexpand
           widthRequest={width}
           css={`min-width: ${width}px; max-width: ${width}px; padding: 12px; background: alpha(@view_bg_color, 0.85); border-radius: 12px 0 0 12px;`}
         >

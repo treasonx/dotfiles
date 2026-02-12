@@ -11,20 +11,14 @@ import {
   NotificationTimeoutBar,
 } from "marble/components"
 import { Box, Icon } from "marble/components"
-import Hyprland from "gi://AstalHyprland"
-import { SIDEBAR_WIDTH_FRACTION } from "../sidebar-state"
 
 export function NotificationCard() {
-  const hypr = Hyprland.get_default()
-  const monitorWidth = hypr.get_focused_monitor().get_width()
-  const width = Math.round(monitorWidth * SIDEBAR_WIDTH_FRACTION)
-
   return (
     <NotificationRoot>
       <Box
         hexpand
         vertical
-        css={`min-width: ${width}px; background: alpha(@view_bg_color, 0.6); border-radius: 8px; overflow: hidden;`}
+        css="background: alpha(@view_bg_color, 0.6); border-radius: 8px; overflow: hidden;"
       >
         <Box gap={8} css="padding: 8px 12px;">
           <NotificationAppIcon css="min-width: 16px; min-height: 16px;" />
