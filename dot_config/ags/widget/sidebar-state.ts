@@ -6,6 +6,8 @@ const [sidebarVisible, setSidebarVisible] = createState(false)
 
 export { sidebarVisible }
 
+export const SIDEBAR_WIDTH_FRACTION = 0.15
+
 export function toggleSidebar() {
   const sidebar = app.get_window("sidebar")
   if (sidebar) {

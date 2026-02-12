@@ -3,7 +3,7 @@ import app from "ags/gtk4/app"
 import Notifd from "gi://AstalNotifd"
 import { Box, Text, Button, NotificationList } from "marble/components"
 import { NotificationCard } from "./notifications/NotificationCard"
-import { sidebarVisible } from "./sidebar-state"
+import { sidebarVisible, SIDEBAR_WIDTH_FRACTION } from "./sidebar-state"
 import { createBinding } from "gnim"
 
 function NotificationHistory() {
@@ -67,7 +67,7 @@ function NotificationHistory() {
 export default function Sidebar(gdkmonitor: Gdk.Monitor) {
   const { RIGHT, TOP, BOTTOM } = Astal.WindowAnchor
   const monitorWidth = gdkmonitor.get_geometry().width
-  const width = Math.round(monitorWidth * 0.15)
+  const width = Math.round(monitorWidth * SIDEBAR_WIDTH_FRACTION)
 
   return (
     <window
