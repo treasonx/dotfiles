@@ -7,16 +7,28 @@ import {
   pickerVisible,
   selectedItem,
   manifest,
+  activePickerTab,
+  regionData,
   selectItem,
+  switchPickerTab,
   finishPick,
   cancelPick,
   pickRegion,
+  reselectRegion,
 } from "./screenshare-state"
-import type { ScreenInfo, WindowInfo } from "./screenshare-state"
+import type { ScreenInfo, WindowInfo, PickerTab } from "./screenshare-state"
+
+const COLUMNS = 3
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const result: T[][] = []
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size))
+  }
+  return result
+}
 
 // ── Preview Card ───────────────────────────────────────────────────
-// Clickable thumbnail card for a screen or window. Highlights with
-// an accent border when selected via the reactive selectedItem binding.
 
 function PreviewCard({
   value,
@@ -42,7 +54,7 @@ function PreviewCard({
           : "padding: 6px; border-radius: 10px; border: 2px solid transparent; background: alpha(@view_fg_color, 0.05);"
       )}
     >
-      <Box vertical gap={4} widthRequest={280}>
+      <Box vertical gap={4} hexpand>
         {previewPath ? (
           <Gtk.Picture
             file={Gio.File.new_for_path(previewPath)}
@@ -55,9 +67,10 @@ function PreviewCard({
             heightRequest={160}
             halign="center"
             valign="center"
-            css="border-radius: 6px; background: alpha(@view_fg_color, 0.08);"
+            hexpand
+            css="border-radius: 6px; background: alpha(@view_fg_color, 0.06);"
           >
-            <Text opacity={0.3}>No preview</Text>
+            <Gtk.Spinner spinning widthRequest={24} heightRequest={24} />
           </Box>
         )}
         <Box vertical css="padding: 2px 4px;">
@@ -73,19 +86,165 @@ function PreviewCard({
   )
 }
 
+// ── Tab Button ──────────────────────────────────────────────────────
+
+function PickerTabButton({ id, label, icon }: { id: PickerTab; label: string; icon: string }) {
+  return (
+    <Button
+      flat
+      borderless
+      onPrimaryClick={() => switchPickerTab(id)}
+      css={activePickerTab.as((t) =>
+        t === id
+          ? "padding: 8px 20px; border-radius: 8px; background: alpha(@accent_bg_color, 0.25); border: 1px solid alpha(@accent_bg_color, 0.4);"
+          : "padding: 8px 20px; border-radius: 8px; background: alpha(@view_fg_color, 0.05); border: 1px solid transparent; opacity: 0.6;"
+      )}
+    >
+      <Box gap={6}>
+        <Text size={0.95}>{icon}</Text>
+        <Text size={0.9} bold>{label}</Text>
+      </Box>
+    </Button>
+  )
+}
+
+// ── Screens Tab Content ─────────────────────────────────────────────
+
+function ScreensContent() {
+  const rows = manifest.as((m) => chunk(m.screens, COLUMNS))
+  const isActive = activePickerTab.as((t) => t === "screens")
+
+  return (
+    <Box vertical vexpand visible={isActive} gap={8} css="padding: 4px;">
+      <For each={rows}>
+        {(row: ScreenInfo[]) => (
+          <Box gap={8} homogeneous>
+            {row.map((screen) => (
+              <PreviewCard
+                value={`screen:${screen.name}`}
+                label={screen.name}
+                sublabel={`${screen.width}×${screen.height} — ${screen.description.length > 30 ? screen.description.slice(0, 30) + "…" : screen.description}`}
+                previewPath={screen.preview}
+              />
+            ))}
+          </Box>
+        )}
+      </For>
+    </Box>
+  )
+}
+
+// ── Windows Tab Content ─────────────────────────────────────────────
+
+function WindowsContent() {
+  const rows = manifest.as((m) => chunk(m.windows, COLUMNS))
+  const hasWindows = manifest.as((m) => m.windows.length > 0)
+  const isActive = activePickerTab.as((t) => t === "windows")
+
+  return (
+    <Box vertical vexpand visible={isActive}>
+      <Box vertical gap={8} visible={hasWindows} css="padding: 4px;">
+        <For each={rows}>
+          {(row: WindowInfo[]) => (
+            <Box gap={8} homogeneous>
+              {row.map((win) => (
+                <PreviewCard
+                  value={`window:${win.handleId}`}
+                  label={win.title || win.class}
+                  sublabel={win.class}
+                  previewPath={win.preview}
+                />
+              ))}
+            </Box>
+          )}
+        </For>
+      </Box>
+
+      <Box
+        visible={hasWindows.as((h) => !h)}
+        halign="center"
+        valign="center"
+        vexpand
+      >
+        <Text size={0.9} opacity={0.4}>No visible windows</Text>
+      </Box>
+    </Box>
+  )
+}
+
+// ── Region Tab Content ──────────────────────────────────────────────
+
+function RegionContent() {
+  const isActive = activePickerTab.as((t) => t === "region")
+  const hasRegion = regionData.as((r) => r !== null)
+
+  return (
+    <Box vertical vexpand visible={isActive} gap={12} css="padding: 4px;">
+      {/* Region preview — shown after slurp capture */}
+      <Box vertical gap={8} visible={hasRegion}>
+        <Gtk.Picture
+          file={regionData.as((r) =>
+            r ? Gio.File.new_for_path(r.preview) : Gio.File.new_for_path("/dev/null"),
+          )}
+          contentFit={Gtk.ContentFit.CONTAIN}
+          heightRequest={300}
+          hexpand
+          canShrink
+        />
+        <Text size={0.85} opacity={0.5} halign="center">
+          {regionData.as((r) =>
+            r ? `${r.output} — ${r.w}×${r.h} at (${r.x}, ${r.y})` : "",
+          )}
+        </Text>
+        <Button
+          flat
+          borderless
+          onPrimaryClick={() => reselectRegion()}
+          css="padding: 8px 20px; border-radius: 8px; background: alpha(@view_fg_color, 0.08);"
+          halign="center"
+        >
+          <Box gap={6}>
+            <Text size={0.95}>󰆞</Text>
+            <Text size={0.9} bold>Reselect Region</Text>
+          </Box>
+        </Button>
+      </Box>
+
+      {/* Empty state — no region captured yet */}
+      <Box
+        vertical
+        gap={12}
+        visible={hasRegion.as((h) => !h)}
+        halign="center"
+        valign="center"
+        vexpand
+      >
+        <Text size={0.9} opacity={0.4}>No region selected</Text>
+        <Button
+          flat
+          borderless
+          onPrimaryClick={() => pickRegion()}
+          css="padding: 10px 24px; border-radius: 8px; background: alpha(@accent_bg_color, 0.2); border: 1px solid alpha(@accent_bg_color, 0.3);"
+        >
+          <Box gap={6}>
+            <Text size={0.95}>󰆞</Text>
+            <Text size={0.9} bold>Select Region</Text>
+          </Box>
+        </Button>
+      </Box>
+    </Box>
+  )
+}
+
 // ── Main Panel ─────────────────────────────────────────────────────
-// Slide-up overlay anchored at the bottom of the screen. Shows screen
-// and window previews from the manifest written by screenshare_picker.py.
 
 export default function ScreenSharePicker(gdkmonitor: Gdk.Monitor) {
-  const { BOTTOM } = Astal.WindowAnchor
+  const { BOTTOM, LEFT, RIGHT } = Astal.WindowAnchor
   const monWidth = gdkmonitor.get_geometry().width
-  const panelWidth = Math.round(monWidth * 0.8)
-
-  // Derived bindings for For
-  const screens = manifest.as((m) => m.screens)
-  const windows = manifest.as((m) => m.windows)
-  const hasWindows = manifest.as((m) => m.windows.length > 0)
+  const monHeight = gdkmonitor.get_geometry().height
+  const panelWidth = Math.round(monWidth * 0.6)
+  // Leave room for the bar at top (~48px) + some margin
+  const maxHeight = monHeight - 80
 
   function handleKey(
     _controller: Gtk.EventControllerKey,
@@ -121,101 +280,61 @@ export default function ScreenSharePicker(gdkmonitor: Gdk.Monitor) {
           widthRequest={panelWidth}
           css="background: alpha(@view_bg_color, 0.92); border-radius: 12px 12px 0 0; padding: 12px;"
         >
-          {/* Header: close button, centered share button */}
-          <Box css="padding-bottom: 8px; border-bottom: 1px solid alpha(@view_fg_color, 0.1);">
+          {/* Header: close button, tabs, share button */}
+          <Box
+            gap={8}
+            css="padding-bottom: 10px; border-bottom: 1px solid alpha(@view_fg_color, 0.1);"
+          >
             <Button flat borderless onPrimaryClick={cancelPick} px={8} py={4}>
               <Text size={1.1}>✕</Text>
             </Button>
+
             <Box hexpand />
-            <Button
-              onPrimaryClick={finishPick}
-              sensitive={selectedItem.as((s) => s !== null)}
-              css="padding: 8px 24px; border-radius: 8px;"
-            >
-              <Text bold>Share</Text>
-            </Button>
+
+            {/* Tab switcher */}
+            <Box gap={4}>
+              <PickerTabButton id="screens" label="Screens" icon="󰍹" />
+              <PickerTabButton id="windows" label="Windows" icon="󰖲" />
+              <PickerTabButton id="region" label="Region" icon="󰆞" />
+            </Box>
+
             <Box hexpand />
-            <Box widthRequest={40} />
           </Box>
 
-          {/* Scrollable content area */}
+          {/* Tab content — vertical scroll, grows to fill available height */}
           <Gtk.ScrolledWindow
             vexpand
-            heightRequest={380}
+            heightRequest={Math.min(maxHeight - 60, 800)}
             hscrollbarPolicy={Gtk.PolicyType.NEVER}
             vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
           >
-            <Box vertical gap={16} css="padding: 12px 0;">
-              {/* Screens section */}
-              <Box vertical gap={6}>
-                <Text size={0.85} bold opacity={0.6} css="padding: 0 4px;">
-                  Screens
-                </Text>
-                <Gtk.ScrolledWindow
-                  hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-                  vscrollbarPolicy={Gtk.PolicyType.NEVER}
-                  css="min-height: 210px;"
-                >
-                  <Box gap={8}>
-                    <For each={screens}>
-                      {(screen: ScreenInfo) => (
-                        <PreviewCard
-                          value={`screen:${screen.name}`}
-                          label={screen.name}
-                          sublabel={`${screen.width}×${screen.height} — ${screen.description.length > 30 ? screen.description.slice(0, 30) + "…" : screen.description}`}
-                          previewPath={screen.preview}
-                        />
-                      )}
-                    </For>
-                  </Box>
-                </Gtk.ScrolledWindow>
-              </Box>
-
-              {/* Windows section */}
-              <Box vertical gap={6} visible={hasWindows}>
-                <Text size={0.85} bold opacity={0.6} css="padding: 0 4px;">
-                  Windows
-                </Text>
-                <Gtk.ScrolledWindow
-                  hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-                  vscrollbarPolicy={Gtk.PolicyType.NEVER}
-                  css="min-height: 210px;"
-                >
-                  <Box gap={8}>
-                    <For each={windows}>
-                      {(win: WindowInfo) => (
-                        <PreviewCard
-                          value={`window:${win.handleId}`}
-                          label={win.title || win.class}
-                          sublabel={win.class}
-                          previewPath={win.preview}
-                        />
-                      )}
-                    </For>
-                  </Box>
-                </Gtk.ScrolledWindow>
-              </Box>
-
-              {/* Empty windows message */}
-              <Box
-                visible={hasWindows.as((h) => !h)}
-                halign="center"
-                css="padding: 8px;"
-              >
-                <Text size={0.9} opacity={0.4}>No visible windows</Text>
-              </Box>
+            <Box vertical css="padding: 12px 0;">
+              <ScreensContent />
+              <WindowsContent />
+              <RegionContent />
             </Box>
           </Gtk.ScrolledWindow>
 
-          {/* Region selection button */}
-          <Box
-            halign="center"
-            css="padding-top: 8px; border-top: 1px solid alpha(@view_fg_color, 0.1);"
+          {/* Footer: full-width Share button */}
+          <Button
+            color="primary"
+            r={10}
+            py={6}
+            px={10}
+            onPrimaryClick={() => {
+              if (selectedItem() !== null) finishPick()
+            }}
+            css={selectedItem.as((s) =>
+              s !== null
+                ? "margin: 8px 12px 4px 12px;"
+                : "margin: 8px 12px 4px 12px; opacity: 0.35;",
+            )}
           >
-            <Button flat onPrimaryClick={pickRegion} px={16} py={8}>
-              <Text size={0.9}>Select Region</Text>
-            </Button>
-          </Box>
+            <Box gap={8} halign="center">
+              <Text size={1.3}>󰒗</Text>
+              <Text size={1.2} weight="bold">Share</Text>
+            </Box>
+          </Button>
         </Box>
       </Gtk.Revealer>
     </window>

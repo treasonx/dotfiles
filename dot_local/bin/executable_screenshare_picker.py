@@ -161,8 +161,12 @@ def capture_window(at: list[int], size: list[int], output_path: Path) -> bool:
         return False
 
 
-def build_manifest() -> dict:
-    """Gather all data and capture thumbnails into the manifest directory."""
+def build_manifest_metadata() -> dict:
+    """Gather monitor/window metadata without capturing screenshots.
+
+    This is fast (just hyprctl IPC calls) so the AGS picker can show
+    immediately while screenshots are captured in parallel.
+    """
     MANIFEST_DIR.mkdir(parents=True, exist_ok=True)
 
     monitors = get_monitors()
@@ -175,29 +179,19 @@ def build_manifest() -> dict:
 
     manifest: dict = {"screens": [], "windows": []}
 
-    # Capture screen thumbnails
     for mon in monitors:
-        preview_path = MANIFEST_DIR / f"screen-{mon['name']}.png"
-        if capture_screen(mon["name"], preview_path):
-            preview = str(preview_path)
-        else:
-            preview = ""  # AGS will show a placeholder
-
         manifest["screens"].append({
             "name": mon["name"],
             "description": mon["description"],
             "width": mon["width"],
             "height": mon["height"],
-            "preview": preview,
+            "preview": "",  # Filled by background grim captures
         })
 
-    # Capture window thumbnails
     for win in windows:
         addr = win["address"]
-        # Convert hex address to decimal for XDPH lookup
         hypr_addr_decimal = int(addr, 16) if addr.startswith("0x") else int(addr)
 
-        # Look up the XDPH toplevel handle ID
         handle_id = addr_map.get(hypr_addr_decimal)
         if handle_id is None:
             handle_id = class_title_map.get((win["class"], win["title"]))
@@ -205,21 +199,60 @@ def build_manifest() -> dict:
             log(f"no handle_id for window {win['class']}: {win['title']} ({addr}), skipping")
             continue
 
-        preview_path = MANIFEST_DIR / f"window-{addr}.png"
-        if capture_window(win["at"], win["size"], preview_path):
-            preview = str(preview_path)
-        else:
-            preview = ""
-
         manifest["windows"].append({
             "class": win["class"],
             "title": win["title"],
             "address": addr,
             "handleId": handle_id,
-            "preview": preview,
+            "at": win["at"],
+            "size": win["size"],
+            "preview": "",  # Filled by background grim captures
         })
 
     return manifest
+
+
+def start_preview_captures(manifest: dict) -> list[subprocess.Popen]:
+    """Launch all grim screenshot captures in parallel (non-blocking).
+
+    Fires off grim processes for each screen and window simultaneously.
+    AGS polls for the resulting files and updates its UI as they appear.
+    Returns the list of Popen handles so we can clean up later.
+    """
+    procs: list[subprocess.Popen] = []
+
+    for screen in manifest["screens"]:
+        path = MANIFEST_DIR / f"screen-{screen['name']}.png"
+        try:
+            proc = subprocess.Popen(
+                ["grim", "-s", str(THUMBNAIL_SCALE), "-o", screen["name"], str(path)],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            procs.append(proc)
+        except FileNotFoundError:
+            log("grim not found")
+
+    for win in manifest["windows"]:
+        addr = win["address"]
+        path = MANIFEST_DIR / f"window-{addr}.png"
+        # We need window geometry for grim -g; look it up from hyprctl
+        # The metadata doesn't include at/size, so capture full windows via address
+        # Actually, we need at/size — let's store them in manifest
+        at = win.get("at")
+        size = win.get("size")
+        if not at or not size:
+            continue
+        geometry = f"{at[0]},{at[1]} {size[0]}x{size[1]}"
+        try:
+            proc = subprocess.Popen(
+                ["grim", "-s", str(THUMBNAIL_SCALE), "-g", geometry, str(path)],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            procs.append(proc)
+        except FileNotFoundError:
+            pass
+
+    return procs
 
 
 def write_manifest(manifest: dict) -> None:
@@ -294,13 +327,24 @@ def main() -> int:
         # Check for --allow-token flag from XDPH
         allow_token = "--allow-token" in sys.argv
 
-        # Phase 1: Gather data and capture thumbnails
-        manifest = build_manifest()
+        # Phase 1: Gather metadata (fast — just hyprctl IPC)
+        manifest = build_manifest_metadata()
         write_manifest(manifest)
         log(f"manifest: {len(manifest['screens'])} screens, {len(manifest['windows'])} windows")
 
-        # Phase 2: Show AGS picker and wait for selection
+        # Phase 2: Launch screenshot captures in parallel (non-blocking)
+        # AGS polls for the files and updates its UI as they appear
+        capture_procs = start_preview_captures(manifest)
+
+        # Phase 3: Show AGS picker immediately (blocks until user picks)
         response = ask_ags()
+
+        # Clean up any still-running grim processes
+        for p in capture_procs:
+            try:
+                p.terminate()
+            except OSError:
+                pass
         log(f"ags response: [{response}]")
 
         if not response:
@@ -309,7 +353,7 @@ def main() -> int:
             return 1
 
         # Phase 3: Handle the response
-        # AGS sends: screen:<name>, window:<handleId>, or region
+        # AGS sends: screen:<name>, window:<handleId>, or region:<output>@<x>,<y>,<w>,<h>
         selection = ""
         if response.startswith("screen:"):
             selection = response
@@ -317,7 +361,11 @@ def main() -> int:
             # AGS sends window:<handleId> where handleId is the XDPH
             # toplevel handle (lower 32 bits of wl_resource)
             selection = response
+        elif response.startswith("region:"):
+            # AGS now handles slurp and sends full region coordinates
+            selection = response
         elif response == "region":
+            # Legacy: AGS sent bare "region" — run slurp ourselves
             region_result = handle_region()
             if region_result:
                 selection = region_result
