@@ -311,15 +311,19 @@ layerrule = ignorealpha 0, vicinae
 layerrule = noanim, vicinae
 layerrule = blur, perplexity
 layerrule = ignorealpha 0, perplexity
+layerrule = blur, screenshare-picker
+layerrule = ignorealpha 0, screenshare-picker
 
 # Startup Applications
 exec-once = swww-daemon --format xrgb
 exec-once = dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP
 exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP
 exec-once = $scriptsDir/Polkit.sh
+# Start AGS early — it claims org.kde.StatusNotifierWatcher on D-Bus.
+# The script blocks until the watcher is ready so tray apps below find it.
+exec-once = start_ags.sh
 # exec-once = waybar &  # Replaced by AGS marble bar
 exec-once = nm-applet --indicator &
-exec-once = start_ags.sh
 exec-once = wl-paste --type text --watch cliphist store
 exec-once = wl-paste --type image --watch cliphist store
 exec-once = hypridle &

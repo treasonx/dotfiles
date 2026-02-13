@@ -1,0 +1,255 @@
+#!/usr/bin/env python3
+"""List recent files and copy file data to the clipboard.
+
+This script is designed for AGS widgets that need a simple JSON interface
+for recent media plus reliable clipboard operations without GJS plumbing.
+
+Commands:
+  list --limit 5 --section "Downloads:/home/user/Downloads" [...]
+  copy-path /full/path/to/file
+  copy-content /full/path/to/file
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import mimetypes
+import os
+import shutil
+import subprocess
+import sys
+from dataclasses import dataclass
+from typing import Iterable
+
+
+IMAGE_EXTS = {
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".webp",
+    ".gif",
+    ".bmp",
+    ".tiff",
+    ".avif",
+}
+
+VIDEO_EXTS = {
+    ".mp4",
+    ".mkv",
+    ".webm",
+    ".mov",
+    ".avi",
+    ".m4v",
+    ".wmv",
+    ".flv",
+    ".mpeg",
+    ".mpg",
+    ".ogv",
+}
+
+CACHE_DIR = os.path.join(os.path.expanduser("~"), ".cache", "ags", "recent-files")
+
+
+@dataclass(frozen=True)
+class Section:
+    title: str
+    path: str
+
+
+def parse_sections(values: Iterable[str]) -> list[Section]:
+    sections: list[Section] = []
+    for value in values:
+        if ":" not in value:
+            raise ValueError(f"Invalid section format: {value}")
+        title, raw_path = value.split(":", 1)
+        path = os.path.expanduser(raw_path)
+        sections.append(Section(title=title, path=path))
+    return sections
+
+
+def detect_mime(path: str) -> str:
+    mime, _ = mimetypes.guess_type(path)
+    return mime or "application/octet-stream"
+
+
+def file_flags(path: str, mime: str) -> tuple[bool, bool]:
+    ext = os.path.splitext(path)[1].lower()
+    is_image = mime.startswith("image/") or ext in IMAGE_EXTS
+    is_video = mime.startswith("video/") or ext in VIDEO_EXTS
+    return is_image, is_video
+
+
+def preview_cache_path(path: str, mtime: float) -> str:
+    digest = hashlib.sha1(f"{path}:{mtime}".encode("utf-8")).hexdigest()
+    return os.path.join(CACHE_DIR, f"{digest}.jpg")
+
+
+def render_video_preview(path: str, preview_path: str) -> bool:
+    os.makedirs(CACHE_DIR, exist_ok=True)
+
+    if shutil.which("ffmpegthumbnailer"):
+        cmd = [
+            "ffmpegthumbnailer",
+            "-i",
+            path,
+            "-o",
+            preview_path,
+            "-s",
+            "256",
+            "-q",
+            "8",
+        ]
+    elif shutil.which("ffmpeg"):
+        cmd = [
+            "ffmpeg",
+            "-nostdin",
+            "-loglevel",
+            "error",
+            "-y",
+            "-ss",
+            "00:00:00.500",
+            "-i",
+            path,
+            "-frames:v",
+            "1",
+            "-q:v",
+            "4",
+            preview_path,
+        ]
+    else:
+        return False
+
+    try:
+        subprocess.run(cmd, check=True)
+    except (OSError, subprocess.CalledProcessError):
+        return False
+
+    return os.path.exists(preview_path)
+
+
+def video_preview_path(path: str, mtime: float) -> str | None:
+    preview_path = preview_cache_path(path, mtime)
+    if os.path.exists(preview_path):
+        return preview_path
+    if render_video_preview(path, preview_path):
+        return preview_path
+    return None
+
+
+def list_recent_files(path: str, limit: int) -> list[dict]:
+    if not os.path.isdir(path):
+        return []
+
+    entries = []
+    with os.scandir(path) as iterator:
+        for entry in iterator:
+            if not entry.is_file(follow_symlinks=False):
+                continue
+            try:
+                stat = entry.stat(follow_symlinks=False)
+            except OSError:
+                continue
+            entries.append((entry.path, entry.name, stat.st_mtime))
+
+    entries.sort(key=lambda item: item[2], reverse=True)
+    results = []
+    for path, name, mtime in entries[:limit]:
+        mime = detect_mime(path)
+        is_image, is_video = file_flags(path, mime)
+        preview_path = None
+        if is_video:
+            preview_path = video_preview_path(path, mtime)
+        results.append(
+            {
+                "path": path,
+                "name": name,
+                "mtime": mtime,
+                "mime": mime,
+                "is_image": is_image,
+                "is_video": is_video,
+                "preview_path": preview_path,
+            }
+        )
+    return results
+
+
+def cmd_list(args: argparse.Namespace) -> int:
+    sections = parse_sections(args.section)
+    payload = {
+        "sections": [
+            {
+                "title": section.title,
+                "path": section.path,
+                "files": list_recent_files(section.path, args.limit),
+            }
+            for section in sections
+        ]
+    }
+    print(json.dumps(payload, ensure_ascii=False))
+    return 0
+
+
+def cmd_copy_path(args: argparse.Namespace) -> int:
+    data = args.path.encode("utf-8")
+    subprocess.run(
+        ["wl-copy", "--type", "text/plain"],
+        input=data,
+        check=True,
+    )
+    return 0
+
+
+def cmd_copy_content(args: argparse.Namespace) -> int:
+    mime = detect_mime(args.path)
+    with open(args.path, "rb") as handle:
+        subprocess.run(
+            ["wl-copy", "--type", mime],
+            stdin=handle,
+            check=True,
+        )
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    list_parser = subparsers.add_parser("list", help="List recent files")
+    list_parser.add_argument(
+        "--limit",
+        type=int,
+        default=5,
+        help="Max files per section",
+    )
+    list_parser.add_argument(
+        "--section",
+        action="append",
+        required=True,
+        help="Section in the form 'Title:/path/to/dir'",
+    )
+    list_parser.set_defaults(func=cmd_list)
+
+    copy_path_parser = subparsers.add_parser("copy-path", help="Copy file path")
+    copy_path_parser.add_argument("path", help="File path to copy")
+    copy_path_parser.set_defaults(func=cmd_copy_path)
+
+    copy_content_parser = subparsers.add_parser(
+        "copy-content",
+        help="Copy file contents",
+    )
+    copy_content_parser.add_argument("path", help="File path to copy")
+    copy_content_parser.set_defaults(func=cmd_copy_content)
+
+    return parser
+
+
+def main() -> int:
+    parser = build_parser()
+    args = parser.parse_args()
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

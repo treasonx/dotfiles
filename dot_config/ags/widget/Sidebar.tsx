@@ -3,6 +3,7 @@ import app from "ags/gtk4/app"
 import Notifd from "gi://AstalNotifd"
 import { Box, Text, Button, NotificationList } from "marble/components"
 import { NotificationCard } from "./notifications/NotificationCard"
+import { RecentFilesTab } from "./RecentFilesTab"
 import { sidebarVisible, SIDEBAR_WIDTH_FRACTION, TABS, activeTab, switchTab } from "./sidebar-state"
 import { createBinding } from "gnim"
 
@@ -66,18 +67,7 @@ function NotificationHistory() {
 }
 
 function PlaceholderTab() {
-  return (
-    <Box
-      vertical
-      vexpand
-      valign="center"
-      halign="center"
-      visible={activeTab.as((t) => t === "placeholder")}
-    >
-      <Text size={1.2} opacity={0.3}>󰕰</Text>
-      <Text size={0.85} opacity={0.4}>Coming soon</Text>
-    </Box>
-  )
+  return <RecentFilesTab />
 }
 
 function TabButton({ tab }: { tab: (typeof TABS)[number] }) {
