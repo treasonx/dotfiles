@@ -18,7 +18,20 @@ export default function Popups(gdkmonitor: Gdk.Monitor) {
       gap={8}
       m={8}
       timeout={5000}
-      filter={() => sidebarVisible() === true}
+      filter={(notif) => {
+        // Skip popup when sidebar is open
+        if (sidebarVisible() === true) return true
+
+        // Skip popup when the notification's app is the focused window
+        const focused = Hyprland.get_default().get_focused_client()
+        if (focused) {
+          const cls = focused.get_class().toLowerCase()
+          const app = notif.appName.toLowerCase()
+          if (cls && app && (cls.includes(app) || app.includes(cls))) return true
+        }
+
+        return false
+      }}
     >
       {() => <NotificationCard popup />}
     </NotificationPopups>
