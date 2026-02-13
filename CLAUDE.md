@@ -129,6 +129,7 @@ Quick reference:
 - `ags inspect` — GTK Inspector for CSS debugging
 - `ags request <msg>` — Send command to running instance
 - `install_ags_deps.py --check` — Verify AGS v2 + Astal dependencies
+- AGS stderr logs: `~/.local/state/ags/ags.log` (truncated each restart via `start_ags.sh`)
 
 ## Common Tasks
 

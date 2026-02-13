@@ -197,6 +197,7 @@ bind = $mainMod ALT, V, exec, $scriptsDir/ClipManager.sh
 bind = $mainMod, E, exec, $UserScripts/QuickEdit.sh
 bind = $mainMod, W, exec, $UserScripts/WallpaperSelect.sh
 bind = $mainMod, B, exec, ags request sidebar
+bind = $mainMod, SLASH, exec, ags request perplexity
 bind = $mainMod, L, exec, hyprctl dispatch dpms off
 
 # Layout (dwindle/master)
@@ -308,6 +309,8 @@ layerrule = blur, overview
 layerrule = blur, vicinae
 layerrule = ignorealpha 0, vicinae
 layerrule = noanim, vicinae
+layerrule = blur, perplexity
+layerrule = ignorealpha 0, perplexity
 
 # Startup Applications
 exec-once = swww-daemon --format xrgb
@@ -316,7 +319,7 @@ exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESK
 exec-once = $scriptsDir/Polkit.sh
 # exec-once = waybar &  # Replaced by AGS marble bar
 exec-once = nm-applet --indicator &
-exec-once = ags run --gtk 4 &
+exec-once = start_ags.sh
 exec-once = wl-paste --type text --watch cliphist store
 exec-once = wl-paste --type image --watch cliphist store
 exec-once = hypridle &

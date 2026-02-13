@@ -20,7 +20,7 @@ export default function Popups(gdkmonitor: Gdk.Monitor) {
       timeout={5000}
       filter={() => sidebarVisible() === true}
     >
-      {() => <NotificationCard />}
+      {() => <NotificationCard popup />}
     </NotificationPopups>
   )
 

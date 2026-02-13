@@ -8,7 +8,7 @@ const [sidebarVisible, setSidebarVisible] = createState(false)
 
 export { sidebarVisible }
 
-export const SIDEBAR_WIDTH_FRACTION = 0.15
+export const SIDEBAR_WIDTH_FRACTION = 0.25
 
 // Tab definitions — add new tabs here
 export type TabId = "notifications" | "placeholder"

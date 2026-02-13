@@ -1,0 +1,179 @@
+#!/usr/bin/env python3
+"""Stream chat completions from the Perplexity API.
+
+Reads a JSON request from stdin, streams the response as newline-delimited
+JSON (NDJSON) to stdout. Designed to be spawned as a subprocess by AGS or
+any other shell that needs reliable SSE streaming without GJS Soup quirks.
+
+Input (single JSON line on stdin):
+    {"messages": [{"role": "user", "content": "hello"}], "model": "sonar"}
+
+Output (stdout NDJSON, one per line):
+    {"type": "token", "value": "some text"}
+    {"type": "citations", "citations": [...], "search_results": [...]}
+    {"type": "done"}
+    {"type": "error", "message": "description"}
+
+Environment:
+    PERPLEXITY_API_KEY  — required, bearer token for the API
+
+Usage:
+    echo '{"messages":[{"role":"user","content":"hi"}]}' | perplexity_chat.py
+"""
+
+import http.client
+import json
+import os
+import ssl
+import sys
+
+API_HOST = "api.perplexity.ai"
+API_PATH = "/chat/completions"
+DEFAULT_MODEL = "sonar"
+
+
+def emit(obj: dict) -> None:
+    """Write a JSON object to stdout and flush immediately."""
+    print(json.dumps(obj, ensure_ascii=False), flush=True)
+
+
+def error_exit(message: str) -> None:
+    """Emit an error event and exit non-zero."""
+    emit({"type": "error", "message": message})
+    sys.exit(1)
+
+
+def parse_sse_stream(response: http.client.HTTPResponse) -> None:
+    """Read SSE lines from an HTTP response, emitting NDJSON events."""
+    # Track whether we've emitted citations (Perplexity sends them in
+    # every chunk after the first, but we only need to emit once)
+    citations_emitted = False
+
+    while True:
+        raw = response.readline()
+        if not raw:
+            # End of stream without [DONE] — still signal completion
+            emit({"type": "done"})
+            return
+
+        line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
+
+        # Empty line = SSE event boundary
+        if not line:
+            continue
+
+        # SSE comment
+        if line.startswith(":"):
+            continue
+
+        # Data lines
+        if line.startswith("data: "):
+            data = line[6:]
+
+            if data == "[DONE]":
+                emit({"type": "done"})
+                return
+
+            try:
+                chunk = json.loads(data)
+            except json.JSONDecodeError:
+                continue
+
+            choice = (chunk.get("choices") or [{}])[0]
+
+            # Streamed content token
+            token = (choice.get("delta") or {}).get("content")
+            if token:
+                emit({"type": "token", "value": token})
+
+            # Citations — emit once (API repeats them in every chunk)
+            if "citations" in chunk and not citations_emitted:
+                citations_emitted = True
+                citations = chunk["citations"] or []
+                search_results = chunk.get("search_results") or []
+                emit({
+                    "type": "citations",
+                    "citations": citations,
+                    "search_results": [
+                        {
+                            "title": r.get("title", ""),
+                            "url": r.get("url", ""),
+                            "snippet": r.get("snippet", ""),
+                        }
+                        for r in search_results
+                    ],
+                })
+
+
+def main() -> None:
+    # Read API key from environment
+    api_key = os.environ.get("PERPLEXITY_API_KEY")
+    if not api_key:
+        error_exit("PERPLEXITY_API_KEY not set")
+
+    # Read a single JSON line from stdin (allows parent to write + newline
+    # without needing to close the pipe for EOF)
+    try:
+        line = sys.stdin.readline()
+        if not line:
+            error_exit("Empty stdin")
+        request = json.loads(line)
+    except (json.JSONDecodeError, ValueError) as e:
+        error_exit(f"Invalid JSON on stdin: {e}")
+
+    messages = request.get("messages")
+    if not messages:
+        error_exit("No 'messages' field in input")
+
+    model = request.get("model", DEFAULT_MODEL)
+
+    # Build the API request body
+    body = json.dumps({
+        "model": model,
+        "messages": messages,
+        "stream": True,
+    }).encode("utf-8")
+
+    # Open HTTPS connection and send request
+    # ssl.create_default_context() handles certificate verification
+    ctx = ssl.create_default_context()
+    conn = http.client.HTTPSConnection(API_HOST, context=ctx)
+
+    try:
+        conn.request(
+            "POST",
+            API_PATH,
+            body=body,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "Accept": "text/event-stream",
+            },
+        )
+
+        response = conn.getresponse()
+
+        if response.status == 401:
+            error_exit("Invalid API key")
+        elif response.status == 429:
+            error_exit("Rate limited — try again shortly")
+        elif response.status >= 400:
+            msg = response.read().decode("utf-8", errors="replace")[:200]
+            error_exit(f"API error (HTTP {response.status}): {msg}")
+
+        parse_sse_stream(response)
+
+    except KeyboardInterrupt:
+        # Parent killed us — exit quietly
+        pass
+    except BrokenPipeError:
+        # Parent closed stdin/stdout — exit quietly
+        pass
+    except Exception as e:
+        error_exit(f"Connection error: {e}")
+    finally:
+        conn.close()
+
+
+if __name__ == "__main__":
+    main()

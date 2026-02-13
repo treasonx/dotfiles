@@ -28,7 +28,7 @@ ags quit
 sleep 0.3
 
 # relaunch ags
-ags run --gtk 4 &
+"$HOME/.local/bin/start_ags.sh"
 
 # Relaunching rainbow borders if the script exists
 sleep 1

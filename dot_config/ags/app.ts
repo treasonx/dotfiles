@@ -6,6 +6,8 @@ import { BarOsd } from "./widget/BarOsd"
 import Sidebar from "./widget/Sidebar"
 import Popups from "./widget/notifications/NotificationPopups"
 import { toggleSidebar } from "./widget/sidebar-state"
+import PerplexityPanel from "./widget/perplexity/PerplexityPanel"
+import { togglePanel } from "./widget/perplexity/perplexity-state"
 
 app.start({
   main() {
@@ -46,12 +48,16 @@ app.start({
 
     Sidebar(app.get_monitors()[0])
     Popups(app.get_monitors()[0])
+    PerplexityPanel(app.get_monitors()[0])
     BarOsd()
   },
   requestHandler(argv: string[], respond: (response: string) => void) {
     const command = argv[0]
     if (command === "sidebar") {
       toggleSidebar()
+      respond("ok")
+    } else if (command === "perplexity") {
+      togglePanel()
       respond("ok")
     } else {
       respond(`unknown: ${command}`)
