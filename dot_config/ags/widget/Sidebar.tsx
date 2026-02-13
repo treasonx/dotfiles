@@ -4,6 +4,7 @@ import Notifd from "gi://AstalNotifd"
 import { Box, Text, Button, NotificationList } from "marble/components"
 import { NotificationCard } from "./notifications/NotificationCard"
 import { RecentFilesTab } from "./RecentFilesTab"
+import { ClipboardTab } from "./ClipboardTab"
 import { sidebarVisible, SIDEBAR_WIDTH_FRACTION, TABS, activeTab, switchTab } from "./sidebar-state"
 import { createBinding } from "gnim"
 
@@ -92,8 +93,9 @@ function TabBar() {
       gap={4}
       css="padding: 8px 0 0 0; border-top: 1px solid alpha(@view_fg_color, 0.1);"
     >
-      <TabButton tab={TABS[0]} />
-      <TabButton tab={TABS[1]} />
+      {TABS.map((tab) => (
+        <TabButton tab={tab} />
+      ))}
     </Box>
   )
 }
@@ -129,6 +131,7 @@ export default function Sidebar(gdkmonitor: Gdk.Monitor) {
           css={`min-width: ${width}px; max-width: ${width}px; padding: 12px; background: alpha(@view_bg_color, 0.85); border-radius: 12px 0 0 12px;`}
         >
           <NotificationHistory />
+          <ClipboardTab />
           <PlaceholderTab />
           <TabBar />
         </Box>

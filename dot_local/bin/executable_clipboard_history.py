@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+"""Clipboard history helper for AGS sidebar.
+
+Wraps cliphist to provide a JSON interface for the AGS clipboard tab.
+Decodes binary entries (images) to cache files for GTK Picture previews.
+
+Commands:
+    list [--limit 20]     List clipboard entries as JSON
+    copy <raw_line>       Re-copy an entry to the clipboard
+    delete <raw_line>     Delete an entry from cliphist
+"""
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+CACHE_DIR = Path.home() / ".cache" / "ags" / "cliphist-previews"
+IMAGE_FORMATS = {"png", "jpg", "jpeg", "webp", "gif", "bmp", "tiff"}
+MIME_MAP = {
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "webp": "image/webp",
+    "gif": "image/gif",
+    "bmp": "image/bmp",
+    "tiff": "image/tiff",
+}
+
+BINARY_RE = re.compile(
+    r"\[\[ binary data (\d+) KiB (\w+)(?: (\d+)x(\d+))? \]\]"
+)
+
+
+def decode_to_cache(entry_id: str, raw_line: str, fmt: str) -> str | None:
+    """Decode a binary cliphist entry to a cached file for preview."""
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_path = CACHE_DIR / f"{entry_id}.{fmt}"
+
+    if cache_path.exists():
+        return str(cache_path)
+
+    try:
+        result = subprocess.run(
+            ["cliphist", "decode"],
+            input=raw_line.encode("utf-8"),
+            capture_output=True,
+        )
+        if result.returncode == 0 and result.stdout:
+            cache_path.write_bytes(result.stdout)
+            return str(cache_path)
+    except (OSError, subprocess.CalledProcessError):
+        pass
+
+    return None
+
+
+def prune_cache(active_ids: set[str]):
+    """Remove cached previews for entries no longer in the list."""
+    if not CACHE_DIR.is_dir():
+        return
+    for f in CACHE_DIR.iterdir():
+        entry_id = f.stem
+        if entry_id not in active_ids:
+            f.unlink(missing_ok=True)
+
+
+def cmd_list(limit: int) -> int:
+    """List clipboard entries as JSON."""
+    result = subprocess.run(["cliphist", "list"], capture_output=True, text=False)
+    if result.returncode != 0:
+        print(json.dumps({"entries": []}))
+        return 0
+
+    # cliphist output may contain binary-unsafe bytes in text lines,
+    # but the list command only shows preview text, so decode as utf-8
+    # with replacement for safety.
+    stdout = result.stdout.decode("utf-8", errors="replace")
+    lines = [l for l in stdout.strip().split("\n") if l.strip()][:limit]
+
+    entries = []
+    active_ids: set[str] = set()
+
+    for line in lines:
+        tab_idx = line.find("\t")
+        if tab_idx == -1:
+            continue
+
+        entry_id = line[:tab_idx].strip()
+        content = line[tab_idx + 1:]
+        active_ids.add(entry_id)
+
+        binary_match = BINARY_RE.match(content)
+        if binary_match:
+            size_kib = int(binary_match.group(1))
+            fmt = binary_match.group(2).lower()
+            width = binary_match.group(3)
+            height = binary_match.group(4)
+
+            preview_path = None
+            if fmt in IMAGE_FORMATS:
+                # Decode needs the original bytes line, not the replaced one
+                preview_path = decode_to_cache(entry_id, line, fmt)
+
+            entries.append({
+                "id": entry_id,
+                "type": "image" if fmt in IMAGE_FORMATS else "binary",
+                "format": fmt,
+                "size_kib": size_kib,
+                "width": int(width) if width else None,
+                "height": int(height) if height else None,
+                "preview_path": preview_path,
+                "raw_line": line,
+            })
+        else:
+            entries.append({
+                "id": entry_id,
+                "type": "text",
+                "text": content,
+                "raw_line": line,
+            })
+
+    prune_cache(active_ids)
+    print(json.dumps({"entries": entries}, ensure_ascii=False))
+    return 0
+
+
+def cmd_copy(raw_line: str) -> int:
+    """Re-copy a cliphist entry to the clipboard."""
+    result = subprocess.run(
+        ["cliphist", "decode"],
+        input=raw_line.encode("utf-8"),
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        return 1
+
+    content = raw_line.split("\t", 1)[1] if "\t" in raw_line else ""
+    binary_match = BINARY_RE.match(content)
+
+    if binary_match:
+        fmt = binary_match.group(2).lower()
+        mime = MIME_MAP.get(fmt, f"image/{fmt}")
+        subprocess.run(["wl-copy", "--type", mime], input=result.stdout, check=True)
+    else:
+        subprocess.run(["wl-copy", "--type", "text/plain"], input=result.stdout, check=True)
+
+    return 0
+
+
+def cmd_delete(raw_line: str) -> int:
+    """Delete a cliphist entry."""
+    subprocess.run(
+        ["cliphist", "delete"],
+        input=raw_line.encode("utf-8"),
+        check=True,
+    )
+
+    # Remove cached preview if it exists
+    tab_idx = raw_line.find("\t")
+    if tab_idx != -1:
+        entry_id = raw_line[:tab_idx].strip()
+        for f in CACHE_DIR.iterdir() if CACHE_DIR.is_dir() else []:
+            if f.stem == entry_id:
+                f.unlink(missing_ok=True)
+
+    return 0
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    list_p = sub.add_parser("list", help="List clipboard entries as JSON")
+    list_p.add_argument("--limit", type=int, default=20)
+
+    copy_p = sub.add_parser("copy", help="Re-copy an entry to clipboard")
+    copy_p.add_argument("raw_line", help="Full cliphist list line")
+
+    delete_p = sub.add_parser("delete", help="Delete an entry")
+    delete_p.add_argument("raw_line", help="Full cliphist list line")
+
+    args = parser.parse_args()
+
+    if args.command == "list":
+        return cmd_list(args.limit)
+    elif args.command == "copy":
+        return cmd_copy(args.raw_line)
+    elif args.command == "delete":
+        return cmd_delete(args.raw_line)
+
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

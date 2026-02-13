@@ -1,7 +1,7 @@
-import Gio from "gi://Gio"
 import GLib from "gi://GLib"
 import { Gtk } from "ags/gtk4"
-import { Box, Text, Button, Icon, Picture } from "marble/components"
+import { Box, Text, Button } from "marble/components"
+import { SidebarItem } from "./SidebarItem"
 import { For, createState } from "gnim"
 import { execAsync } from "ags/process"
 import { monitorFile } from "ags/file"
@@ -41,8 +41,6 @@ const SECTIONS = [
 const [sections, setSections] = createState<RecentSection[]>([])
 
 let refreshTimer: { cancel: () => void } | null = null
-
-const PREVIEW_SIZE = 48
 
 async function refreshSections() {
   const args = ["list", "--limit", `${MAX_FILES}`]
@@ -99,77 +97,29 @@ function openFolder(path: string) {
   })
 }
 
-function previewIcon(file: RecentFile) {
+function filePreview(file: RecentFile): string | null {
+  if (file.is_image) return file.path
+  if (file.is_video && file.preview_path) return file.preview_path
+  return null
+}
+
+function fileIcon(file: RecentFile): string {
   if (file.is_video) return "video-x-generic-symbolic"
   return "text-x-generic-symbolic"
 }
 
-function PreviewCell({ file }: { file: RecentFile }) {
-  return (
-    <Box css="padding: 0;">
-      <Box
-        widthRequest={PREVIEW_SIZE}
-        heightRequest={PREVIEW_SIZE}
-        css="border-radius: 8px; background: alpha(@view_fg_color, 0.08);"
-      >
-        {file.is_image ? (
-          <Picture
-            file={Gio.File.new_for_path(file.path)}
-            maxWidth={PREVIEW_SIZE}
-            maxHeight={PREVIEW_SIZE}
-            r={8}
-            contain
-          />
-        ) : file.is_video && file.preview_path ? (
-          <Picture
-            file={Gio.File.new_for_path(file.preview_path)}
-            maxWidth={PREVIEW_SIZE}
-            maxHeight={PREVIEW_SIZE}
-            r={8}
-            contain
-          />
-        ) : (
-          <Box valign="center" halign="center" hexpand vexpand>
-            <Icon icon={previewIcon(file)} />
-          </Box>
-        )}
-      </Box>
-    </Box>
-  )
-}
-
 function FileRow({ file }: { file: RecentFile }) {
   return (
-    <Box
-      gap={8}
-      css="padding: 6px 8px; min-height: 56px; border-radius: 8px; background: alpha(@view_fg_color, 0.04);"
-    >
-      <PreviewCell file={file} />
-      <Box vertical hexpand>
-        <Text size={0.9}>{file.name}</Text>
-        <Text size={0.75} opacity={0.5}>{file.mime}</Text>
-      </Box>
-      <Box gap={4}>
-        <Button
-          flat
-          color="fg"
-          onPrimaryClick={() => copyPath(file.path)}
-          px={6}
-          py={2}
-        >
-          <Text size={0.8}>Path</Text>
-        </Button>
-        <Button
-          flat
-          color="fg"
-          onPrimaryClick={() => copyContent(file.path)}
-          px={6}
-          py={2}
-        >
-          <Text size={0.8}>Copy</Text>
-        </Button>
-      </Box>
-    </Box>
+    <SidebarItem
+      imagePath={filePreview(file)}
+      icon={fileIcon(file)}
+      title={file.name}
+      subtitle={file.mime}
+      actions={[
+        { label: "Path", onClick: () => copyPath(file.path) },
+        { label: "Copy", onClick: () => copyContent(file.path) },
+      ]}
+    />
   )
 }
 
@@ -209,7 +159,7 @@ void refreshSections()
 
 export function RecentFilesTab() {
   return (
-    <Box vertical vexpand visible={activeTab.as((t) => t === "placeholder")}>
+    <Box vertical vexpand visible={activeTab.as((t) => t === "files")}>
       <Box css="padding: 0 0 8px 0;">
         <Text size={1.1} bold>Recent Files</Text>
       </Box>
