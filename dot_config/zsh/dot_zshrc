@@ -87,7 +87,7 @@ autoload -Uz compinit && compinit
 
 # Tool-specific completions
 [[ -s "$HOME/.bun/_bun" ]] && source "$HOME/.bun/_bun"
-source <(jj util completion zsh)
+command -v jj &>/dev/null && source <(jj util completion zsh)
 
 # =============================================================================
 # SHELL FUNCTIONS
@@ -163,4 +163,4 @@ alias wezconnect="wezterm start --new-tab --attach --domain unit"
 auto_activate_venv
 
 # ShiftUp scratch org auto-switch
-source "/home/james/projects/shiftupai/guided-selling/scripts/shell/org-auto-switch.zsh"
+[[ -f "/home/james/projects/shiftupai/guided-selling/scripts/shell/org-auto-switch.zsh" ]] && source "/home/james/projects/shiftupai/guided-selling/scripts/shell/org-auto-switch.zsh"
