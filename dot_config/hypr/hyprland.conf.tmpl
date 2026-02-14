@@ -2,6 +2,7 @@
 # =====================
 
 # Environment Variables
+env = PATH,$HOME/.local/bin:/usr/local/bin:/usr/bin
 env = XCURSOR_THEME,Adwaita
 env = XCURSOR_SIZE,24
 env = HYPRCURSOR_THEME,Adwaita
@@ -32,7 +33,7 @@ plugin = $HOME/.local/share/hyprload/plugins/libhy3.so
 $scriptsDir = $HOME/.config/hypr/scripts
 $UserScripts = $HOME/.config/hypr/UserScripts
 $files = thunar
-$term = $HOME/.local/bin/ghostty
+$term = ghostty
 $wallDIR = $HOME/Pictures/wallpapers
 
 # Monitor Configuration
@@ -186,7 +187,7 @@ bind = $mainMod, F, exec, $scriptsDir/float_center.py
 # Applications
 bind = $mainMod, Return, exec, $term
 bind = $mainMod, T, exec, $files
-bind = $mainMod, SPACE, exec, vicinae
+bind = $mainMod, SPACE, exec, vicinae toggle
 bind = $mainMod ALT, C, exec, $UserScripts/RofiCalc.sh
 
 # Features
