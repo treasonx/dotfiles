@@ -1,6 +1,7 @@
 import GLib from "gi://GLib"
 import { Gtk } from "ags/gtk4"
-import { Box, Text, Button } from "marble/components"
+import { Box, Text } from "marble/components"
+import { ActionButton } from "../lib/ActionButton"
 import { SidebarItem } from "./SidebarItem"
 import { For, createState } from "gnim"
 import { execAsync } from "ags/process"
@@ -119,17 +120,15 @@ export function ClipboardTab() {
       <Box css="padding: 0 0 8px 0;">
         <Text size={1.1} bold>Clipboard</Text>
         <Box hexpand />
-        <Button
+        <ActionButton
+          label="Refresh"
+          size="small"
+          color="fg"
           flat
           borderless
-          color="fg"
           onPrimaryClick={() => scheduleRefresh()}
-          px={6}
-          py={2}
           css="border-radius: 999px;"
-        >
-          <Text size={0.8}>Refresh</Text>
-        </Button>
+        />
       </Box>
 
       <Gtk.ScrolledWindow

@@ -3,6 +3,7 @@ import Gio from "gi://Gio"
 import app from "ags/gtk4/app"
 import { For } from "gnim"
 import { Box, Text, Button } from "marble/components"
+import { ActionButton } from "../../lib/ActionButton"
 import {
   pickerVisible,
   selectedItem,
@@ -196,18 +197,17 @@ function RegionContent() {
             r ? `${r.output} — ${r.w}×${r.h} at (${r.x}, ${r.y})` : "",
           )}
         </Text>
-        <Button
+        <ActionButton
+          label="Reselect Region"
+          icon="󰆞"
+          size="medium"
+          color="fg"
           flat
           borderless
           onPrimaryClick={() => reselectRegion()}
-          css="padding: 8px 20px; border-radius: 8px; background: alpha(@view_fg_color, 0.08);"
+          css="background: alpha(@view_fg_color, 0.08);"
           halign="center"
-        >
-          <Box gap={6}>
-            <Text size={0.95}>󰆞</Text>
-            <Text size={0.9} bold>Reselect Region</Text>
-          </Box>
-        </Button>
+        />
       </Box>
 
       {/* Empty state — no region captured yet */}
@@ -220,17 +220,16 @@ function RegionContent() {
         vexpand
       >
         <Text size={0.9} opacity={0.4}>No region selected</Text>
-        <Button
+        <ActionButton
+          label="Select Region"
+          icon="󰆞"
+          size="medium"
+          color="fg"
           flat
           borderless
           onPrimaryClick={() => pickRegion()}
-          css="padding: 10px 24px; border-radius: 8px; background: alpha(@accent_bg_color, 0.2); border: 1px solid alpha(@accent_bg_color, 0.3);"
-        >
-          <Box gap={6}>
-            <Text size={0.95}>󰆞</Text>
-            <Text size={0.9} bold>Select Region</Text>
-          </Box>
-        </Button>
+          css="background: alpha(@accent_bg_color, 0.2); border: 1px solid alpha(@accent_bg_color, 0.3);"
+        />
       </Box>
     </Box>
   )
@@ -316,11 +315,10 @@ export default function ScreenSharePicker(gdkmonitor: Gdk.Monitor) {
           </Gtk.ScrolledWindow>
 
           {/* Footer: full-width Share button */}
-          <Button
-            color="primary"
-            r={10}
-            py={6}
-            px={10}
+          <ActionButton
+            label="Share"
+            icon="󰒗"
+            size="large"
             onPrimaryClick={() => {
               if (selectedItem() !== null) finishPick()
             }}
@@ -329,12 +327,7 @@ export default function ScreenSharePicker(gdkmonitor: Gdk.Monitor) {
                 ? "margin: 8px 12px 4px 12px;"
                 : "margin: 8px 12px 4px 12px; opacity: 0.35;",
             )}
-          >
-            <Box gap={8} halign="center">
-              <Text size={1.3}>󰒗</Text>
-              <Text size={1.2} weight="bold">Share</Text>
-            </Box>
-          </Button>
+          />
         </Box>
       </Gtk.Revealer>
     </window>

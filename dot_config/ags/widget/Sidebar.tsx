@@ -1,12 +1,14 @@
 import { Astal, Gtk, Gdk } from "ags/gtk4"
 import app from "ags/gtk4/app"
+import GLib from "gi://GLib"
 import Notifd from "gi://AstalNotifd"
-import { Box, Text, Button, NotificationList } from "marble/components"
-import { NotificationCard } from "./notifications/NotificationCard"
+import { For, createBinding } from "gnim"
+import { Box, Text, Button } from "marble/components"
+import { ActionButton } from "../lib/ActionButton"
+import { SidebarItem } from "./SidebarItem"
 import { RecentFilesTab } from "./RecentFilesTab"
 import { ClipboardTab } from "./ClipboardTab"
 import { sidebarVisible, SIDEBAR_WIDTH_FRACTION, TABS, activeTab, switchTab } from "./sidebar-state"
-import { createBinding } from "gnim"
 
 function NotificationHistory() {
   const notifd = Notifd.get_default()
@@ -37,11 +39,24 @@ function NotificationHistory() {
         vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
         onRealize={(self: Gtk.ScrolledWindow) => scrollToBottom(self)}
       >
-        <Box vertical gap={8} vexpand>
+        <Box vertical gap={6} vexpand>
           <Box vexpand />
-          <NotificationList reversed>
-            {() => <NotificationCard />}
-          </NotificationList>
+          <For each={notifications}>
+            {(n: Notifd.Notification) => {
+              const imagePath = n.image && GLib.file_test(n.image, GLib.FileTest.EXISTS)
+                ? n.image
+                : null
+              return (
+                <SidebarItem
+                  imagePath={imagePath}
+                  icon={n.desktopEntry || "dialog-information-symbolic"}
+                  title={n.summary || n.appName || "Notification"}
+                  subtitle={n.body || n.appName || ""}
+                  actions={[{ label: "Dismiss", onClick: () => n.dismiss() }]}
+                />
+              )
+            }}
+          </For>
         </Box>
       </Gtk.ScrolledWindow>
 
@@ -56,12 +71,11 @@ function NotificationHistory() {
 
       <Box css="padding: 8px 0 0 0;" visible={hasNotifications}>
         <Box hexpand />
-        <Button
+        <ActionButton
+          label="Clear All"
+          size="small"
           onPrimaryClick={clearAll}
-          css="padding: 4px 8px;"
-        >
-          <Text size={0.8}>Clear All</Text>
-        </Button>
+        />
       </Box>
     </Box>
   )

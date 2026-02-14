@@ -1,6 +1,7 @@
 import GLib from "gi://GLib"
 import { Gtk } from "ags/gtk4"
-import { Box, Text, Button } from "marble/components"
+import { Box, Text } from "marble/components"
+import { ActionButton } from "../lib/ActionButton"
 import { SidebarItem } from "./SidebarItem"
 import { For, createState } from "gnim"
 import { execAsync } from "ags/process"
@@ -126,20 +127,18 @@ function FileRow({ file }: { file: RecentFile }) {
 function Section({ section }: { section: RecentSection }) {
   return (
     <Box vertical gap={6} css="padding: 4px 0 8px 0;">
-      <Box gap={8} valign="center">
+      <Box gap={8} valign="center" css="padding: 0 8px;">
         <Text size={0.95} bold>{section.title}</Text>
         <Box hexpand />
-        <Button
+        <ActionButton
+          label="Open"
+          size="small"
+          color="fg"
           flat
           borderless
-          color="fg"
           onPrimaryClick={() => openFolder(section.path)}
-          px={6}
-          py={2}
           css="border-radius: 999px;"
-        >
-          <Text size={0.8}>Open</Text>
-        </Button>
+        />
       </Box>
       {section.files.length === 0 ? (
         <Text size={0.8} opacity={0.4}>No recent files</Text>
