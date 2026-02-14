@@ -1,0 +1,183 @@
+#!/usr/bin/env python3
+"""Download music from TIDAL using tidal-dl-ng (CLI only, no GUI).
+
+Wrapper around tidal-dl-ng that sets sensible defaults:
+  - Downloads to ~/Music/tidal_download
+  - LOSSLESS quality by default
+  - All tidal-dl-ng terminal output (progress bars, colors) passes through
+
+Usage:
+  download_tidal.py setup                  # One-time: set download path & quality
+  download_tidal.py login                  # Authenticate with TIDAL (OAuth)
+  download_tidal.py dl <url> [url...]      # Download by URL (track/album/playlist)
+  download_tidal.py dl --list urls.txt     # Download URLs from a file
+  download_tidal.py fav tracks             # Download all favorite tracks
+  download_tidal.py fav albums --since 2024-01-01
+  download_tidal.py config                 # Show current tidal-dl-ng config
+  download_tidal.py logout                 # End session
+"""
+
+import argparse
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+DOWNLOAD_DIR = Path.home() / "Music" / "tidal_download"
+TDN = "tidal-dl-ng"
+
+
+def find_tdn() -> str | None:
+    """Locate the tidal-dl-ng binary on PATH."""
+    return shutil.which(TDN)
+
+
+def run_tdn(args: list[str]) -> int:
+    """Run tidal-dl-ng with the given arguments, inheriting stdio for rich output."""
+    # No capture_output — tidal-dl-ng's progress bars and colors pass through directly.
+    result = subprocess.run([TDN, *args])
+    return result.returncode
+
+
+def get_config_value(key: str) -> str | None:
+    """Read a single tidal-dl-ng config value (captured, not displayed)."""
+    result = subprocess.run(
+        [TDN, "cfg", key], capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        return None
+    # tidal-dl-ng cfg <key> prints the value to stdout
+    return result.stdout.strip()
+
+
+def cmd_setup(_args: argparse.Namespace) -> int:
+    """Configure tidal-dl-ng for first use: download path and quality."""
+    DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    print(f"Setting download path to: {DOWNLOAD_DIR}")
+    rc = run_tdn(["cfg", "download_base_path", str(DOWNLOAD_DIR)])
+    if rc != 0:
+        return rc
+
+    print("Setting audio quality to LOSSLESS (FLAC 16-bit)")
+    rc = run_tdn(["cfg", "quality_audio", "LOSSLESS"])
+    if rc != 0:
+        return rc
+
+    # tidal-dl-ng needs the ffmpeg path to extract FLAC from MP4 containers
+    ffmpeg_path = shutil.which("ffmpeg")
+    if ffmpeg_path:
+        print(f"Setting ffmpeg path to: {ffmpeg_path}")
+        rc = run_tdn(["cfg", "path_binary_ffmpeg", ffmpeg_path])
+        if rc != 0:
+            return rc
+    else:
+        print("Warning: ffmpeg not found. Install it for FLAC extraction.")
+
+    print("Setup complete. Run 'download_tidal.py login' to authenticate.")
+    return 0
+
+
+def cmd_login(_args: argparse.Namespace) -> int:
+    """Authenticate with TIDAL via OAuth — opens a browser URL to confirm."""
+    return run_tdn(["login"])
+
+
+def cmd_logout(_args: argparse.Namespace) -> int:
+    """End the current TIDAL session."""
+    return run_tdn(["logout"])
+
+
+def cmd_config(_args: argparse.Namespace) -> int:
+    """Display current tidal-dl-ng configuration."""
+    return run_tdn(["cfg"])
+
+
+def check_download_path() -> bool:
+    """Warn if the download path hasn't been configured yet."""
+    current = get_config_value("download_base_path")
+    if current and str(DOWNLOAD_DIR) in current:
+        return True
+    print(f"Warning: download path is '{current}', not '{DOWNLOAD_DIR}'.")
+    print("Run 'download_tidal.py setup' first to configure it.\n")
+    return False
+
+
+def clean_tidal_url(url: str) -> str:
+    """Strip trailing share suffixes (e.g. /u) from TIDAL URLs.
+
+    Share links from the TIDAL app often append a short tracking suffix
+    like /u to the URL, which tidal-dl-ng doesn't recognize.
+    """
+    import re
+
+    # Match tidal.com URLs and keep only up to the numeric ID
+    return re.sub(r"(tidal\.com/.+/\d+)/\w+$", r"\1", url)
+
+
+def cmd_dl(args: argparse.Namespace) -> int:
+    """Download tracks, albums, or playlists by TIDAL URL."""
+    check_download_path()
+    cmd: list[str] = ["dl"]
+    if args.list:
+        cmd.extend(["--list", args.list])
+    else:
+        cmd.extend(clean_tidal_url(u) for u in args.urls)
+    return run_tdn(cmd)
+
+
+def cmd_fav(args: argparse.Namespace) -> int:
+    """Download from TIDAL favorites (tracks, albums, artists, videos)."""
+    check_download_path()
+    cmd: list[str] = ["dl_fav", args.type]
+    if args.since:
+        cmd.extend(["--since", args.since])
+    return run_tdn(cmd)
+
+
+def main() -> int:
+    if not find_tdn():
+        print(f"Error: '{TDN}' not found on PATH.")
+        print("Install it with: pipx install --python python3.12 git+https://github.com/r3ferrei/tidal-dl-ng-1.git")
+        return 1
+
+    parser = argparse.ArgumentParser(
+        description="Download music from TIDAL (CLI wrapper for tidal-dl-ng).",
+        epilog="Run 'setup' once, then 'login', then start downloading.",
+    )
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    sub.add_parser("setup", help="One-time setup: set download path and quality")
+    sub.add_parser("login", help="Authenticate with TIDAL (OAuth)")
+    sub.add_parser("logout", help="End TIDAL session")
+    sub.add_parser("config", help="Show tidal-dl-ng configuration")
+
+    dl_parser = sub.add_parser("dl", help="Download by TIDAL URL")
+    dl_parser.add_argument("urls", nargs="*", help="TIDAL URLs to download")
+    dl_parser.add_argument(
+        "-l", "--list", metavar="FILE", help="File containing URLs (one per line)"
+    )
+
+    fav_parser = sub.add_parser("fav", help="Download from favorites")
+    fav_parser.add_argument(
+        "type", choices=["tracks", "albums", "artists", "videos"],
+        help="Type of favorites to download",
+    )
+    fav_parser.add_argument(
+        "-s", "--since", metavar="DATE",
+        help="Only download items added after this date (YYYY-MM-DD)",
+    )
+
+    args = parser.parse_args()
+    handlers = {
+        "setup": cmd_setup,
+        "login": cmd_login,
+        "logout": cmd_logout,
+        "config": cmd_config,
+        "dl": cmd_dl,
+        "fav": cmd_fav,
+    }
+    return handlers[args.command](args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -47,6 +47,7 @@ import { SystemMetrics } from "./SystemMetrics"
 import { AudioPopover } from "./AudioPopover"
 import { CavaVisualizer } from "./CavaVisualizer"
 import { NetworkPopover } from "./NetworkPopover"
+import { LayoutButtons } from "./LayoutButtons"
 
 // Groups the cava visualizer + media player title/popover into one unit
 // that shows/hides together based on whether any player is active.
@@ -246,6 +247,7 @@ export default function StatusBar(gdkmonitor: Gdk.Monitor) {
       }
       end={
         <Box gap={4} css="padding: 6px 12px;">
+          <LayoutButtons />
           <Box gap={4} css="background: alpha(currentColor, 0.1); border-radius: 8px; padding: 2px 6px;">
             <TrayItems gap={4} filter={(item) => item.gicon !== null}>
               {(item) => (

@@ -64,6 +64,8 @@ chezmoi add ~/.config/something/config.toml
 ### Adding a new script
 Create the script in `dot_local/bin/`, make it executable, then `chezmoi apply`.
 
+**Important:** After creating a new script, also add an entry to the `SCRIPTS` array in `dot_local/bin/executable_j` (the `j` launcher). Format: `"script_name:Short description"`. This keeps the quick-launcher menu up to date.
+
 ### Machine-specific templates
 Files ending in `.tmpl` are Go templates. Use `{{ .machine }}` (values: `desktop` or `laptop`):
 ```

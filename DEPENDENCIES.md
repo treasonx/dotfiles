@@ -300,6 +300,21 @@ Pyprland (Hyprland plugin manager) is also installed via pip:
 pip install --user pyprland
 ```
 
+## Pipx Packages
+
+Isolated CLI tools that need a specific Python version:
+
+```bash
+sudo dnf install python3.12 pipx
+pipx install --python python3.12 "git+https://github.com/r3ferrei/tidal-dl-ng-1.git"
+
+# Fix broken import in the fork (uses bare `from config` instead of package-relative)
+sed -i 's/^from config import HandlingApp/from tidal_dl_ng.config import HandlingApp/' \
+  ~/.local/share/pipx/venvs/tidal-dl-ng/lib/python3.12/site-packages/tidal_dl_ng/cli.py
+```
+
+- `tidal-dl-ng` — TIDAL music downloader CLI (used by `download_tidal.py`). Original PyPI package was removed; installed from fork. Requires Python 3.12 and a post-install import fix.
+
 ## Cargo Packages
 
 ```bash
