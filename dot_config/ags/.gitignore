@@ -1,0 +1,3 @@
+# Override global gitignore which ignores lib/ (Python packaging pattern)
+# Our lib/ contains shared AGS/TypeScript utilities
+!lib/
