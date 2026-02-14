@@ -1,0 +1,294 @@
+#!/usr/bin/env python3
+"""Save current Hyprland window layout to JSON.
+
+Captures tiled window positions via hyprctl, infers the hy3 split tree
+from coordinate clustering, detects launch commands from /proc and
+.desktop files, then saves the layout state for use by fix_layout.py
+and startup_layout.py.
+
+Usage:
+    save_layout.py              # Save layout JSON
+    save_layout.py --json-only  # Same (kept for backwards compat)
+
+Files written:
+    ~/.config/hypr/saved_layout.json    — state snapshot
+    ~/.config/hypr/layout_commands.json — command mappings
+"""
+
+import argparse
+import json
+import re
+from datetime import date
+from pathlib import Path
+
+from hypr_layout import (
+    CONFIG_DIR,
+    SAVED_LAYOUT,
+    detect_tab_groups,
+    get_monitor_map,
+    hyprctl_json,
+    notify,
+)
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+MAPPINGS_FILE = CONFIG_DIR / "layout_commands.json"
+
+# Well-known window classes → launch commands.  These are apps whose
+# /proc cmdline is unreliable (browsers bundle flags, Electron apps
+# use wrapper scripts, etc.).
+KNOWN_APPS: dict[str, str] = {
+    "chromium-browser": "chromium-browser",
+    "com.mitchellh.ghostty": "ghostty",
+    "com.slack.Slack": "slack",
+    "1password": "1password",
+    "telegram-desktop": "telegram-desktop",
+    "vivaldi-stable": "vivaldi",
+    "org.gnome.Nautilus": "nautilus",
+    "discord": "discord",
+    "spotify": "spotify",
+    "code": "code",
+    "obsidian": "obsidian",
+}
+
+
+# ---------------------------------------------------------------------------
+# Command detection
+# ---------------------------------------------------------------------------
+def read_cmdline(pid: int) -> list[str] | None:
+    """Read /proc/<pid>/cmdline, returning the argv list or None."""
+    try:
+        raw = Path(f"/proc/{pid}/cmdline").read_bytes()
+        if not raw:
+            return None
+        parts = raw.rstrip(b"\x00").split(b"\x00")
+        return [p.decode(errors="replace") for p in parts]
+    except (FileNotFoundError, PermissionError):
+        return None
+
+
+def detect_pwa_command(window_class: str) -> str | None:
+    """If *window_class* matches a Vivaldi PWA, return its launch command.
+
+    Vivaldi PWAs have class ``vivaldi-<appid>-Default``.  The corresponding
+    ``.desktop`` file contains the ``--app-id`` flag we need.
+    """
+    m = re.match(r"^vivaldi-([a-z]+)-Default$", window_class)
+    if not m:
+        return None
+    app_id = m.group(1)
+    desktop = (
+        Path.home()
+        / ".local/share/applications"
+        / f"vivaldi-{app_id}-Default.desktop"
+    )
+    if not desktop.exists():
+        return None
+    for line in desktop.read_text().splitlines():
+        if line.startswith("Exec="):
+            # Exec=/opt/vivaldi/vivaldi --profile-directory=Default --app-id=<id>
+            # Normalise to just ``vivaldi --app-id=<id>``
+            cmd = line.removeprefix("Exec=").strip()
+            cmd = re.sub(r"^/opt/vivaldi/vivaldi\b", "vivaldi", cmd)
+            # Drop %U / %F tokens
+            cmd = re.sub(r"\s+%[UFuf]", "", cmd)
+            return cmd
+    return None
+
+
+def detect_command(client: dict, mappings: dict) -> str:
+    """Determine the shell command needed to launch *client*.
+
+    Checks (in order):
+    1. Manual overrides from layout_commands.json
+    2. Vivaldi PWA desktop files (class = vivaldi-<appid>-Default)
+    3. Well-known app table (KNOWN_APPS)
+    4. /proc/<pid>/cmdline for terminals with sub-commands
+    5. Fallback to the window class name
+    """
+    cls = client["class"]
+    title = client.get("title", "")
+
+    # 1. Manual overrides keyed by class (optionally scoped by title regex)
+    overrides = mappings.get("overrides", {})
+    if cls in overrides:
+        entry = overrides[cls]
+        if isinstance(entry, str):
+            return entry
+        if isinstance(entry, dict):
+            pat = entry.get("title_pattern")
+            if pat is None or re.search(pat, title):
+                return entry["command"]
+
+    # 2. PWA detection from .desktop files
+    pwa_cmd = detect_pwa_command(cls)
+    if pwa_cmd:
+        return pwa_cmd
+
+    # 3. Well-known apps (bypasses unreliable /proc cmdline for browsers etc.)
+    if cls in KNOWN_APPS:
+        # Check if it's a terminal running a sub-command (e.g. ghostty -e btop)
+        argv = read_cmdline(client["pid"])
+        if argv:
+            binary = Path(argv[0]).name
+            if binary in ("ghostty", "alacritty", "kitty", "foot"):
+                # Preserve the -e / --command flag and its argument
+                cleaned = " ".join(argv).replace(argv[0], binary)
+                if cleaned != binary:
+                    return cleaned
+        return KNOWN_APPS[cls]
+
+    # 4. /proc cmdline for unknown apps — just use the binary name
+    argv = read_cmdline(client["pid"])
+    if argv:
+        return Path(argv[0]).name
+
+    # 5. Fallback
+    return mappings.get("class_to_binary", {}).get(cls, cls)
+
+
+def short_label(cmd: str, title: str = "") -> str:
+    """Extract a short human label from a launch command or window title."""
+    # PWA: try to read the Name from the .desktop file
+    if "--app-id=" in cmd:
+        app_id = cmd.split("--app-id=")[-1].strip()
+        desktop = (
+            Path.home()
+            / ".local/share/applications"
+            / f"vivaldi-{app_id}-Default.desktop"
+        )
+        if desktop.exists():
+            for line in desktop.read_text().splitlines():
+                if line.startswith("Name="):
+                    return line.removeprefix("Name=").strip()
+        # Fallback to first word of title
+        if title:
+            return title.split(" - ")[0].split("|")[0].strip()[:15]
+    binary = Path(cmd.split()[0]).name
+    # Terminal with sub-command: use the sub-command name
+    if " -e " in cmd:
+        return cmd.split(" -e ")[-1].split()[0]
+    return binary
+
+
+# ---------------------------------------------------------------------------
+# State save / load
+# ---------------------------------------------------------------------------
+def load_mappings() -> dict:
+    """Load command mappings from JSON, creating a skeleton if missing."""
+    if MAPPINGS_FILE.exists():
+        return json.loads(MAPPINGS_FILE.read_text())
+    return {"overrides": {}, "class_to_binary": {}}
+
+
+def save_mappings(mappings: dict) -> None:
+    MAPPINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    MAPPINGS_FILE.write_text(json.dumps(mappings, indent=2) + "\n")
+
+
+def collect_layout() -> dict:
+    """Snapshot the current tiled layout from Hyprland."""
+    clients = hyprctl_json("clients")
+    monitor_map = get_monitor_map()
+    mappings = load_mappings()
+
+    # Filter to tiled windows on regular workspaces
+    tiled = [
+        c
+        for c in clients
+        if not c["floating"] and c["workspace"]["id"] > 0
+    ]
+
+    # Group by workspace
+    ws_windows: dict[int, list[dict]] = {}
+    for c in tiled:
+        ws_id = c["workspace"]["id"]
+        ws_windows.setdefault(ws_id, []).append(c)
+
+    workspaces: dict[str, dict] = {}
+    detected: dict[str, str] = {}
+
+    for ws_id, wins in ws_windows.items():
+        mon_id = wins[0]["monitor"]
+        mon_name = monitor_map.get(mon_id, f"monitor-{mon_id}")
+
+        # Detect tab groups before enriching
+        detect_tab_groups(wins)
+
+        enriched = []
+        for w in wins:
+            cmd = detect_command(w, mappings)
+            detected[w["class"]] = cmd
+            entry = {
+                "class": w["class"],
+                "title": w.get("title", ""),
+                "at": w["at"],
+                "size": w["size"],
+                "pid": w["pid"],
+                "_cmd": cmd,
+                "_label": short_label(cmd, w.get("title", "")),
+            }
+            if "_tab_group" in w:
+                entry["_tab_group"] = w["_tab_group"]
+            enriched.append(entry)
+
+        workspaces[str(ws_id)] = {
+            "monitor": mon_name,
+            "windows": enriched,
+        }
+
+    # Persist any newly detected class→binary mappings
+    c2b = mappings.setdefault("class_to_binary", {})
+    c2b.update(detected)
+    save_mappings(mappings)
+
+    # Save which workspace is active on each monitor
+    monitors = hyprctl_json("monitors")
+    active_workspaces = {
+        m["name"]: m["activeWorkspace"]["id"] for m in monitors
+    }
+
+    return {
+        "date": date.today().isoformat(),
+        "workspaces": workspaces,
+        "active_workspaces": active_workspaces,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Save Hyprland window layout to JSON."
+    )
+    parser.add_argument(
+        "--json-only",
+        action="store_true",
+        help="(No-op, kept for backwards compatibility.)",
+    )
+    parser.parse_args()
+
+    # Collect current state
+    layout = collect_layout()
+
+    # Save JSON state
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    SAVED_LAYOUT.write_text(json.dumps(layout, indent=2) + "\n")
+    print(f"State saved → {SAVED_LAYOUT}")
+
+    # Send desktop notification with a summary
+    ws_data = layout["workspaces"]
+    total_wins = sum(len(ws["windows"]) for ws in ws_data.values())
+    ws_lines = []
+    for ws_id in sorted(ws_data, key=int):
+        ws = ws_data[ws_id]
+        labels = [w["_label"] for w in ws["windows"]]
+        ws_lines.append(f"  WS {ws_id}: {', '.join(labels)}")
+    body = f"{total_wins} windows across {len(ws_data)} workspaces\n" + "\n".join(ws_lines)
+    notify("Layout saved", body, icon="document-save", app="save_layout")
+
+
+if __name__ == "__main__":
+    main()

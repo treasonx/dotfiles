@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Quick launcher for custom scripts in ~/.local/bin/
+# Uses fzf to fuzzy-find from a curated list with descriptions.
+
+SCRIPTS=(
+  "camera_toggle.py:Camera viewer — show/toggle eufy camera streams"
+  "clipboard_history.py:Clipboard history helper for AGS sidebar"
+  "copy_album.py:Copy audio files by album using metadata tags"
+  "convert_webp:Convert WebP images to other formats"
+  "dmps:Monitor power control via DDC/CI"
+  "doorbell_popup.py:Doorbell video popup when eufy doorbell rings"
+  "download_tidal.py:Download music from TIDAL (CLI wrapper)"
+  "eufy_2fa.py:Enter Eufy 2FA verification code"
+  "fix_layout.py:Rearrange tiled windows into grid layout"
+  "fuzzy_helpers.sh:Fuzzy file helper functions (source library)"
+  "git-wt:Create git worktree with slug name"
+  "git-wtr:Remove git worktree via fzf picker"
+  "install_ags_deps.py:Install AGS v2 and Astal dependencies"
+  "list_recent_files.py:List recent files (JSON for AGS widgets)"
+  "perplexity_chat.py:Stream Perplexity API chat completions"
+  "playlist:Create M3U playlists using beets"
+  "rsync_upload.py:Upload files via rsync with bandwidth control"
+  "save_layout.py:Save window layout to JSON for startup restore"
+  "startup_layout.py:Launch saved apps and restore window layout"
+  "screenshare_picker.py:Screen share picker for Hyprland portal"
+  "start_ags.sh:Start AGS shell with logging"
+  "weather:Display weather via rustormy"
+)
+
+selected=$(printf '%s\n' "${SCRIPTS[@]}" | \
+  column -t -s ':' | \
+  fzf --prompt="script> " --height=~50% --reverse | \
+  awk '{print $1}')
+
+[[ -z "$selected" ]] && exit 0
+
+exec "$selected" "$@"
