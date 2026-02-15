@@ -7,6 +7,7 @@ SCRIPTS=(
   "clipboard_history.py:Clipboard history helper for AGS sidebar"
   "copy_album.py:Copy audio files by album using metadata tags"
   "convert_webp:Convert WebP images to other formats"
+  "cycle_windows.py:Cycle through all windows across workspaces"
   "dmps:Monitor power control via DDC/CI"
   "doorbell_popup.py:Doorbell video popup when eufy doorbell rings"
   "download_tidal.py:Download music from TIDAL (CLI wrapper)"

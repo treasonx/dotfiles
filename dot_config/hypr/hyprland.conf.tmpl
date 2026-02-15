@@ -213,9 +213,9 @@ bind = $mainMod SHIFT, T, hy3:makegroup, tab
 bind = $mainMod SHIFT, A, hy3:changegroup, untab
 bind = $mainMod, O, hy3:changegroup, opposite
 
-# hy3: Tab Navigation
-bind = $mainMod, Tab, hy3:focustab, r, wrap
-bind = $mainMod SHIFT, Tab, hy3:focustab, l, wrap
+# Window Cycling (across all workspaces)
+bind = $mainMod, Tab, exec, cycle_windows.py
+bind = $mainMod SHIFT, Tab, exec, cycle_windows.py --reverse
 
 # Window Cycling
 bind = ALT, Tab, cyclenext

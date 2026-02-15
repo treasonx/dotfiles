@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+"""Cycle through all windows across workspaces in Hyprland.
+
+Uses hyprctl to get the window list, finds the next window after the
+currently focused one, and focuses it — switching workspaces if needed.
+
+Usage:
+    cycle_windows.py [--reverse]
+"""
+
+import argparse
+import json
+import subprocess
+import sys
+
+
+def hyprctl(*args: str) -> str:
+    return subprocess.check_output(["hyprctl", *args], text=True)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Cycle windows across workspaces")
+    parser.add_argument("--reverse", action="store_true", help="Cycle in reverse order")
+    args = parser.parse_args()
+
+    clients = json.loads(hyprctl("clients", "-j"))
+    if not clients:
+        sys.exit(0)
+
+    # Sort by workspace then by position (top-left to bottom-right)
+    clients.sort(key=lambda c: (c["workspace"]["id"], c["at"][1], c["at"][0]))
+
+    # Filter out special workspace windows (negative IDs)
+    clients = [c for c in clients if c["workspace"]["id"] > 0]
+    if not clients:
+        sys.exit(0)
+
+    active = json.loads(hyprctl("activewindow", "-j"))
+    active_addr = active.get("address", "")
+
+    # Find current window index
+    current_idx = 0
+    for i, c in enumerate(clients):
+        if c["address"] == active_addr:
+            current_idx = i
+            break
+
+    # Pick next (or previous) window
+    if args.reverse:
+        next_idx = (current_idx - 1) % len(clients)
+    else:
+        next_idx = (current_idx + 1) % len(clients)
+
+    target = clients[next_idx]
+    hyprctl("dispatch", "focuswindow", f"address:{target['address']}")
+
+
+if __name__ == "__main__":
+    main()
