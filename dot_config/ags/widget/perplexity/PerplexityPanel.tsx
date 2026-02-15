@@ -1,9 +1,9 @@
 import { Astal, Gtk, Gdk } from "ags/gtk4"
 import GLib from "gi://GLib"
-import Gio from "gi://Gio"
 import app from "ags/gtk4/app"
 import { For } from "gnim"
 import { Box, Text, Button } from "marble/components"
+import { BarPanel } from "../../lib/BarPanel"
 import {
   panelVisible,
   conversations,
@@ -370,72 +370,46 @@ export default function PerplexityPanel(gdkmonitor: Gdk.Monitor) {
   const initGeo = gdkmonitor.get_geometry()
   recomputePixels(initGeo.width, initGeo.height)
 
-  function handleKey(
-    _controller: Gtk.EventControllerKey,
-    keyval: number,
-    _keycode: number,
-    _state: Gdk.ModifierType,
-  ): boolean {
-    if (keyval === Gdk.KEY_Escape) {
-      togglePanel()
-      return true
-    }
-    return false
-  }
-
   return (
-    <window
+    <BarPanel
       name="perplexity"
       visible={panelVisible}
       gdkmonitor={gdkmonitor}
+      anchor={BOTTOM | LEFT}
+      layer={Astal.Layer.TOP}
+      onEscape={togglePanel}
+      padding="0"
+      gap={0}
       defaultWidth={panelW}
       defaultHeight={panelH}
-      anchor={BOTTOM | LEFT}
       marginLeft={panelMargin}
-      exclusivity={Astal.Exclusivity.NORMAL}
-      layer={Astal.Layer.TOP}
-      keymode={Astal.Keymode.EXCLUSIVE}
-      application={app}
+      heightRequest={panelH}
+      widthRequest={panelW}
     >
-      <Gtk.EventControllerKey onKeyPressed={handleKey} />
-      <Gtk.Revealer
-        revealChild={panelVisible}
-        transitionType={Gtk.RevealerTransitionType.SLIDE_UP}
-        transitionDuration={250}
-        heightRequest={panelH}
-      >
-        <Box
-          vertical
-          vexpand
-          widthRequest={panelW}
-          css="background: alpha(@view_bg_color, 0.92); border-radius: 12px 12px 0 0; padding: 0;"
+      {/* Header: icon | tabs | drag handle (fill) | new tab + resize grip */}
+      <Box css="border-bottom: 1px solid alpha(@view_fg_color, 0.1);">
+        <Button
+          flat
+          borderless
+          onPrimaryClick={() => {
+            GLib.spawn_command_line_async("xdg-open https://www.perplexity.ai")
+          }}
+          px={12}
+          py={8}
+          tooltipText="Open Perplexity in browser"
         >
-          {/* Header: icon | tabs | drag handle (fill) | new tab + resize grip */}
-          <Box css="border-bottom: 1px solid alpha(@view_fg_color, 0.1);">
-            <Button
-              flat
-              borderless
-              onPrimaryClick={() => {
-                GLib.spawn_command_line_async("xdg-open https://www.perplexity.ai")
-              }}
-              px={12}
-              py={8}
-              tooltipText="Open Perplexity in browser"
-            >
-              <image
-                file={`${GLib.get_user_config_dir()}/ags/assets/perplexity-icon.png`}
-                pixelSize={44}
-              />
-            </Button>
-            <ChatTabs />
-            <DragHandle />
-            <NewTabButton />
-            <ResizeGrip />
-          </Box>
-          <MessageArea />
-          <ChatInput />
-        </Box>
-      </Gtk.Revealer>
-    </window>
+          <image
+            file={`${GLib.get_user_config_dir()}/ags/assets/perplexity-icon.png`}
+            pixelSize={44}
+          />
+        </Button>
+        <ChatTabs />
+        <DragHandle />
+        <NewTabButton />
+        <ResizeGrip />
+      </Box>
+      <MessageArea />
+      <ChatInput />
+    </BarPanel>
   )
 }

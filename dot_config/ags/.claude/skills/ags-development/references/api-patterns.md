@@ -1,296 +1,280 @@
-# AGS v2 API Patterns — Code Examples
+# Widget Code Examples
 
-## Minimal Bar with Clock
+## Bar with marble (actual pattern used)
 
 ```tsx
-import app from "ags/gtk4/app"
-import { Astal, Gtk, Gdk } from "ags/gtk4"
-import { createPoll } from "ags/time"
+import { Gdk } from "ags/gtk4"
+import { Bar, Box } from "marble/components"
+import { HyprlandWorkspaces, ClockLabel, TrayItems } from "marble/components"
+import { SpeakerIndicator, NetworkIndicator, BatteryIndicator } from "marble/components"
 
-export default function Bar(gdkmonitor: Gdk.Monitor) {
-  const time = createPoll("", 1000, "date '+%H:%M'")
-  const { TOP, LEFT, RIGHT } = Astal.WindowAnchor
-
+export default function StatusBar(gdkmonitor: Gdk.Monitor) {
   return (
-    <window
-      visible
-      name="bar"
-      cssClasses={["Bar"]}
-      gdkmonitor={gdkmonitor}
-      exclusivity={Astal.Exclusivity.EXCLUSIVE}
-      anchor={TOP | LEFT | RIGHT}
-      application={app}
-    >
-      <centerbox>
-        <box $type="start" />
-        <label $type="center" label={time} />
-        <box $type="end" />
-      </centerbox>
-    </window>
+    <Bar
+      monitor={gdkmonitor}
+      position="bottom"
+      start={
+        <Box>
+          <HyprlandWorkspaces length={4} />
+        </Box>
+      }
+      center={
+        <Box>
+          <ClockLabel format="%a %b %d  %I:%M %p" />
+        </Box>
+      }
+      end={
+        <Box>
+          <TrayItems />
+          <NetworkIndicator />
+          <SpeakerIndicator />
+          <BatteryIndicator />
+        </Box>
+      }
+    />
   )
 }
 ```
 
-## Battery Widget
+## Calling Python Scripts (preferred pattern)
 
 ```tsx
-import Battery from "gi://AstalBattery"
-import { bind } from "ags"
+import GLib from "gi://GLib"
 
-function BatteryWidget() {
-  const battery = Battery.get_default()
+// Synchronous — for quick commands that return JSON
+function getClipboardItems(): ClipboardEntry[] {
+  const [ok, stdout] = GLib.spawn_command_line_sync("clipboard_history.py list --limit 20")
+  if (!ok) return []
+  const decoder = new TextDecoder()
+  return JSON.parse(decoder.decode(stdout))
+}
 
-  return (
-    <box cssClasses={["Battery"]} visible={bind(battery, "isPresent")}>
-      <image iconName={bind(battery, "batteryIconName")} />
-      <label label={bind(battery, "percentage").as(p =>
-        `${Math.round(p * 100)}%`
-      )} />
-    </box>
+// Async subprocess — for streaming (e.g., API calls)
+function streamChat(messages: Message[], onToken: (t: string) => void) {
+  const proc = Gio.Subprocess.new(
+    ["perplexity_chat.py"],
+    Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDOUT_PIPE
   )
+  // Write JSON request to stdin
+  proc.get_stdin_pipe()!.write_all(JSON.stringify({ messages }), null)
+  proc.get_stdin_pipe()!.close(null)
+
+  // Read NDJSON events from stdout
+  const stream = new Gio.DataInputStream({ base_stream: proc.get_stdout_pipe()! })
+  function readLine() {
+    stream.read_line_async(GLib.PRIORITY_DEFAULT, null, (_, res) => {
+      const [line] = stream.read_line_finish(res)
+      if (!line) return
+      const event = JSON.parse(new TextDecoder().decode(line))
+      if (event.type === "token") onToken(event.text)
+      readLine()  // continue reading
+    })
+  }
+  readLine()
+
+  return () => proc.force_exit()  // kill function
 }
 ```
 
-## Audio (WirePlumber) Widget
+## Reactive Widget with createBinding
 
 ```tsx
 import Wp from "gi://AstalWp"
-import { bind } from "ags"
+import { createBinding } from "gnim"
+import { SpeakerSlider, MicSlider } from "marble/components"
 
-function VolumeSlider() {
-  const speaker = Wp.get_default()?.audio.defaultSpeaker!
+function AudioPopover() {
+  const wp = Wp.get_default()!
+  const speaker = wp.audio.defaultSpeaker!
+  const volume = createBinding(speaker, "volume")
 
   return (
-    <box cssClasses={["Volume"]}>
-      <image iconName={bind(speaker, "volumeIcon")} />
-      <slider
-        hexpand
-        value={bind(speaker, "volume")}
-        onChangeValue={({ value }) => { speaker.volume = value }}
-      />
+    <box vertical>
+      <SpeakerSlider />
+      <label label={volume.as(v => `${Math.round(v * 100)}%`)} />
+      <MicSlider />
     </box>
   )
 }
 ```
 
-## System Tray
+## Polling System Data with createExternal
 
 ```tsx
-import Tray from "gi://AstalTray"
-import { bind } from "ags"
-import { Gtk } from "ags/gtk4"
+import GLib from "gi://GLib"
+import { createExternal } from "gnim"
 
-function SysTray() {
-  const tray = Tray.get_default()
+// Shared instance — reused across all bar instances
+let _metrics: ReturnType<typeof createExternal> | null = null
 
+function getMetrics() {
+  if (_metrics) return _metrics
+  _metrics = createExternal({ cpu: 0, mem: 0 }, (set) => {
+    const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
+      // Read /proc/stat, /proc/meminfo, etc.
+      set({ cpu: parseCpu(), mem: parseMem() })
+      return GLib.SOURCE_CONTINUE
+    })
+    return () => GLib.source_remove(id)
+  })
+  return _metrics
+}
+
+function SystemMetrics() {
+  const metrics = getMetrics()
   return (
-    <box cssClasses={["SysTray"]}>
-      {bind(tray, "items").as(items =>
-        items.map(item => (
-          <menubutton
-            tooltipMarkup={bind(item, "tooltipMarkup")}
-            actionGroup={bind(item, "actionGroup").as(ag =>
-              ["dbusmenu", ag]
-            )}
-            menuModel={bind(item, "menuModel")}
-          >
-            <image gicon={bind(item, "gicon")} />
-          </menubutton>
-        ))
-      )}
+    <box>
+      <label label={metrics.as(m => `CPU: ${m.cpu}%`)} />
+      <label label={metrics.as(m => `MEM: ${m.mem}%`)} />
     </box>
   )
 }
 ```
 
-## Media Player (MPRIS)
+## State File Pattern
 
-```tsx
-import Mpris from "gi://AstalMpris"
-import { bind } from "ags"
-
-function MediaPlayer() {
-  const mpris = Mpris.get_default()
-
-  return (
-    <box cssClasses={["Media"]}>
-      {bind(mpris, "players").as(players =>
-        players.map(player => (
-          <box>
-            <box
-              cssClasses={["cover"]}
-              css={bind(player, "coverArt").as(url =>
-                `background-image: url("${url}");`
-              )}
-            />
-            <label label={bind(player, "title")} />
-            <label cssClasses={["artist"]} label={bind(player, "artist")} />
-            <box>
-              <button onClicked={() => player.previous()}>
-                <image iconName="media-skip-backward-symbolic" />
-              </button>
-              <button onClicked={() => player.play_pause()}>
-                <image iconName={bind(player, "playbackStatus").as(s =>
-                  s === Mpris.PlaybackStatus.PLAYING
-                    ? "media-playback-pause-symbolic"
-                    : "media-playback-start-symbolic"
-                )} />
-              </button>
-              <button onClicked={() => player.next()}>
-                <image iconName="media-skip-forward-symbolic" />
-              </button>
-            </box>
-          </box>
-        ))
-      )}
-    </box>
-  )
-}
-```
-
-## App Launcher
-
-```tsx
-import Apps from "gi://AstalApps"
-import { Variable } from "ags"
-import { Astal, Gtk } from "ags/gtk4"
+```typescript
+// widget/my-feature-state.ts
 import app from "ags/gtk4/app"
+import Hyprland from "gi://AstalHyprland"
+import { createState } from "gnim"
 
-function AppLauncher() {
-  const apps = new Apps.Apps()
-  const query = new Variable("")
-  const results = query(q => apps.fuzzy_query(q))
+const [visible, setVisible] = createState(false)
 
-  const hide = () => {
-    app.get_window("launcher")!.visible = false
-  }
+let windowRef: any = null
+export function setWindowRef(w: any) { windowRef = w }
+
+export function toggleFeature() {
+  // Move window to focused monitor before toggling
+  const hypr = Hyprland.get_default()
+  const focusedName = hypr.get_focused_monitor().get_name()
+  const mon = app.get_monitors().find(m => m.get_connector() === focusedName)
+  if (mon && windowRef) windowRef.gdkmonitor = mon
+  setVisible(!visible())
+}
+
+export { visible }
+```
+
+## Notification Popup with Filter Logic
+
+```tsx
+import Notifd from "gi://AstalNotifd"
+import Hyprland from "gi://AstalHyprland"
+import { NotificationPopups } from "marble/components"
+import { sidebarVisible } from "./sidebar-state"
+
+function Popups(gdkmonitor: Gdk.Monitor) {
+  const notifd = Notifd.get_default()
+  const hypr = Hyprland.get_default()
 
   return (
-    <window
-      visible={false}
-      name="launcher"
-      cssClasses={["Launcher"]}
-      keymode={Astal.Keymode.EXCLUSIVE}
-      exclusivity={Astal.Exclusivity.IGNORE}
-      anchor={Astal.WindowAnchor.TOP}
-      application={app}
-      onKeyPressed={(_, keyval) => {
-        if (keyval === Gdk.KEY_Escape) hide()
+    <NotificationPopups
+      monitor={gdkmonitor}
+      anchor="bottom-right"
+      gap={8}
+      timeout={5000}
+      filter={(n) => {
+        // Suppress popups when sidebar is showing notifications
+        if (sidebarVisible()) return false
+        // Suppress when the notification's app is focused
+        const focused = hypr.get_focused_client()
+        if (focused && n.appName === focused.get_class()) return false
+        return true
       }}
     >
-      <box vertical>
-        <entry
-          placeholderText="Search apps..."
-          onChanged={({ text }) => query.set(text ?? "")}
-          onActivate={() => {
-            const r = results.get()
-            if (r.length > 0) {
-              r[0].launch()
-              hide()
-            }
-          }}
-        />
-        <box vertical>
-          {results.as(list =>
-            list.slice(0, 8).map(a => (
-              <button
-                onClicked={() => { a.launch(); hide() }}
-              >
-                <box>
-                  <image iconName={a.iconName || "application-x-executable"} />
-                  <label label={a.name} />
-                </box>
-              </button>
-            ))
-          )}
-        </box>
-      </box>
-    </window>
+      {(n) => <NotificationCard notification={n} popup />}
+    </NotificationPopups>
   )
 }
 ```
 
-## Hyprland Workspaces
+## Sidebar with Tabs
 
 ```tsx
-import Hyprland from "gi://AstalHyprland"
-import { bind } from "ags"
+import { Astal, Gtk } from "ags/gtk4"
+import { Box, Button, Icon } from "marble/components"
+import { activeTab, switchTab, TABS, visible } from "./sidebar-state"
 
-function Workspaces() {
-  const hyprland = Hyprland.get_default()
-
+function SidebarTabs() {
   return (
-    <box cssClasses={["Workspaces"]}>
-      {bind(hyprland, "workspaces").as(workspaces =>
-        workspaces
-          .filter(ws => !(ws.id >= -99 && ws.id <= -2))  // Filter special
-          .sort((a, b) => a.id - b.id)
-          .map(ws => (
-            <button
-              cssClasses={bind(hyprland, "focusedWorkspace").as(fw =>
-                fw.id === ws.id ? ["active"] : []
-              )}
-              onClicked={() => ws.focus()}
-            >
-              <label label={String(ws.id)} />
-            </button>
-          ))
-      )}
+    <box>
+      {TABS.map(tab => (
+        <Button
+          cssClasses={activeTab.as(t => t === tab.id ? ["active"] : [])}
+          onClicked={() => switchTab(tab.id)}
+        >
+          <Icon icon={tab.icon} />
+        </Button>
+      ))}
     </box>
   )
 }
 ```
 
-## Network Widget
+## Deferred Response (ScreenShare Picker Pattern)
 
-```tsx
-import Network from "gi://AstalNetwork"
-import { bind } from "ags"
+```typescript
+// screenshare-state.ts
+let deferredRespond: ((response: string) => void) | null = null
 
-function NetworkWidget() {
-  const network = Network.get_default()
-  const wifi = network.wifi
+export function showPicker(respond: (response: string) => void) {
+  deferredRespond = respond  // Store callback — ags request blocks until called
+  setPickerVisible(true)
+}
 
-  return (
-    <box cssClasses={["Network"]}>
-      {wifi && (
-        <image
-          tooltipText={bind(wifi, "ssid").as(String)}
-          iconName={bind(wifi, "iconName")}
-        />
-      )}
-    </box>
-  )
+export function finishPick(selection: string) {
+  if (deferredRespond) deferredRespond(selection)
+  deferredRespond = null
+  setPickerVisible(false)
+}
+
+export function cancelPick() {
+  if (deferredRespond) deferredRespond("")
+  deferredRespond = null
+  setPickerVisible(false)
 }
 ```
 
-## Entry Point Pattern (app.ts)
+## Entry Point Pattern (app.ts — plain .ts, no JSX)
 
 ```typescript
 import app from "ags/gtk4/app"
-import style from "./style.scss"
+import Gdk from "gi://Gdk?version=4.0"
+import Hyprland from "gi://AstalHyprland"
+import "./theme"
 import Bar from "./widget/Bar"
-// import Launcher from "./widget/Launcher"
-// import NotificationPopups from "./widget/NotificationPopups"
 
 app.start({
-  css: style,
-  requestHandler(request: string, respond: (response: string) => void) {
-    const win = app.get_window(request)
-    if (win) {
-      win.visible = !win.visible
-      respond("ok")
-    } else {
-      respond(`unknown command: ${request}`)
-    }
-  },
   main() {
-    // Create bar on each monitor
-    app.get_monitors().map(Bar)
+    const bars = new Map<string, any>()
 
-    // Singleton windows (not per-monitor)
-    // Launcher()
-    // NotificationPopups()
+    function syncBars() {
+      const monitors = app.get_monitors()
+      const active = new Set<string>()
+      for (const mon of monitors) {
+        const c = mon.get_connector()
+        if (!c) continue
+        active.add(c)
+        if (!bars.has(c)) bars.set(c, Bar(mon))
+      }
+      for (const [c, bar] of bars) {
+        if (!active.has(c)) { bar.close(); bars.delete(c) }
+      }
+    }
+
+    syncBars()
+    Gdk.Display.get_default()!.get_monitors().connect("items-changed", syncBars)
+    const hypr = Hyprland.get_default()
+    hypr.connect("monitor-added", syncBars)
+    hypr.connect("monitor-removed", syncBars)
+
+    // Singleton widgets on primary monitor
+    Sidebar(app.get_monitors()[0])
+    Popups(app.get_monitors()[0])
+  },
+  requestHandler(argv, respond) {
+    if (argv[0] === "sidebar") { toggleSidebar(); respond("ok") }
   },
 })
 ```

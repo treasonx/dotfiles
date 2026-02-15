@@ -1,9 +1,9 @@
 import { Astal, Gtk, Gdk } from "ags/gtk4"
 import Gio from "gi://Gio"
-import app from "ags/gtk4/app"
 import { For } from "gnim"
 import { Box, Text, Button } from "marble/components"
 import { ActionButton } from "../../lib/ActionButton"
+import { BarPanel } from "../../lib/BarPanel"
 import {
   pickerVisible,
   selectedItem,
@@ -238,98 +238,73 @@ function RegionContent() {
 // ── Main Panel ─────────────────────────────────────────────────────
 
 export default function ScreenSharePicker(gdkmonitor: Gdk.Monitor) {
-  const { BOTTOM, LEFT, RIGHT } = Astal.WindowAnchor
+  const { BOTTOM } = Astal.WindowAnchor
   const monWidth = gdkmonitor.get_geometry().width
   const monHeight = gdkmonitor.get_geometry().height
   const panelWidth = Math.round(monWidth * 0.6)
   // Leave room for the bar at top (~48px) + some margin
   const maxHeight = monHeight - 80
 
-  function handleKey(
-    _controller: Gtk.EventControllerKey,
-    keyval: number,
-  ): boolean {
-    if (keyval === Gdk.KEY_Escape) {
-      cancelPick()
-      return true
-    }
-    return false
-  }
-
   return (
-    <window
+    <BarPanel
       name="screenshare-picker"
       visible={pickerVisible}
       gdkmonitor={gdkmonitor}
-      defaultWidth={panelWidth}
       anchor={BOTTOM}
-      exclusivity={Astal.Exclusivity.NORMAL}
-      layer={Astal.Layer.OVERLAY}
-      keymode={Astal.Keymode.EXCLUSIVE}
-      application={app}
+      defaultWidth={panelWidth}
+      onEscape={cancelPick}
+      gap={0}
+      padding="12px"
     >
-      <Gtk.EventControllerKey onKeyPressed={handleKey} />
-      <Gtk.Revealer
-        revealChild={pickerVisible}
-        transitionType={Gtk.RevealerTransitionType.SLIDE_UP}
-        transitionDuration={250}
+      {/* Header: close button, tabs, share button */}
+      <Box
+        gap={8}
+        css="padding-bottom: 10px; border-bottom: 1px solid alpha(@view_fg_color, 0.1);"
       >
-        <Box
-          vertical
-          widthRequest={panelWidth}
-          css="background: alpha(@view_bg_color, 0.92); border-radius: 12px 12px 0 0; padding: 12px;"
-        >
-          {/* Header: close button, tabs, share button */}
-          <Box
-            gap={8}
-            css="padding-bottom: 10px; border-bottom: 1px solid alpha(@view_fg_color, 0.1);"
-          >
-            <Button flat borderless onPrimaryClick={cancelPick} px={8} py={4}>
-              <Text size={1.1}>✕</Text>
-            </Button>
+        <Button flat borderless onPrimaryClick={cancelPick} px={8} py={4}>
+          <Text size={1.1}>✕</Text>
+        </Button>
 
-            <Box hexpand />
+        <Box hexpand />
 
-            {/* Tab switcher */}
-            <Box gap={4}>
-              <PickerTabButton id="screens" label="Screens" icon="󰍹" />
-              <PickerTabButton id="windows" label="Windows" icon="󰖲" />
-              <PickerTabButton id="region" label="Region" icon="󰆞" />
-            </Box>
-
-            <Box hexpand />
-          </Box>
-
-          {/* Tab content — vertical scroll, grows to fill available height */}
-          <Gtk.ScrolledWindow
-            vexpand
-            heightRequest={Math.min(maxHeight - 60, 800)}
-            hscrollbarPolicy={Gtk.PolicyType.NEVER}
-            vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-          >
-            <Box vertical css="padding: 12px 0;">
-              <ScreensContent />
-              <WindowsContent />
-              <RegionContent />
-            </Box>
-          </Gtk.ScrolledWindow>
-
-          {/* Footer: full-width Share button */}
-          <ActionButton
-            label="Share"
-            icon="󰒗"
-            size="large"
-            onPrimaryClick={() => {
-              if (selectedItem() !== null) finishPick()
-            }}
-            css={selectedItem.as((s) =>
-              s !== null
-                ? "margin: 8px 12px 4px 12px;"
-                : "margin: 8px 12px 4px 12px; opacity: 0.35;",
-            )}
-          />
+        {/* Tab switcher */}
+        <Box gap={4}>
+          <PickerTabButton id="screens" label="Screens" icon="󰍹" />
+          <PickerTabButton id="windows" label="Windows" icon="󰖲" />
+          <PickerTabButton id="region" label="Region" icon="󰆞" />
         </Box>
-      </Gtk.Revealer>
-    </window>
+
+        <Box hexpand />
+      </Box>
+
+      {/* Tab content — vertical scroll, grows to fill available height */}
+      <Gtk.ScrolledWindow
+        vexpand
+        heightRequest={Math.min(maxHeight - 60, 800)}
+        hscrollbarPolicy={Gtk.PolicyType.NEVER}
+        vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+      >
+        <Box vertical css="padding: 12px 0;">
+          <ScreensContent />
+          <WindowsContent />
+          <RegionContent />
+        </Box>
+      </Gtk.ScrolledWindow>
+
+      {/* Footer: full-width Share button */}
+      <ActionButton
+        label="Share"
+        icon="󰒗"
+        size="large"
+        onPrimaryClick={() => {
+          if (selectedItem() !== null) finishPick()
+        }}
+        css={selectedItem.as((s) =>
+          s !== null
+            ? "margin: 8px 12px 4px 12px;"
+            : "margin: 8px 12px 4px 12px; opacity: 0.35;",
+        )}
+      />
+    </BarPanel>
   )
 }

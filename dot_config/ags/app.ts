@@ -1,5 +1,6 @@
 import app from "ags/gtk4/app"
 import Gdk from "gi://Gdk?version=4.0"
+import Hyprland from "gi://AstalHyprland"
 import "./theme"
 import Bar from "./widget/Bar"
 import { BarOsd } from "./widget/BarOsd"
@@ -10,6 +11,8 @@ import PerplexityPanel from "./widget/perplexity/PerplexityPanel"
 import { togglePanel } from "./widget/perplexity/perplexity-state"
 import ScreenSharePicker from "./widget/screenshare/ScreenSharePicker"
 import { showScreenSharePicker } from "./widget/screenshare/screenshare-state"
+import SessionPanel from "./widget/session/SessionPanel"
+import { toggleSession } from "./widget/session/session-state"
 
 app.start({
   main() {
@@ -48,10 +51,18 @@ app.start({
     const display = Gdk.Display.get_default()!
     display.get_monitors().connect("items-changed", syncBars)
 
+    // Also listen to Hyprland's monitor events — GDK doesn't fire
+    // "items-changed" on DPMS wake (monitors power on/off), so bars
+    // can go missing after monitors sleep. Hyprland reliably tracks these.
+    const hypr = Hyprland.get_default()
+    hypr.connect("monitor-added", syncBars)
+    hypr.connect("monitor-removed", syncBars)
+
     Sidebar(app.get_monitors()[0])
     Popups(app.get_monitors()[0])
     PerplexityPanel(app.get_monitors()[0])
     ScreenSharePicker(app.get_monitors()[0])
+    SessionPanel(app.get_monitors()[0])
     BarOsd()
   },
   requestHandler(argv: string[], respond: (response: string) => void) {
@@ -61,6 +72,9 @@ app.start({
       respond("ok")
     } else if (command === "perplexity") {
       togglePanel()
+      respond("ok")
+    } else if (command === "session") {
+      toggleSession()
       respond("ok")
     } else if (command === "screenshare-pick") {
       // CRITICAL: Do NOT respond() synchronously — store it for the UI.

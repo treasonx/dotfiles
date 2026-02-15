@@ -2,10 +2,10 @@
 name: hyprland-shell-integration
 description: >
   Use when integrating with Hyprland IPC, adding workspace widgets, handling
-  keybindings, toggling windows, replacing legacy tools (Waybar/Rofi/SwayNC),
-  or configuring layer shell properties. Triggers on "workspace widget",
-  "Hyprland IPC", "keybinding", "toggle window", "replace waybar/rofi",
-  "layer shell", or work involving hyprland.conf.tmpl coordination.
+  keybindings, toggling windows, managing monitor events, or configuring layer
+  shell properties. Triggers on "workspace widget", "Hyprland IPC", "keybinding",
+  "toggle window", "layer shell", "monitor", "DPMS", or work involving
+  hyprland.conf.tmpl coordination.
 ---
 
 # Hyprland Shell Integration
@@ -17,122 +17,152 @@ and the layer shell protocol.
 
 ```typescript
 import Hyprland from "gi://AstalHyprland"
+import { createBinding } from "gnim"
 
-const hyprland = Hyprland.get_default()
+const hypr = Hyprland.get_default()
 
-// Reactive bindings
-bind(hyprland, "workspaces")       // Workspace[] — all workspaces
-bind(hyprland, "focused_workspace") // Currently focused workspace
-bind(hyprland, "focused_client")   // Currently focused window
-bind(hyprland, "monitors")         // Monitor[] — all monitors
+// Reactive bindings (gnim)
+const workspaces = createBinding(hypr, "workspaces")    // Workspace[]
+const focused = createBinding(hypr, "focused-workspace") // Current workspace
+const focusedClient = createBinding(hypr, "focused-client") // Current window
+const monitors = createBinding(hypr, "monitors")         // Monitor[]
 
-// Execute Hyprland commands
-hyprland.dispatch("workspace", "1")
-hyprland.dispatch("exec", "ghostty")
+// Execute Hyprland dispatchers
+hypr.dispatch("workspace", "1")
+hypr.dispatch("exec", "ghostty")
 
-// Send raw IPC messages
-hyprland.message("dispatch workspace 1")
+// Raw IPC messages (returns JSON string)
+const result = hypr.message("j/workspacerules")
+
+// Signals (use with hypr.connect() or useConnect())
+// "monitor-added"          — new monitor connected or DPMS wake
+// "monitor-removed"        — monitor disconnected or DPMS sleep
+// "notify::focused-workspace" — workspace focus changed
+// "notify::focused-client"    — window focus changed
+// "notify::monitors"          — monitor list changed
 ```
 
 ## Layer Shell Configuration
 
-AGS windows use the layer shell protocol to position themselves on screen.
+AGS windows use the Wayland layer shell protocol to position on screen.
+Layer shell requires `LD_PRELOAD=/usr/lib64/libgtk4-layer-shell.so` before
+GTK init — AGS v3 handles this automatically with `--gtk 4`.
 
 ```tsx
 const { TOP, BOTTOM, LEFT, RIGHT } = Astal.WindowAnchor
 
-// Status bar: anchored to top edge, reserves space
+// Status bar: anchored to bottom edge, reserves space
+<Bar monitor={gdkmonitor} position="bottom" />
+// (marble's Bar handles anchor + exclusivity internally)
+
+// Sidebar panel: anchored to right edge, reserves space
 <window
-  anchor={TOP | LEFT | RIGHT}
+  anchor={RIGHT | TOP | BOTTOM}
   exclusivity={Astal.Exclusivity.EXCLUSIVE}
   layer={Astal.Layer.TOP}
 />
 
-// App launcher: centered overlay, captures keyboard
+// Overlay popup: no space reservation, captures keyboard
 <window
-  anchor={TOP}
+  anchor={BOTTOM}
   exclusivity={Astal.Exclusivity.IGNORE}
   keymode={Astal.Keymode.EXCLUSIVE}
   layer={Astal.Layer.OVERLAY}
 />
 
-// Notification popup: top-right corner, no space reservation
+// Notification popup: corner positioned, no reservation
 <window
-  anchor={TOP | RIGHT}
+  anchor={BOTTOM | RIGHT}
   exclusivity={Astal.Exclusivity.IGNORE}
   layer={Astal.Layer.OVERLAY}
 />
 ```
 
-## Window Toggle Pattern
+| Property | Values | Purpose |
+|----------|--------|---------|
+| `anchor` | `TOP\|BOTTOM\|LEFT\|RIGHT` (bitwise OR) | Screen edge attachment |
+| `exclusivity` | `EXCLUSIVE` (reserves space), `NORMAL`, `IGNORE` | Exclusion zone |
+| `keymode` | `NONE`, `ON_DEMAND`, `EXCLUSIVE` | Keyboard input capture |
+| `layer` | `BACKGROUND`, `BOTTOM`, `TOP`, `OVERLAY` | Stacking order |
 
-Bind Hyprland keys to AGS window visibility via the request handler:
+## Window Toggle via IPC
 
-**In `app.ts`:**
+Hyprland keybindings communicate with AGS via `ags request`:
+
+```conf
+# hyprland.conf.tmpl
+bind = $mainMod, N, exec, ags request sidebar
+bind = $mainMod, P, exec, ags request perplexity
+```
+
 ```typescript
-requestHandler(request, respond) {
-  const win = app.get_window(request)
-  if (win) {
-    win.visible = !win.visible
-    respond("ok")
-  }
+// app.ts — requestHandler routes commands
+requestHandler(argv: string[], respond: (response: string) => void) {
+  if (argv[0] === "sidebar") { toggleSidebar(); respond("ok") }
+  if (argv[0] === "perplexity") { togglePanel(); respond("ok") }
 }
 ```
 
-**In `hyprland.conf.tmpl`:**
-```conf
-bind = $mainMod, SPACE, exec, ags request launcher
-bind = $mainMod SHIFT, N, exec, ags request notifications
+Toggle functions move the window to the focused monitor before showing:
+```typescript
+export function toggleSidebar() {
+  const focusedName = hypr.get_focused_monitor().get_name()
+  const mon = app.get_monitors().find(m => m.get_connector() === focusedName)
+  if (mon) sidebarWindow.gdkmonitor = mon
+  setSidebarVisible(!sidebarVisible())
+}
 ```
 
-## Current Keybindings to Preserve
+## Monitor Management
 
-These keybindings in `hyprland.conf.tmpl` control UI components. When replacing
-a legacy tool, update the keybinding to use `ags request` instead:
+### DPMS (screen power on/off)
 
-| Keybinding | Current Action | Legacy Tool |
-|------------|---------------|-------------|
-| `Super+SPACE` | App overview | vicinae |
-| `Super+B` | Toggle status bar | `killall -SIGUSR1 waybar` |
-| `Super+Shift+N` | Notification center | `swaync-client -t -sw` |
-| `Ctrl+Alt+P` | Session/power menu | Wlogout |
-| `Super+Alt+C` | Calculator | Rofi (RofiCalc.sh) |
-| `Super+Alt+E` | Emoji picker | Rofi (RofiEmoji.sh) |
-| `Super+Alt+V` | Clipboard manager | Rofi (ClipManager.sh) |
-| `Super+W` | Wallpaper selector | Rofi (WallpaperSelect.sh) |
+GDK doesn't emit `items-changed` on DPMS transitions because monitors aren't
+physically disconnected. Use Hyprland signals to cover this:
 
-## Incremental Migration Strategy
+```typescript
+// Both sources needed:
+display.get_monitors().connect("items-changed", syncBars)  // Physical hotplug
+hypr.connect("monitor-added", syncBars)                     // DPMS wake
+hypr.connect("monitor-removed", syncBars)                   // DPMS sleep
+```
 
-Run AGS alongside legacy tools. Replace one component at a time:
+### Moving widgets to focused monitor
 
-1. **During development** — Use a secondary keybinding to test:
-   ```conf
-   # Test AGS launcher while vicinae still works on Super+SPACE
-   bind = $mainMod SHIFT, SPACE, exec, ags request launcher
-   ```
+```typescript
+const focusedName = hypr.get_focused_monitor().get_name()  // "HDMI-A-1"
+const gdkMon = app.get_monitors().find(m => m.get_connector() === focusedName)
+if (gdkMon) widget.gdkmonitor = gdkMon
+```
 
-2. **When ready to swap** — Update the primary keybinding:
-   ```conf
-   # Replace vicinae with AGS launcher
-   bind = $mainMod, SPACE, exec, ags request launcher
-   ```
+### BarOsd pattern — auto-follow focus
 
-3. **Remove legacy autostart** — Comment out in `hyprland.conf.tmpl`:
-   ```conf
-   # exec-once = vicinae server    # Replaced by AGS launcher
-   ```
+```tsx
+useConnect(hypr, "notify::focused-workspace", syncMonitor)
+useConnect(hypr, "notify::monitors", syncMonitor)
+```
+
+## Current AGS Keybindings
+
+These keybindings in `hyprland.conf.tmpl` control AGS widgets:
+
+| Keybinding | Action | Command |
+|------------|--------|---------|
+| `Super+N` | Toggle sidebar | `ags request sidebar` |
+| `Super+P` | Toggle Perplexity panel | `ags request perplexity` |
+| `Super+Alt+R` | Refresh AGS | `Refresh.sh` (kills + restarts AGS) |
 
 ## Current Startup Stack
 
-From `hyprland.conf.tmpl` lines 327-342:
+```conf
+# hyprland.conf.tmpl
+exec-once = start_ags.sh        # AGS shell (bar, notifications, sidebar, etc.)
+exec-once = swww-daemon          # Wallpaper
+exec-once = hypridle &           # Idle/lock (DPMS off after 30min)
+exec-once = pypr &               # Pyprland (magnify)
+exec-once = startup_layout.py &  # Restore window layout
 ```
-exec-once = waybar &           # Status bar (bottom)
-exec-once = swaync &           # Notifications
-exec-once = ags &              # AGS shell (our widgets)
-exec-once = vicinae server     # App overview
-exec-once = swww-daemon        # Wallpaper
-exec-once = hypridle &         # Idle/lock
-exec-once = pypr &             # Pyprland (magnify)
-```
+
+AGS has replaced Waybar (status bar) and SwayNC (notifications).
 
 See `references/keybindings.md` for the full keybinding reference.
