@@ -135,7 +135,7 @@ function NowPlayingTitle() {
 function ClockWithCalendar() {
   return (
     <Gtk.MenuButton css="border: none; box-shadow: none; background: none; padding: 0;">
-      <ClockLabel format="%B %d | %I:%M %p" bold />
+      <ClockLabel format="%A, %b %d | %I:%M %p" bold />
       <Gtk.Popover $type="popover">
         <Calendar />
       </Gtk.Popover>
