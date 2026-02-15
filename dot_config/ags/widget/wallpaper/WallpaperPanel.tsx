@@ -1,7 +1,7 @@
 import { Gtk, Gdk } from "ags/gtk4"
 import Gio from "gi://Gio"
 import { createState, createComputed, For } from "gnim"
-import { Box, Text, Button } from "marble/components"
+import { Box, Text, Button, MenuRoot, MenuArrowButton, MenuRevealer, useMenu } from "marble/components"
 import { BarPanel } from "../../lib/BarPanel"
 import {
   wallpaperVisible,
@@ -63,70 +63,51 @@ function WallpaperThumb({ entry }: { entry: WallpaperEntry }) {
   )
 }
 
-// ── Folder Picker (overlay dropdown) ─────────────────────────────
+// ── Folder Picker ────────────────────────────────────────────────
 
-// Shared state so the button (in header) and menu (in overlay) can communicate
-const [dropdownOpen, setDropdownOpen] = createState(false)
-
-function pickFolder(name: string) {
-  printerr(`[wallpaper] pick folder: "${name}"`)
-  setActiveFolder(name)
-  setDropdownOpen(false)
-}
+const MENU_ID = "folder-picker"
 
 const folderBtnLabel = activeFolder.as((f: string) =>
   f === "all" ? "All" : `${f} (${folders().find((x) => x.name === f)?.count ?? 0})`,
 )
 
-function FolderPickerButton() {
-  const arrow = dropdownOpen.as((o: boolean) => o ? "󰅀" : "󰅂")
+function FolderList() {
+  const [, setMenu] = useMenu()
+
+  function pick(name: string) {
+    printerr(`[wallpaper] pick folder: "${name}"`)
+    setActiveFolder(name)
+    setMenu(null)
+  }
 
   return (
-    <Button flat px={12} py={4} onPrimaryClick={() => setDropdownOpen((p) => !p)}>
-      <Box gap={6}>
-        <Text size={0.85}>{folderBtnLabel}</Text>
-        <Text size={0.7} opacity={0.5}>{arrow}</Text>
-      </Box>
-    </Button>
-  )
-}
-
-function FolderDropdownMenu() {
-  return (
-    <Gtk.Revealer
-      revealChild={dropdownOpen}
-      transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
-      transitionDuration={150}
-      halign={Gtk.Align.START}
-      valign={Gtk.Align.START}
+    <Gtk.ScrolledWindow
+      vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+      hscrollbarPolicy={Gtk.PolicyType.NEVER}
+      heightRequest={220}
+      widthRequest={200}
+      css={`
+        background: @view_bg_color;
+        border-radius: 8px;
+        border: 1px solid alpha(@borders, 0.4);
+        padding: 4px;
+        margin-top: 38px;
+        margin-left: 110px;
+      `}
     >
-      <Gtk.ScrolledWindow
-        vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-        hscrollbarPolicy={Gtk.PolicyType.NEVER}
-        heightRequest={220}
-        widthRequest={200}
-        css={`
-          background: @view_bg_color;
-          border-radius: 8px;
-          border: 1px solid alpha(@borders, 0.4);
-          padding: 4px;
-          margin: 4px;
-        `}
-      >
-        <Box vertical gap={2}>
-          <Button flat onPrimaryClick={() => pickFolder("all")}>
-            <Text size={0.85} halign="end">All</Text>
-          </Button>
-          <For each={folders}>
-            {(f: { name: string; count: number }) => (
-              <Button flat onPrimaryClick={() => pickFolder(f.name)}>
-                <Text size={0.85} halign="end">{`${f.name} (${f.count})`}</Text>
-              </Button>
-            )}
-          </For>
-        </Box>
-      </Gtk.ScrolledWindow>
-    </Gtk.Revealer>
+      <Box vertical gap={2}>
+        <Button flat onPrimaryClick={() => pick("all")}>
+          <Text size={0.85} halign="end" hexpand>All</Text>
+        </Button>
+        <For each={folders}>
+          {(f: { name: string; count: number }) => (
+            <Button flat onPrimaryClick={() => pick(f.name)}>
+              <Text size={0.85} halign="end" hexpand>{`${f.name} (${f.count})`}</Text>
+            </Button>
+          )}
+        </For>
+      </Box>
+    </Gtk.ScrolledWindow>
   )
 }
 
@@ -158,62 +139,80 @@ export default function WallpaperPanel(gdkmonitor: Gdk.Monitor) {
       heightRequest={520}
       widthRequest={820}
     >
-      {/* Header */}
-      <Box gap={12} css="padding-bottom: 8px;">
-        <Text size={1.2} bold>Wallpapers</Text>
-        <FolderPickerButton />
-        <Text size={0.8} opacity={0.4} valign="center">{count}</Text>
-        <box hexpand />
-        <Button flat borderless px={12} py={6} onPrimaryClick={applyRandom}>
-          <Box gap={6}>
-            <Text size={0.9}>󰒝</Text>
-            <Text size={0.85}>Random</Text>
-          </Box>
-        </Button>
-      </Box>
+      <MenuRoot>
+        {() => (
+          <Gtk.Overlay vexpand>
+            {/* Main panel content */}
+            <Box vertical vexpand>
+              {/* Header */}
+              <Box gap={12} css="padding-bottom: 8px;">
+                <Text size={1.2} bold>Wallpapers</Text>
+                <MenuArrowButton id={MENU_ID} flat px={12} py={4}>
+                  {() => <Text size={0.85}>{folderBtnLabel}</Text>}
+                </MenuArrowButton>
+                <Text size={0.8} opacity={0.4} valign="center">{count}</Text>
+                <box hexpand />
+                <Button flat borderless px={12} py={6} onPrimaryClick={applyRandom}>
+                  <Box gap={6}>
+                    <Text size={0.9}>󰒝</Text>
+                    <Text size={0.85}>Random</Text>
+                  </Box>
+                </Button>
+              </Box>
 
-      {/* Loading state */}
-      <Box
-        visible={scanning}
-        vexpand
-        halign="center"
-        valign="center"
-      >
-        <Gtk.Spinner spinning={scanning} widthRequest={32} heightRequest={32} />
-      </Box>
+              {/* Loading state */}
+              <Box
+                visible={scanning}
+                vexpand
+                halign="center"
+                valign="center"
+              >
+                <Gtk.Spinner spinning={scanning} widthRequest={32} heightRequest={32} />
+              </Box>
 
-      {/* Grid with overlay dropdown */}
-      <Gtk.Overlay vexpand visible={scanning.as((s) => !s)}>
-        {/* Main child: scrollable wallpaper grid */}
-        <Gtk.ScrolledWindow
-          vexpand
-          hscrollbarPolicy={Gtk.PolicyType.NEVER}
-          vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-        >
-          <Box vertical gap={12} css="padding: 4px;">
-            <For each={wallpaperRows}>
-              {(row: WallpaperEntry[]) => (
-                <Box gap={12} homogeneous>
-                  {row.map((entry) => <WallpaperThumb entry={entry} />)}
+              {/* Grid */}
+              <Gtk.ScrolledWindow
+                vexpand
+                hscrollbarPolicy={Gtk.PolicyType.NEVER}
+                vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+                visible={scanning.as((s) => !s)}
+              >
+                <Box vertical gap={12} css="padding: 4px;">
+                  <For each={wallpaperRows}>
+                    {(row: WallpaperEntry[]) => (
+                      <Box gap={12} homogeneous>
+                        {row.map((entry) => <WallpaperThumb entry={entry} />)}
+                      </Box>
+                    )}
+                  </For>
                 </Box>
-              )}
-            </For>
-          </Box>
-        </Gtk.ScrolledWindow>
+              </Gtk.ScrolledWindow>
 
-        {/* Floating dropdown menu — $type="overlay" tells GtkOverlay to layer it on top */}
-        <FolderDropdownMenu $type="overlay" />
-      </Gtk.Overlay>
+              {/* Empty state */}
+              <Box
+                visible={visibleWallpapers.as((w) => w.length === 0)}
+                vexpand
+                halign="center"
+                valign="center"
+              >
+                <Text size={0.9} opacity={0.4}>No wallpapers found</Text>
+              </Box>
+            </Box>
 
-      {/* Empty state */}
-      <Box
-        visible={visibleWallpapers.as((w) => w.length === 0)}
-        vexpand
-        halign="center"
-        valign="center"
-      >
-        <Text size={0.9} opacity={0.4}>No wallpapers found</Text>
-      </Box>
+            {/* Dropdown floats over everything, positioned below header */}
+            <MenuRevealer
+              id={MENU_ID}
+              $type="overlay"
+              $={(self: Gtk.Revealer) => {
+                self.halign = Gtk.Align.START
+                self.valign = Gtk.Align.START
+              }}
+            >
+              <FolderList />
+            </MenuRevealer>
+          </Gtk.Overlay>
+        )}
+      </MenuRoot>
     </BarPanel>
   )
 }
