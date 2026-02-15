@@ -1,6 +1,6 @@
 import { Gtk, Gdk } from "ags/gtk4"
 import Gio from "gi://Gio"
-import { createState, For } from "gnim"
+import { createState, createComputed, For } from "gnim"
 import { Box, Text, Button } from "marble/components"
 import { BarPanel } from "../../lib/BarPanel"
 import {
@@ -63,48 +63,85 @@ function WallpaperThumb({ entry }: { entry: WallpaperEntry }) {
   )
 }
 
-// ── Folder Picker ───────────────────────────────────────────────
+// ── Folder Picker (overlay dropdown) ─────────────────────────────
 
-function FolderPicker() {
-  function pick(name: string) {
-    print(`[wallpaper] pick folder: "${name}"`)
-    setActiveFolder(name)
-  }
+// Shared state so the button (in header) and menu (in overlay) can communicate
+const [dropdownOpen, setDropdownOpen] = createState(false)
 
-  // Button label tracks active folder
-  const btnLabel = activeFolder.as((f: string) =>
-    f === "all" ? "All" : `${f} (${folders().find((x) => x.name === f)?.count ?? 0})`,
-  )
+function pickFolder(name: string) {
+  printerr(`[wallpaper] pick folder: "${name}"`)
+  setActiveFolder(name)
+  setDropdownOpen(false)
+}
+
+const folderBtnLabel = activeFolder.as((f: string) =>
+  f === "all" ? "All" : `${f} (${folders().find((x) => x.name === f)?.count ?? 0})`,
+)
+
+function FolderPickerButton() {
+  const arrow = dropdownOpen.as((o: boolean) => o ? "󰅀" : "󰅂")
 
   return (
-    <Gtk.MenuButton css="min-width: 160px;">
-      <label label={btnLabel} />
-      <Gtk.Popover $type="popover">
-        <Gtk.ScrolledWindow
-          vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-          hscrollbarPolicy={Gtk.PolicyType.NEVER}
-          heightRequest={300}
-          widthRequest={220}
-        >
-          <Box vertical gap={2} css="padding: 4px;">
-            <Button flat onPrimaryClick={() => pick("all")}>
-              <Text size={0.85} halign="start">All</Text>
-            </Button>
-            <For each={folders}>
-              {(f: { name: string; count: number }) => (
-                <Button flat onPrimaryClick={() => pick(f.name)}>
-                  <Text size={0.85} halign="start">{`${f.name} (${f.count})`}</Text>
-                </Button>
-              )}
-            </For>
-          </Box>
-        </Gtk.ScrolledWindow>
-      </Gtk.Popover>
-    </Gtk.MenuButton>
+    <Button flat px={12} py={4} onPrimaryClick={() => setDropdownOpen((p) => !p)}>
+      <Box gap={6}>
+        <Text size={0.85}>{folderBtnLabel}</Text>
+        <Text size={0.7} opacity={0.5}>{arrow}</Text>
+      </Box>
+    </Button>
+  )
+}
+
+function FolderDropdownMenu() {
+  return (
+    <Gtk.Revealer
+      revealChild={dropdownOpen}
+      transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
+      transitionDuration={150}
+      halign={Gtk.Align.START}
+      valign={Gtk.Align.START}
+    >
+      <Gtk.ScrolledWindow
+        vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+        hscrollbarPolicy={Gtk.PolicyType.NEVER}
+        heightRequest={220}
+        widthRequest={200}
+        css={`
+          background: @view_bg_color;
+          border-radius: 8px;
+          border: 1px solid alpha(@borders, 0.4);
+          padding: 4px;
+          margin: 4px;
+        `}
+      >
+        <Box vertical gap={2}>
+          <Button flat onPrimaryClick={() => pickFolder("all")}>
+            <Text size={0.85} halign="end">All</Text>
+          </Button>
+          <For each={folders}>
+            {(f: { name: string; count: number }) => (
+              <Button flat onPrimaryClick={() => pickFolder(f.name)}>
+                <Text size={0.85} halign="end">{`${f.name} (${f.count})`}</Text>
+              </Button>
+            )}
+          </For>
+        </Box>
+      </Gtk.ScrolledWindow>
+    </Gtk.Revealer>
   )
 }
 
 // ── Main Panel ───────────────────────────────────────────────────
+
+const COLS = 4
+
+const wallpaperRows = createComputed(() => {
+  const all = visibleWallpapers()
+  const rows: WallpaperEntry[][] = []
+  for (let i = 0; i < all.length; i += COLS) {
+    rows.push(all.slice(i, i + COLS))
+  }
+  return rows
+})
 
 export default function WallpaperPanel(gdkmonitor: Gdk.Monitor) {
   const count = visibleWallpapers.as((w) => `${w.length} wallpapers`)
@@ -124,7 +161,7 @@ export default function WallpaperPanel(gdkmonitor: Gdk.Monitor) {
       {/* Header */}
       <Box gap={12} css="padding-bottom: 8px;">
         <Text size={1.2} bold>Wallpapers</Text>
-        <FolderPicker />
+        <FolderPickerButton />
         <Text size={0.8} opacity={0.4} valign="center">{count}</Text>
         <box hexpand />
         <Button flat borderless px={12} py={6} onPrimaryClick={applyRandom}>
@@ -145,28 +182,28 @@ export default function WallpaperPanel(gdkmonitor: Gdk.Monitor) {
         <Gtk.Spinner spinning={scanning} widthRequest={32} heightRequest={32} />
       </Box>
 
-      {/* Grid */}
-      <Gtk.ScrolledWindow
-        vexpand
-        hscrollbarPolicy={Gtk.PolicyType.NEVER}
-        vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-        visible={scanning.as((s) => !s)}
-      >
-        <Box vertical gap={12} css="padding: 4px;">
-          <Gtk.FlowBox
-            homogeneous
-            columnSpacing={12}
-            rowSpacing={12}
-            maxChildrenPerLine={4}
-            minChildrenPerLine={4}
-            selectionMode={Gtk.SelectionMode.NONE}
-          >
-            <For each={visibleWallpapers}>
-              {(entry: WallpaperEntry) => <WallpaperThumb entry={entry} />}
+      {/* Grid with overlay dropdown */}
+      <Gtk.Overlay vexpand visible={scanning.as((s) => !s)}>
+        {/* Main child: scrollable wallpaper grid */}
+        <Gtk.ScrolledWindow
+          vexpand
+          hscrollbarPolicy={Gtk.PolicyType.NEVER}
+          vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+        >
+          <Box vertical gap={12} css="padding: 4px;">
+            <For each={wallpaperRows}>
+              {(row: WallpaperEntry[]) => (
+                <Box gap={12} homogeneous>
+                  {row.map((entry) => <WallpaperThumb entry={entry} />)}
+                </Box>
+              )}
             </For>
-          </Gtk.FlowBox>
-        </Box>
-      </Gtk.ScrolledWindow>
+          </Box>
+        </Gtk.ScrolledWindow>
+
+        {/* Floating dropdown menu — $type="overlay" tells GtkOverlay to layer it on top */}
+        <FolderDropdownMenu $type="overlay" />
+      </Gtk.Overlay>
 
       {/* Empty state */}
       <Box

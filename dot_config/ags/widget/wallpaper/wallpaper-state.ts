@@ -31,12 +31,12 @@ const [visibleWallpapers, setVisibleWallpapers] = createState<WallpaperEntry[]>(
 function recomputeVisible() {
   const folder = activeFolder()
   const allFolders = folders()
-  print(`[wallpaper] recomputeVisible: folder="${folder}" folders=${allFolders.length}`)
+  printerr(`[wallpaper] recomputeVisible: folder="${folder}" folders=${allFolders.length}`)
   if (folder === "all") {
     setVisibleWallpapers(allFolders.flatMap((f) => f.wallpapers))
   } else {
     const match = allFolders.find((f) => f.name === folder)
-    print(`[wallpaper] matched: ${match?.name ?? "NONE"} count=${match?.wallpapers.length ?? 0}`)
+    printerr(`[wallpaper] matched: ${match?.name ?? "NONE"} count=${match?.wallpapers.length ?? 0}`)
     setVisibleWallpapers(match?.wallpapers ?? [])
   }
 }
