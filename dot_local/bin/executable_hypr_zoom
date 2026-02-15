@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Thin client for hypr_zoomd — writes command to FIFO (<1ms).
+# Usage: hypr_zoom in|out|toggle|reset
+FIFO="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr_zoom.fifo"
+[[ -p "$FIFO" ]] && printf '%s\n' "${1:?usage: hypr_zoom in|out|toggle|reset}" > "$FIFO"

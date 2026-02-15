@@ -176,8 +176,6 @@ $mainMod = SUPER
 
 # Session
 bind = CTRL ALT, Delete, exec, hyprctl dispatch exit 0
-bind = CTRL ALT, L, exec, $scriptsDir/LockScreen.sh
-bind = CTRL ALT, P, exec, $scriptsDir/Wlogout.sh
 
 # Window Management
 bind = $mainMod, Q, killactive,
@@ -193,18 +191,13 @@ bind = $mainMod, SPACE, exec, vicinae
 bind = $mainMod ALT, C, exec, $UserScripts/RofiCalc.sh
 
 # Features
-bind = $mainMod, H, exec, $scriptsDir/KeyHints.sh
 bind = $mainMod ALT, R, exec, $scriptsDir/Refresh.sh
-bind = $mainMod ALT, E, exec, $scriptsDir/RofiEmoji.sh
-bind = $mainMod ALT, V, exec, $scriptsDir/ClipManager.sh
-bind = $mainMod, E, exec, $UserScripts/QuickEdit.sh
-bind = $mainMod, W, exec, $UserScripts/WallpaperSelect.sh
+bind = $mainMod, W, exec, ags request wallpaper
 bind = $mainMod, B, exec, ags request sidebar
 bind = $mainMod, SLASH, exec, ags request perplexity
 bind = $mainMod, L, exec, ags request session
 
 # Layout (dwindle/master)
-bind = $mainMod ALT, L, exec, $scriptsDir/ChangeLayout.sh
 bind = $mainMod CTRL, D, layoutmsg, removemaster
 bind = $mainMod, I, layoutmsg, addmaster
 bind = $mainMod, J, layoutmsg, cyclenext
@@ -256,8 +249,15 @@ bind = $mainMod, left, exec, $scriptsDir/workspace_switch.sh -1
 bind = $mainMod SHIFT, S, exec, $scriptsDir/ScreenShot.sh --swappy
 bind = $mainMods, s, exec, flatpak run io.github.seadve.Kooha
 
-# pyprland
-bind = $mainMod, Z, exec, pypr zoom
+# Zoom (Super+Z enters zoom mode; scroll to adjust; Super+Z or Esc exits)
+# Daemon handles both zoom factor and submap switching via Hyprland IPC.
+bind = $mainMod, Z, exec, hypr_zoom toggle
+submap = zoom
+binde = , mouse_up, exec, hypr_zoom in
+binde = , mouse_down, exec, hypr_zoom out
+bind = $mainMod, Z, exec, hypr_zoom toggle
+bind = , escape, exec, hypr_zoom reset
+submap = reset
 
 # Custom Scripts
 bind = $mainMod, V, exec, $HOME/.local/bin/camera_toggle.py
@@ -316,6 +316,8 @@ layerrule = blur, perplexity
 layerrule = ignorealpha 0, perplexity
 layerrule = blur, screenshare-picker
 layerrule = ignorealpha 0, screenshare-picker
+layerrule = blur, wallpaper
+layerrule = ignorealpha 0, wallpaper
 
 # Startup Applications
 exec-once = swww-daemon --format xrgb
@@ -331,6 +333,7 @@ exec-once = wl-paste --type text --watch cliphist store
 exec-once = wl-paste --type image --watch cliphist store
 exec-once = hypridle &
 exec-once = pypr &
+exec-once = hypr_zoomd &
 exec-once = vicinae server
 exec-once = $HOME/.local/bin/doorbell_popup.py &
 {{- if eq .machine "desktop" }}

@@ -15,6 +15,8 @@ SCRIPTS=(
   "fuzzy_helpers.sh:Fuzzy file helper functions (source library)"
   "git-wt:Create git worktree with slug name"
   "git-wtr:Remove git worktree via fzf picker"
+  "hypr_zoom:Hyprland zoom — send command to daemon (in/out/toggle/reset)"
+  "hypr_zoomd:Hyprland zoom daemon — velocity-based smooth zoom"
   "install_ags_deps.py:Install AGS v2 and Astal dependencies"
   "list_recent_files.py:List recent files (JSON for AGS widgets)"
   "perplexity_chat.py:Stream Perplexity API chat completions"

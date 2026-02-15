@@ -1,0 +1,173 @@
+#!/usr/bin/env python3
+"""Hyprland zoom daemon with velocity-based smooth zooming.
+
+Runs persistently, listens on a FIFO for zoom commands, and applies
+them with velocity-scaled steps via Hyprland's IPC socket directly
+(no hyprctl process spawns). Faster scrolling = bigger zoom steps.
+
+Commands: in, out, toggle, reset
+"""
+
+import os
+import json
+import select
+import signal
+import socket
+import sys
+import time
+from collections import deque
+from pathlib import Path
+
+# ── Config ──────────────────────────────────────────────────────────
+MIN_ZOOM = 1.0
+MAX_ZOOM = 10.0
+DEFAULT_SAVED = 2.0
+BASE_STEP = 0.10       # step for slow/single scroll ticks
+ACCEL_FACTOR = 0.15    # extra step per recent event in velocity window
+MAX_STEP = 0.80        # cap for very fast scrolling
+VELOCITY_WINDOW = 0.35 # seconds to measure scroll velocity
+
+STATE_FILE = Path.home() / ".local/state/hypr_zoom"
+RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
+FIFO_PATH = RUNTIME_DIR / "hypr_zoom.fifo"
+
+
+# ── Hyprland IPC ────────────────────────────────────────────────────
+
+def hypr_socket_path() -> str:
+    sig = os.environ["HYPRLAND_INSTANCE_SIGNATURE"]
+    return str(RUNTIME_DIR / "hypr" / sig / ".socket.sock")
+
+def hypr_cmd(cmd: str) -> str:
+    """Send command to Hyprland via its UNIX socket (avoids spawning hyprctl)."""
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+        sock.connect(hypr_socket_path())
+        sock.sendall(cmd.encode())
+        chunks = []
+        while True:
+            data = sock.recv(4096)
+            if not data:
+                break
+            chunks.append(data)
+    return b"".join(chunks).decode()
+
+def set_zoom(factor: float) -> None:
+    hypr_cmd(f"keyword cursor:zoom_factor {factor:.4f}")
+
+def get_zoom() -> float:
+    try:
+        data = json.loads(hypr_cmd("j/getoption cursor:zoom_factor"))
+        return float(data.get("float", 1.0))
+    except (json.JSONDecodeError, ValueError):
+        return 1.0
+
+
+# ── State persistence ───────────────────────────────────────────────
+
+def load_saved() -> float:
+    try:
+        return int(STATE_FILE.read_text().strip()) / 100.0
+    except (FileNotFoundError, ValueError):
+        return DEFAULT_SAVED
+
+def save_level(zoom: float) -> None:
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    STATE_FILE.write_text(str(int(zoom * 100)))
+
+
+# ── Daemon ──────────────────────────────────────────────────────────
+
+class ZoomDaemon:
+    def __init__(self):
+        self.current = get_zoom()
+        self.events: deque[float] = deque()
+
+    def velocity_step(self) -> float:
+        """Scale step size by recent scroll velocity."""
+        now = time.monotonic()
+        while self.events and (now - self.events[0]) > VELOCITY_WINDOW:
+            self.events.popleft()
+        self.events.append(now)
+        n = len(self.events)
+        return min(BASE_STEP + (n - 1) * ACCEL_FACTOR, MAX_STEP)
+
+    def zoom_in(self):
+        step = self.velocity_step()
+        self.current = min(self.current + step, MAX_ZOOM)
+        if self.current < MIN_ZOOM + 0.05:
+            self.current = MIN_ZOOM + BASE_STEP
+        set_zoom(self.current)
+        save_level(self.current)
+
+    def zoom_out(self):
+        step = self.velocity_step()
+        self.current = max(self.current - step, MIN_ZOOM)
+        set_zoom(self.current)
+        if self.current > 1.05:
+            save_level(self.current)
+
+    def toggle(self):
+        self.current = get_zoom()
+        if self.current > 1.05:
+            save_level(self.current)
+            self.current = MIN_ZOOM
+            set_zoom(self.current)
+            hypr_cmd("dispatch submap reset")
+        else:
+            self.current = load_saved()
+            set_zoom(self.current)
+            hypr_cmd("dispatch submap zoom")
+
+    def reset(self):
+        self.current = get_zoom()
+        if self.current > 1.05:
+            save_level(self.current)
+        self.current = MIN_ZOOM
+        set_zoom(self.current)
+        hypr_cmd("dispatch submap reset")
+
+    def handle(self, cmd: str):
+        cmd = cmd.strip()
+        if cmd == "in":
+            self.zoom_in()
+        elif cmd == "out":
+            self.zoom_out()
+        elif cmd == "toggle":
+            self.toggle()
+        elif cmd == "reset":
+            self.reset()
+
+    def run(self):
+        # Set up FIFO
+        if FIFO_PATH.exists():
+            FIFO_PATH.unlink()
+        os.mkfifo(FIFO_PATH)
+
+        # O_RDWR keeps the FIFO open even when no writers are connected
+        fd = os.open(str(FIFO_PATH), os.O_RDWR | os.O_NONBLOCK)
+
+        def cleanup(*_):
+            os.close(fd)
+            FIFO_PATH.unlink(missing_ok=True)
+            sys.exit(0)
+
+        signal.signal(signal.SIGTERM, cleanup)
+        signal.signal(signal.SIGINT, cleanup)
+
+        buf = ""
+        while True:
+            readable, _, _ = select.select([fd], [], [], 1.0)
+            if not readable:
+                continue
+            data = os.read(fd, 4096)
+            if not data:
+                continue
+            buf += data.decode()
+            while "\n" in buf:
+                line, buf = buf.split("\n", 1)
+                if line:
+                    self.handle(line)
+
+
+if __name__ == "__main__":
+    ZoomDaemon().run()

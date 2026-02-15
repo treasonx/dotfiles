@@ -13,6 +13,8 @@ import ScreenSharePicker from "./widget/screenshare/ScreenSharePicker"
 import { showScreenSharePicker } from "./widget/screenshare/screenshare-state"
 import SessionPanel from "./widget/session/SessionPanel"
 import { toggleSession } from "./widget/session/session-state"
+import WallpaperPanel from "./widget/wallpaper/WallpaperPanel"
+import { toggleWallpaper } from "./widget/wallpaper/wallpaper-state"
 
 app.start({
   main() {
@@ -63,6 +65,7 @@ app.start({
     PerplexityPanel(app.get_monitors()[0])
     ScreenSharePicker(app.get_monitors()[0])
     SessionPanel(app.get_monitors()[0])
+    WallpaperPanel(app.get_monitors()[0])
     BarOsd()
   },
   requestHandler(argv: string[], respond: (response: string) => void) {
@@ -75,6 +78,9 @@ app.start({
       respond("ok")
     } else if (command === "session") {
       toggleSession()
+      respond("ok")
+    } else if (command === "wallpaper") {
+      toggleWallpaper()
       respond("ok")
     } else if (command === "screenshare-pick") {
       // CRITICAL: Do NOT respond() synchronously — store it for the UI.

@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+"""List wallpapers with cached thumbnails for AGS.
+
+Recursively scans ~/Pictures/wallpapers/ for image files, generates
+small JPEG thumbnails in ~/.cache/ags/wallpapers/, and outputs JSON
+grouped by folder. Thumbnails are keyed by file path + mtime so they
+auto-invalidate when the original changes.
+
+Usage:
+  list_wallpapers.py          # JSON output of all wallpapers by folder
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import subprocess
+import sys
+
+WALL_DIR = os.path.join(os.path.expanduser("~"), "Pictures", "wallpapers")
+CACHE_DIR = os.path.join(os.path.expanduser("~"), ".cache", "ags", "wallpapers")
+THUMB_SIZE = "256"
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".avif"}
+
+
+def thumb_cache_path(path: str, mtime: float) -> str:
+    digest = hashlib.sha1(f"{path}:{mtime}".encode("utf-8")).hexdigest()
+    return os.path.join(CACHE_DIR, f"{digest}.jpg")
+
+
+def generate_thumbnail(src: str, dst: str) -> bool:
+    """Generate a JPEG thumbnail using ImageMagick's convert/magick."""
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    for cmd_name in ("magick", "convert"):
+        cmd_path = _which(cmd_name)
+        if cmd_path:
+            args = [cmd_path, f"{src}[0]", "-thumbnail", f"{THUMB_SIZE}x{THUMB_SIZE}>",
+                    "-quality", "80", "-strip", dst]
+            try:
+                subprocess.run(args, check=True, capture_output=True, timeout=10)
+                return os.path.exists(dst)
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                continue
+    return False
+
+
+_which_cache: dict[str, str | None] = {}
+
+def _which(name: str) -> str | None:
+    if name not in _which_cache:
+        import shutil
+        _which_cache[name] = shutil.which(name)
+    return _which_cache[name]
+
+
+def scan_wallpapers() -> dict:
+    """Scan wallpaper directory recursively, returning folders with entries."""
+    if not os.path.isdir(WALL_DIR):
+        return {"folders": []}
+
+    # Collect all image files grouped by their immediate parent folder
+    folder_map: dict[str, list[tuple[str, str, float]]] = {}
+
+    for dirpath, _dirnames, filenames in os.walk(WALL_DIR):
+        for fname in filenames:
+            ext = os.path.splitext(fname)[1].lower()
+            if ext not in IMAGE_EXTS:
+                continue
+            full = os.path.join(dirpath, fname)
+            try:
+                mtime = os.stat(full).st_mtime
+            except OSError:
+                continue
+
+            # Folder label = relative path from WALL_DIR, or "root" for top-level
+            rel = os.path.relpath(dirpath, WALL_DIR)
+            folder_key = rel if rel != "." else "root"
+            folder_map.setdefault(folder_key, []).append((full, fname, mtime))
+
+    # Build output sorted by folder name, files sorted by name within each
+    folders = []
+    for folder_key in sorted(folder_map.keys(), key=str.lower):
+        entries = folder_map[folder_key]
+        entries.sort(key=lambda e: e[1].lower())
+
+        items = []
+        for path, name, mtime in entries:
+            display_name = os.path.splitext(name)[0]
+            thumb = thumb_cache_path(path, mtime)
+            if not os.path.exists(thumb):
+                generate_thumbnail(path, thumb)
+            items.append({
+                "path": path,
+                "name": display_name,
+                "thumb": thumb if os.path.exists(thumb) else path,
+            })
+
+        folders.append({
+            "name": folder_key,
+            "count": len(items),
+            "wallpapers": items,
+        })
+
+    return {"folders": folders}
+
+
+def main() -> None:
+    data = scan_wallpapers()
+    json.dump(data, sys.stdout)
+
+
+if __name__ == "__main__":
+    main()
