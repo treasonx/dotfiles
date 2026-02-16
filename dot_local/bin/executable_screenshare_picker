@@ -18,7 +18,7 @@ XDPH output format (from reading XDPH source v1.3.11):
 
 XDPH config (xdph.conf):
   screencopy {
-      custom_picker_binary = /home/user/.local/bin/screenshare_picker.py
+      custom_picker_binary = /home/user/.local/bin/screenshare_picker
   }
 """
 

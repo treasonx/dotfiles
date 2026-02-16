@@ -7,14 +7,14 @@ Wrapper around tidal-dl-ng that sets sensible defaults:
   - All tidal-dl-ng terminal output (progress bars, colors) passes through
 
 Usage:
-  download_tidal.py setup                  # One-time: set download path & quality
-  download_tidal.py login                  # Authenticate with TIDAL (OAuth)
-  download_tidal.py dl <url> [url...]      # Download by URL (track/album/playlist)
-  download_tidal.py dl --list urls.txt     # Download URLs from a file
-  download_tidal.py fav tracks             # Download all favorite tracks
-  download_tidal.py fav albums --since 2024-01-01
-  download_tidal.py config                 # Show current tidal-dl-ng config
-  download_tidal.py logout                 # End session
+  download_tidal setup                  # One-time: set download path & quality
+  download_tidal login                  # Authenticate with TIDAL (OAuth)
+  download_tidal dl <url> [url...]      # Download by URL (track/album/playlist)
+  download_tidal dl --list urls.txt     # Download URLs from a file
+  download_tidal fav tracks             # Download all favorite tracks
+  download_tidal fav albums --since 2024-01-01
+  download_tidal config                 # Show current tidal-dl-ng config
+  download_tidal logout                 # End session
 """
 
 import argparse
@@ -75,7 +75,7 @@ def cmd_setup(_args: argparse.Namespace) -> int:
     else:
         print("Warning: ffmpeg not found. Install it for FLAC extraction.")
 
-    print("Setup complete. Run 'download_tidal.py login' to authenticate.")
+    print("Setup complete. Run 'download_tidal login' to authenticate.")
     return 0
 
 
@@ -100,7 +100,7 @@ def check_download_path() -> bool:
     if current and str(DOWNLOAD_DIR) in current:
         return True
     print(f"Warning: download path is '{current}', not '{DOWNLOAD_DIR}'.")
-    print("Run 'download_tidal.py setup' first to configure it.\n")
+    print("Run 'download_tidal setup' first to configure it.\n")
     return False
 
 

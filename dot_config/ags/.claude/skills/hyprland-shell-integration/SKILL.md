@@ -160,7 +160,7 @@ exec-once = start_ags.sh        # AGS shell (bar, notifications, sidebar, etc.)
 exec-once = swww-daemon          # Wallpaper
 exec-once = hypridle &           # Idle/lock (DPMS off after 30min)
 exec-once = pypr &               # Pyprland (magnify)
-exec-once = startup_layout.py &  # Restore window layout
+exec-once = startup_layout &  # Restore window layout
 ```
 
 AGS has replaced Waybar (status bar) and SwayNC (notifications).

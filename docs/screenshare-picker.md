@@ -7,7 +7,7 @@ A custom screen share picker for Hyprland that replaces the default Qt-based `hy
 ```
 Browser requests screen share
   -> xdg-desktop-portal -> xdg-desktop-portal-hyprland (XDPH)
-    -> spawns custom_picker_binary (screenshare_picker.py)
+    -> spawns custom_picker_binary (screenshare_picker)
       -> captures screenshots with grim
       -> builds manifest JSON at /tmp/xdph-picker/manifest.json
       -> runs `ags request screenshare-pick` (blocks until user picks)
@@ -25,7 +25,7 @@ Browser requests screen share
 
 | File | Purpose |
 |------|---------|
-| `dot_local/bin/executable_screenshare_picker.py` | Custom picker binary spawned by XDPH |
+| `dot_local/bin/executable_screenshare_picker` | Custom picker binary spawned by XDPH |
 | `dot_config/ags/widget/screenshare/screenshare-state.ts` | Reactive state, manifest loading, respond callback |
 | `dot_config/ags/widget/screenshare/ScreenSharePicker.tsx` | Slide-up panel UI with preview cards |
 | `dot_config/ags/app.ts` | Wires up `screenshare-pick` request handler |
@@ -135,7 +135,7 @@ The Python script parses `XDPH_WINDOW_SHARING_LIST` to build a mapping from Hypr
 ```bash
 # Set up the env var that XDPH would normally provide
 export XDPH_WINDOW_SHARING_LIST=""
-~/.local/bin/screenshare_picker.py --allow-token
+~/.local/bin/screenshare_picker --allow-token
 ```
 
 This will capture screenshots, show the AGS picker, and print the `[SELECTION]` output to stdout.

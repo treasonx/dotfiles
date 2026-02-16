@@ -5,7 +5,7 @@ Uses hyprctl to get the window list, finds the next window after the
 currently focused one, and focuses it — switching workspaces if needed.
 
 Usage:
-    cycle_windows.py [--reverse]
+    cycle_windows [--reverse]
 """
 
 from j_lib import JParser

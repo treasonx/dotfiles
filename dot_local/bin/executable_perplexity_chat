@@ -18,7 +18,7 @@ Environment:
     PERPLEXITY_API_KEY  — required, bearer token for the API
 
 Usage:
-    echo '{"messages":[{"role":"user","content":"hi"}]}' | perplexity_chat.py
+    echo '{"messages":[{"role":"user","content":"hi"}]}' | perplexity_chat
 """
 
 import sys as _sys

@@ -217,8 +217,8 @@ bind = $mainMod SHIFT, A, hy3:changegroup, untab
 bind = $mainMod, O, hy3:changegroup, opposite
 
 # Window Cycling (across all workspaces)
-bind = $mainMod, Tab, exec, cycle_windows.py
-bind = $mainMod SHIFT, Tab, exec, cycle_windows.py --reverse
+bind = $mainMod, Tab, exec, cycle_windows
+bind = $mainMod SHIFT, Tab, exec, cycle_windows --reverse
 
 # Window Cycling
 bind = ALT, Tab, cyclenext
@@ -263,7 +263,7 @@ bind = , escape, exec, hypr_zoom reset
 submap = reset
 
 # Custom Scripts
-bind = $mainMod, V, exec, $HOME/.local/bin/camera_toggle.py
+bind = $mainMod, V, exec, $HOME/.local/bin/camera_toggle
 bind = $mainMod, C, exec, $UserScripts/rescue_floating_windows.py
 
 # Audio
@@ -338,7 +338,7 @@ exec-once = hypridle &
 exec-once = pypr &
 exec-once = hypr_zoomd &
 exec-once = vicinae server
-exec-once = $HOME/.local/bin/doorbell_popup.py &
+exec-once = $HOME/.local/bin/doorbell_popup &
 {{- if eq .machine "desktop" }}
-exec-once = startup_layout.py &
+exec-once = startup_layout &
 {{- end }}

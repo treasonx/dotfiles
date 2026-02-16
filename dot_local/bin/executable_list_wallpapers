@@ -7,7 +7,7 @@ grouped by folder. Thumbnails are keyed by file path + mtime so they
 auto-invalidate when the original changes.
 
 Usage:
-  list_wallpapers.py          # JSON output of all wallpapers by folder
+  list_wallpapers          # JSON output of all wallpapers by folder
 """
 
 from j_lib import JParser

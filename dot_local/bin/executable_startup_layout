@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """Restore Hyprland window layout at login by launching saved apps.
 
-Reads saved_layout.json (written by save_layout.py), launches each
+Reads saved_layout.json (written by save_layout), launches each
 window's command on the correct workspace, waits for the windows to
-appear, then calls fix_layout.py --all to rebuild the hy3 tiling trees.
+appear, then calls fix_layout --all to rebuild the hy3 tiling trees.
 
 This replaces the old generated bash script (startup_layout.sh) — all
-tree-building logic now lives in fix_layout.py, eliminating duplication.
+tree-building logic now lives in fix_layout, eliminating duplication.
 
 Usage:
-    startup_layout.py              # Launch apps and fix layout
-    startup_layout.py --dry-run    # Print what would be launched
+    startup_layout              # Launch apps and fix layout
+    startup_layout --dry-run    # Print what would be launched
 """
 
 from j_lib import JParser
@@ -92,7 +92,7 @@ def main() -> None:
 
     layout = load_layout()
     if not layout or not layout.get("workspaces"):
-        print("No saved layout found. Run save_layout.py first.")
+        print("No saved layout found. Run save_layout first.")
         sys.exit(1)
 
     workspaces = layout["workspaces"]
@@ -108,7 +108,7 @@ def main() -> None:
             for cmd in cmds:
                 print(f"  {cmd} &")
             print()
-        print("Then: fix_layout.py --all")
+        print("Then: fix_layout --all")
         return
 
     print(f"Restoring {total_wins} windows across {len(ws_ids)} workspaces...")
@@ -136,9 +136,9 @@ def main() -> None:
         # Poll until windows appear
         wait_for_windows(int(ws_id), len(cmds))
 
-    # Delegate all tree-building to fix_layout.py (on PATH via ~/.local/bin)
-    print("All apps launched. Running fix_layout.py --all...")
-    subprocess.run(["fix_layout.py", "--all"])
+    # Delegate all tree-building to fix_layout (on PATH via ~/.local/bin)
+    print("All apps launched. Running fix_layout --all...")
+    subprocess.run(["fix_layout", "--all"])
 
     print("Startup layout restore complete.")
 

@@ -6,7 +6,7 @@ Uses audio file metadata (ID3 tags, Vorbis comments, etc.) to identify album mem
 which is more reliable than relying on filename conventions or directory structure.
 
 Usage:
-    copy_album.py <source_dir> <dest_dir> <album_name> [--dry-run] [--prefix]
+    copy_album <source_dir> <dest_dir> <album_name> [--dry-run] [--prefix]
 """
 
 from j_lib import JParser

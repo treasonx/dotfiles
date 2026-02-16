@@ -5,15 +5,15 @@ Moves all tiled windows to a temporary workspace, then brings them back
 one at a time with the correct hy3 group structure (v-group for rows,
 h-groups within each row, tab groups where saved).
 
-When saved_layout.json exists (written by save_layout.py), windows are
+When saved_layout.json exists (written by save_layout), windows are
 matched to their saved positions by class so each window lands in the
 correct slot, and splits are resized to match saved proportions.
 
 Usage:
-    fix_layout.py                # Current workspace, auto-split from config
-    fix_layout.py --top 3        # Force 3 windows in top row (overrides config)
-    fix_layout.py -w 1 -t 3      # Workspace 1, 3 on top
-    fix_layout.py --all           # Fix all workspaces from saved layout
+    fix_layout                # Current workspace, auto-split from config
+    fix_layout --top 3        # Force 3 windows in top row (overrides config)
+    fix_layout -w 1 -t 3      # Workspace 1, 3 on top
+    fix_layout --all           # Fix all workspaces from saved layout
 """
 
 from j_lib import JParser
@@ -314,7 +314,7 @@ def main():
     # --all mode: iterate every workspace in the saved layout
     if args.all:
         if not layout or not layout.get("workspaces"):
-            print("No saved layout found. Run save_layout.py first.")
+            print("No saved layout found. Run save_layout first.")
             sys.exit(1)
         ws_ids = sorted(layout["workspaces"].keys(), key=int)
         print(f"Fixing {len(ws_ids)} workspaces: {', '.join(ws_ids)}")

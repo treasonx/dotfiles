@@ -27,10 +27,10 @@ should only handle rendering and user interaction. When adding features:
 3. Communicate via JSON on stdin/stdout (or NDJSON for streaming)
 
 Examples of this pattern in the codebase:
-- `perplexity_chat.py` — Handles Perplexity API streaming; AGS reads NDJSON events
-- `clipboard_history.py` — Wraps `cliphist`; AGS calls `list`, `copy`, `delete` subcommands
-- `list_recent_files.py` — Scans directories, generates previews; AGS renders results
-- `save_layout.py` / `fix_layout.py` — Hyprland layout save/restore; AGS has two buttons
+- `perplexity_chat` — Handles Perplexity API streaming; AGS reads NDJSON events
+- `clipboard_history` — Wraps `cliphist`; AGS calls `list`, `copy`, `delete` subcommands
+- `list_recent_files` — Scans directories, generates previews; AGS renders results
+- `save_layout` / `fix_layout` — Hyprland layout save/restore; AGS has two buttons
 
 **Anti-pattern**: Don't put HTTP requests, file parsing, or complex logic in TypeScript.
 If it's more than a few lines of non-UI code, it should be a Python script.
@@ -307,15 +307,15 @@ widget/
   perplexity/
     PerplexityPanel.tsx         # AI chat panel (resizable, repositionable)
     perplexity-state.ts         # Conversations, geometry, scroll position, persistence
-    perplexity-api.ts           # Spawns perplexity_chat.py, reads NDJSON stream
+    perplexity-api.ts           # Spawns perplexity_chat, reads NDJSON stream
     pango-markdown.ts           # Markdown → Pango markup converter
     ChatMessage.tsx             # User/assistant message bubbles
     ChatTabs.tsx                # Conversation tab bar
   screenshare/
     ScreenSharePicker.tsx       # XDG portal screen/window/region picker
     screenshare-state.ts        # Manifest, preview polling, deferred response
-  ClipboardTab.tsx              # Clipboard history (via clipboard_history.py)
-  RecentFilesTab.tsx            # Recent files (via list_recent_files.py)
+  ClipboardTab.tsx              # Clipboard history (via clipboard_history)
+  RecentFilesTab.tsx            # Recent files (via list_recent_files)
   SidebarItem.tsx               # Reusable card with preview + actions
   SystemMetrics.tsx             # CPU/mem/disk/network (polls /proc)
   AudioPopover.tsx              # Speaker/mic sliders + per-app streams

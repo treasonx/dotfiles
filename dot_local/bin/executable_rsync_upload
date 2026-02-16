@@ -9,17 +9,17 @@ Rsync is ideal for large transfers because:
 - Compresses data in transit (-z)
 
 Usage:
-    rsync_upload.py <source> <user@host:/path> [--speed MBPS] [--dry-run]
+    rsync_upload <source> <user@host:/path> [--speed MBPS] [--dry-run]
 
 Examples:
     # Full speed upload
-    rsync_upload.py ~/data user@vps.example.com:/backup/
+    rsync_upload ~/data user@vps.example.com:/backup/
 
     # Limit to 20 Mbps
-    rsync_upload.py ~/data user@vps.example.com:/backup/ --speed 20
+    rsync_upload ~/data user@vps.example.com:/backup/ --speed 20
 
     # Preview what would be transferred
-    rsync_upload.py ~/data user@vps.example.com:/backup/ --dry-run
+    rsync_upload ~/data user@vps.example.com:/backup/ --dry-run
 """
 
 import argparse

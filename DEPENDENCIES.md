@@ -245,7 +245,7 @@ sudo dnf install \
 - `ImageMagick` — Image conversion (`convert` command for WebP scripts)
 - `libnotify` — `notify-send` for desktop notifications
 - `ddccontrol` — Monitor brightness via DDC-CI protocol
-- `rsync` — File sync/transfer (used by `rsync_upload.py`)
+- `rsync` — File sync/transfer (used by `rsync_upload`)
 - `qalculate-gtk` — Calculator (backend for rofi calculator applet)
 
 ### Development
@@ -291,8 +291,8 @@ Used by scripts in `~/.local/bin/`:
 pip install --user websockets mutagen
 ```
 
-- `websockets` — Used by `camera_toggle.py`, `doorbell_popup.py`, `eufy_2fa.py`
-- `mutagen` — Audio metadata library used by `copy_album.py`
+- `websockets` — Used by `camera_toggle`, `doorbell_popup`, `eufy_2fa`
+- `mutagen` — Audio metadata library used by `copy_album`
 
 Pyprland (Hyprland plugin manager) is also installed via pip:
 
@@ -313,7 +313,7 @@ sed -i 's/^from config import HandlingApp/from tidal_dl_ng.config import Handlin
   ~/.local/share/pipx/venvs/tidal-dl-ng/lib/python3.12/site-packages/tidal_dl_ng/cli.py
 ```
 
-- `tidal-dl-ng` — TIDAL music downloader CLI (used by `download_tidal.py`). Original PyPI package was removed; installed from fork. Requires Python 3.12 and a post-install import fix.
+- `tidal-dl-ng` — TIDAL music downloader CLI (used by `download_tidal`). Original PyPI package was removed; installed from fork. Requires Python 3.12 and a post-install import fix.
 
 ## Cargo Packages
 

@@ -5,7 +5,7 @@ Eufy 2FA Code Entry
 Prompts for a verification code and sends it to eufy-security-ws.
 
 Usage:
-    ./eufy_2fa.py
+    eufy_2fa
 """
 
 from j_lib import JParser

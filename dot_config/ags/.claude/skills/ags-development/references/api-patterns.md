@@ -43,7 +43,7 @@ import GLib from "gi://GLib"
 
 // Synchronous — for quick commands that return JSON
 function getClipboardItems(): ClipboardEntry[] {
-  const [ok, stdout] = GLib.spawn_command_line_sync("clipboard_history.py list --limit 20")
+  const [ok, stdout] = GLib.spawn_command_line_sync("clipboard_history list --limit 20")
   if (!ok) return []
   const decoder = new TextDecoder()
   return JSON.parse(decoder.decode(stdout))
@@ -52,7 +52,7 @@ function getClipboardItems(): ClipboardEntry[] {
 // Async subprocess — for streaming (e.g., API calls)
 function streamChat(messages: Message[], onToken: (t: string) => void) {
   const proc = Gio.Subprocess.new(
-    ["perplexity_chat.py"],
+    ["perplexity_chat"],
     Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDOUT_PIPE
   )
   // Write JSON request to stdin

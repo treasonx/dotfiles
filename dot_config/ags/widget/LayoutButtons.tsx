@@ -14,7 +14,7 @@ export function LayoutButtons() {
         px={4}
         py={2}
         tooltipText="Save window layout"
-        onPrimaryClick={() => GLib.spawn_command_line_async(`${SCRIPTS}/save_layout.py`)}
+        onPrimaryClick={() => GLib.spawn_command_line_async(`${SCRIPTS}/save_layout`)}
       >
         <Text size={1.1}>󰆓</Text>
       </Button>
@@ -23,7 +23,7 @@ export function LayoutButtons() {
         px={4}
         py={2}
         tooltipText="Fix window layout"
-        onPrimaryClick={() => GLib.spawn_command_line_async(`${SCRIPTS}/fix_layout.py`)}
+        onPrimaryClick={() => GLib.spawn_command_line_async(`${SCRIPTS}/fix_layout`)}
       >
         <Text size={1.1}>󱍙</Text>
       </Button>

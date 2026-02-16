@@ -3,12 +3,12 @@
 
 Captures tiled window positions via hyprctl, infers the hy3 split tree
 from coordinate clustering, detects launch commands from /proc and
-.desktop files, then saves the layout state for use by fix_layout.py
-and startup_layout.py.
+.desktop files, then saves the layout state for use by fix_layout
+and startup_layout.
 
 Usage:
-    save_layout.py              # Save layout JSON
-    save_layout.py --json-only  # Same (kept for backwards compat)
+    save_layout              # Save layout JSON
+    save_layout --json-only  # Same (kept for backwards compat)
 
 Files written:
     ~/.config/hypr/saved_layout.json    — state snapshot

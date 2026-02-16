@@ -19,11 +19,11 @@ AGS v2 (Go CLI)
 
 ### Dependencies
 
-All packages are in Fedora repos. Use `install_ags_deps.py` to install:
+All packages are in Fedora repos. Use `install_ags_deps` to install:
 
 ```bash
-install_ags_deps.py          # Install everything (removes AGS v1, installs v2 + Astal)
-install_ags_deps.py --check  # Just check status
+install_ags_deps          # Install everything (removes AGS v1, installs v2 + Astal)
+install_ags_deps --check  # Just check status
 ```
 
 Required packages:

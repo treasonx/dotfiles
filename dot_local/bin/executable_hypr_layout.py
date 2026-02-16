@@ -3,7 +3,7 @@
 
 Provides hyprctl IPC wrappers, desktop notifications, layout JSON I/O,
 tab group detection, and Y-coordinate row clustering used by both
-save_layout.py and fix_layout.py.
+save_layout and fix_layout.
 """
 
 import json
@@ -20,7 +20,7 @@ SAVED_LAYOUT = CONFIG_DIR / "saved_layout.json"
 # Windows whose Y coords differ by less than this are in the same row.
 Y_THRESHOLD = 100  # pixels
 
-# fix_layout.py specifics (kept here so both scripts share one source of truth)
+# fix_layout specifics (kept here so both scripts share one source of truth)
 DELAY = 0.15
 TEMP_WS = 99
 

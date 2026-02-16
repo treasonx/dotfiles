@@ -7,7 +7,7 @@ when the doorbell rings. The popup appears in the bottom-left of the
 active monitor.
 
 Usage:
-    ./doorbell_popup.py [--ws-url URL] [-v]
+    doorbell_popup [--ws-url URL] [-v]
 """
 
 from j_lib import JParser

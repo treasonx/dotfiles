@@ -7,8 +7,8 @@ script handles removing the old AGS v1 package and installing v2 with all
 Astal service libraries.
 
 Usage:
-    install_ags_deps.py           # Install everything
-    install_ags_deps.py --check   # Just check what's installed/missing
+    install_ags_deps           # Install everything
+    install_ags_deps --check   # Just check what's installed/missing
 """
 
 from j_lib import JParser

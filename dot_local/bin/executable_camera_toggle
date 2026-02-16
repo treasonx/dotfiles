@@ -6,7 +6,7 @@ Shows a rofi menu to select a camera, then displays the livestream.
 Press Super+V again to close the stream.
 
 Usage:
-    ./camera_toggle.py
+    camera_toggle
 """
 
 from j_lib import JParser
