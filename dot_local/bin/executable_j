@@ -58,6 +58,7 @@ SCRIPTS = [
     "install_ags_deps:Install AGS v2 and Astal dependencies",
     "playlist:Create M3U playlists using beets",
     "rsync_upload:Upload files via rsync with bandwidth control",
+    "transcode_video:Transcode videos to H.265 1080p MP4 via HandBrake",
     "v:Open file in nvim by fuzzy name match",
     "weather:Display weather via rustormy",
 ]
