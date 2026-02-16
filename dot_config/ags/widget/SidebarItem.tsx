@@ -48,8 +48,8 @@ export function SidebarItem({ imagePath, icon, title, subtitle, actions }: Sideb
         )}
       </Gtk.Frame>
       <Box vertical hexpand valign="center" css="min-width: 0;">
-        <Text size={0.9} truncate>{title}</Text>
-        <Text size={0.75} opacity={0.5} truncate>{subtitle}</Text>
+        <Text size={0.9} truncate noMarkup>{title}</Text>
+        <Text size={0.75} opacity={0.5} truncate noMarkup>{subtitle}</Text>
       </Box>
       <Box gap={4}>
         {actions.map((action) => (

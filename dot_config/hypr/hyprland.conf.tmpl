@@ -329,7 +329,7 @@ exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESK
 exec-once = $scriptsDir/Polkit.sh
 # Start AGS early — it claims org.kde.StatusNotifierWatcher on D-Bus.
 # The script blocks until the watcher is ready so tray apps below find it.
-exec-once = start_ags.sh
+exec-once = start_ags
 # exec-once = waybar &  # Replaced by AGS marble bar
 exec-once = nm-applet --indicator &
 exec-once = wl-paste --type text --watch cliphist store

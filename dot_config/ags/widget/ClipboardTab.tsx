@@ -22,7 +22,7 @@ type ClipboardEntry = {
 }
 
 const HOME = GLib.get_home_dir()
-const SCRIPT_PATH = GLib.build_filenamev([HOME, ".local", "bin", "clipboard_history.py"])
+const SCRIPT_PATH = GLib.build_filenamev([HOME, ".local", "bin", "clipboard_history"])
 const MAX_ITEMS = 20
 
 const [entries, setEntries] = createState<ClipboardEntry[]>([])

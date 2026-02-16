@@ -30,7 +30,7 @@ type RecentPayload = {
 }
 
 const HOME = GLib.get_home_dir()
-const SCRIPT_PATH = GLib.build_filenamev([HOME, ".local", "bin", "list_recent_files.py"])
+const SCRIPT_PATH = GLib.build_filenamev([HOME, ".local", "bin", "list_recent_files"])
 const MAX_FILES = 5
 
 const SECTIONS = [

@@ -48,7 +48,7 @@ export { wallpaperVisible, folders, scanning, activeFolder, setActiveFolder, vis
 
 // ── Directory Scanning (via Python script) ────────────────────────
 
-const SCRIPT = GLib.build_filenamev([GLib.get_home_dir()!, ".local", "bin", "list_wallpapers.py"])
+const SCRIPT = GLib.build_filenamev([GLib.get_home_dir()!, ".local", "bin", "list_wallpapers"])
 
 export async function scanWallpapers() {
   if (scanning()) return

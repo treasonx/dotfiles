@@ -117,9 +117,8 @@ function NowPlayingTitle() {
     <Gtk.ScrolledWindow
       hscrollbarPolicy={Gtk.PolicyType.NEVER}
       vscrollbarPolicy={Gtk.PolicyType.NEVER}
-      propagateNaturalWidth
+      widthRequest={200}
       propagateNaturalHeight
-      css="max-width: 200px;"
       onRealize={(self: Gtk.ScrolledWindow) => setupMarquee(self)}
     >
       <Box gap={4}>

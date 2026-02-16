@@ -142,7 +142,7 @@ export default function Sidebar(gdkmonitor: Gdk.Monitor) {
           vexpand
           hexpand
           widthRequest={width}
-          css={`min-width: ${width}px; max-width: ${width}px; padding: 12px; background: alpha(@view_bg_color, 0.85); border-radius: 12px 0 0 12px;`}
+          css={`min-width: ${width}px; padding: 12px; background: alpha(@view_bg_color, 0.85); border-radius: 12px 0 0 12px;`}
         >
           <NotificationHistory />
           <ClipboardTab />

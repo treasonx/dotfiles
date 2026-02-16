@@ -2,7 +2,7 @@ import GLib from "gi://GLib"
 import { Process } from "ags/process"
 import type { SearchResult } from "./perplexity-state"
 
-const SCRIPT = GLib.build_filenamev([GLib.get_home_dir(), ".local", "bin", "perplexity_chat.py"])
+const SCRIPT = GLib.build_filenamev([GLib.get_home_dir(), ".local", "bin", "perplexity_chat"])
 
 // ── API Key ────────────────────────────────────────────────────────
 
@@ -15,7 +15,7 @@ export function getApiKey(): string | null {
 /**
  * Stream a chat completion from the Perplexity API.
  *
- * Spawns perplexity_chat.py as a subprocess, writes the request JSON
+ * Spawns perplexity_chat as a subprocess, writes the request JSON
  * to its stdin, and reads NDJSON events from stdout. This avoids GJS
  * Soup SSE streaming issues — Python handles HTTP, AGS handles UI.
  *
@@ -76,7 +76,7 @@ export function streamChat(
   })
 
   proc.connect("stderr", (_: any, line: string) => {
-    console.error(`[perplexity_chat.py] ${line}`)
+    console.error(`[perplexity_chat] ${line}`)
   })
 
   proc.connect("exit", (_: any, code: number, signaled: boolean) => {
@@ -87,7 +87,7 @@ export function streamChat(
       // Killed by us (cancellation) — treat as normal completion
       onDone()
     } else if (code !== 0) {
-      onError(new Error(`perplexity_chat.py exited with code ${code}`))
+      onError(new Error(`perplexity_chat exited with code ${code}`))
     } else {
       // Clean exit without a "done" event — shouldn't happen, but handle it
       onDone()

@@ -15,20 +15,20 @@ file_exists() {
 }
 
 # Kill already running processes
-_ps=(rofi ags)
+_ps=(rofi)
 for _prs in "${_ps[@]}"; do
     if pidof "${_prs}" >/dev/null; then
         pkill "${_prs}"
     fi
 done
 
-# quit ags
-ags quit
+# Kill AGS (gjs process started by "ags run")
+pkill -f "ags run" 2>/dev/null
 
 sleep 0.3
 
 # relaunch ags
-"$HOME/.local/bin/start_ags.sh"
+"$HOME/.local/bin/start_ags"
 
 # Relaunching rainbow borders if the script exists
 sleep 1
