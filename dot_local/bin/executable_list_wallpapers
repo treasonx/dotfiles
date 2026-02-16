@@ -14,8 +14,6 @@ from j_lib import JParser
 
 JParser(description="List wallpapers with cached thumbnails for AGS").run()
 
-from __future__ import annotations
-
 import hashlib
 import json
 import os
