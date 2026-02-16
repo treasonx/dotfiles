@@ -32,8 +32,14 @@ app.start({
       const monitors = app.get_monitors()
       const activeConnectors = new Set<string>()
 
-      // What Hyprland knows about vs what GDK knows about
-      const hyprMonitors = hypr.get_monitors().map(m => m.get_name())
+      // Hyprland socket may be unavailable during DPMS transitions —
+      // fall back to an empty list so we still sync GDK-side bars
+      let hyprMonitors: string[] = []
+      try {
+        hyprMonitors = hypr.get_monitors().map(m => m.get_name())
+      } catch (e) {
+        log(`syncBars (${source ?? "init"}): Hyprland socket unavailable, skipping hypr monitor check`)
+      }
       log(`syncBars (${source ?? "init"}): GDK=${monitors.length} connectors=[${monitors.map(m => m.get_connector()).join(", ")}] Hypr=[${hyprMonitors.join(", ")}] bars=[${[...bars.keys()].join(", ")}]`)
 
       // Create bars for any newly connected monitors

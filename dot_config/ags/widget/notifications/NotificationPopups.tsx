@@ -1,11 +1,11 @@
 import { Gdk } from "ags/gtk4"
-import app from "ags/gtk4/app"
 import Notifd from "gi://AstalNotifd"
 import Hyprland from "gi://AstalHyprland"
 import { NotificationPopups } from "marble/components"
 import { NotificationCard } from "./NotificationCard"
 import { sidebarVisible } from "../sidebar-state"
 import { useConnect } from "gnim-hooks"
+import { getFocusedGdkMonitor } from "../../lib/monitor"
 
 export default function Popups(gdkmonitor: Gdk.Monitor) {
   const notifd = Notifd.get_default()
@@ -39,9 +39,7 @@ export default function Popups(gdkmonitor: Gdk.Monitor) {
 
   // Move popup window to the focused monitor when a notification arrives
   useConnect(notifd, "notified", () => {
-    const hypr = Hyprland.get_default()
-    const focusedName = hypr.get_focused_monitor().get_name()
-    const m = app.get_monitors().find((m) => m.get_connector() === focusedName)
+    const m = getFocusedGdkMonitor()
     if (m) (popup as any).gdkmonitor = m
   })
 

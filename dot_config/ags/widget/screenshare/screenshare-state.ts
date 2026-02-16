@@ -1,7 +1,6 @@
 import { createState } from "gnim"
-import Hyprland from "gi://AstalHyprland"
 import GLib from "gi://GLib"
-import app from "ags/gtk4/app"
+import { moveToFocusedMonitor } from "../../lib/monitor"
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -142,17 +141,7 @@ export function showScreenSharePicker(respond: (response: string) => void) {
   pendingRespond = respond
 
   // Move the picker window to the currently focused monitor
-  const picker = app.get_window("screenshare-picker")
-  if (picker) {
-    const hypr = Hyprland.get_default()
-    const focusedName = hypr.get_focused_monitor().get_name()
-    const gdkMonitor = app.get_monitors().find(
-      (m) => m.get_connector() === focusedName,
-    )
-    if (gdkMonitor) {
-      picker.gdkmonitor = gdkMonitor
-    }
-  }
+  moveToFocusedMonitor("screenshare-picker")
 
   // Load manifest (Python wrote metadata before calling ags request)
   setManifest(loadManifest())

@@ -1,7 +1,6 @@
 import { createState } from "gnim"
-import Hyprland from "gi://AstalHyprland"
 import GLib from "gi://GLib"
-import app from "ags/gtk4/app"
+import { moveToFocusedMonitor } from "../../lib/monitor"
 
 // ── Reactive State ─────────────────────────────────────────────────
 
@@ -12,17 +11,7 @@ export { sessionVisible }
 // ── Actions ────────────────────────────────────────────────────────
 
 export function toggleSession() {
-  const panel = app.get_window("session")
-  if (panel) {
-    const hypr = Hyprland.get_default()
-    const focusedName = hypr.get_focused_monitor().get_name()
-    const gdkMonitor = app.get_monitors().find(
-      (m) => m.get_connector() === focusedName,
-    )
-    if (gdkMonitor) {
-      panel.gdkmonitor = gdkMonitor
-    }
-  }
+  moveToFocusedMonitor("session")
   setSessionVisible((prev) => !prev)
 }
 

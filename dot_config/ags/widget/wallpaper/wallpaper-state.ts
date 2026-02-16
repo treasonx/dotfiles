@@ -1,8 +1,7 @@
 import { createState } from "gnim"
-import Hyprland from "gi://AstalHyprland"
 import GLib from "gi://GLib"
-import app from "ags/gtk4/app"
 import { execAsync } from "ags/process"
+import { getFocusedMonitorName, moveToFocusedMonitor } from "../../lib/monitor"
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -69,8 +68,7 @@ export async function scanWallpapers() {
 // ── Actions ───────────────────────────────────────────────────────
 
 export function applyWallpaper(path: string) {
-  const hypr = Hyprland.get_default()
-  const monitor = hypr.get_focused_monitor().get_name()
+  const monitor = getFocusedMonitorName() ?? "DP-1"
   GLib.spawn_command_line_async(
     `swww img -o ${monitor} "${path}" --transition-fps 60 --transition-type any --transition-duration 2`,
   )
@@ -85,17 +83,7 @@ export function applyRandom() {
 }
 
 export function toggleWallpaper() {
-  const panel = app.get_window("wallpaper")
-  if (panel) {
-    const hypr = Hyprland.get_default()
-    const focusedName = hypr.get_focused_monitor().get_name()
-    const gdkMonitor = app.get_monitors().find(
-      (m) => m.get_connector() === focusedName,
-    )
-    if (gdkMonitor) {
-      panel.gdkmonitor = gdkMonitor
-    }
-  }
+  moveToFocusedMonitor("wallpaper")
   // Rescan on open
   if (!wallpaperVisible()) {
     void scanWallpapers()

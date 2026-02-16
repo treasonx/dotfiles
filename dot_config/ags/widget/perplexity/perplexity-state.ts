@@ -1,8 +1,7 @@
 import { createState } from "gnim"
-import Hyprland from "gi://AstalHyprland"
 import GLib from "gi://GLib"
-import app from "ags/gtk4/app"
 import { writeFileAsync } from "ags/file"
+import { moveToFocusedMonitor } from "../../lib/monitor"
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -235,19 +234,11 @@ export function persistState() {
 // ── Panel Toggle ───────────────────────────────────────────────────
 
 export function togglePanel() {
-  const panel = app.get_window("perplexity")
-  if (panel) {
-    const hypr = Hyprland.get_default()
-    const focusedName = hypr.get_focused_monitor().get_name()
-    const gdkMonitor = app.get_monitors().find(
-      (m) => m.get_connector() === focusedName,
-    )
-    if (gdkMonitor) {
-      panel.gdkmonitor = gdkMonitor
-      // Recompute pixel values for the (possibly different) monitor
-      const geo = gdkMonitor.get_geometry()
-      recomputePixels(geo.width, geo.height)
-    }
+  const mon = moveToFocusedMonitor("perplexity")
+  if (mon) {
+    // Recompute pixel values for the (possibly different) monitor
+    const geo = mon.get_geometry()
+    recomputePixels(geo.width, geo.height)
   }
 
   const willHide = panelVisible()

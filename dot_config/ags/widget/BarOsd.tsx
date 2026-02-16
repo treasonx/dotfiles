@@ -2,6 +2,7 @@ import app from "ags/gtk4/app"
 import Hyprland from "gi://AstalHyprland"
 import { OSD } from "marble/components"
 import { useConnect } from "gnim-hooks"
+import { getFocusedGdkMonitor } from "../lib/monitor"
 
 export function BarOsd() {
   const hypr = Hyprland.get_default()
@@ -21,8 +22,7 @@ export function BarOsd() {
   )
 
   function syncMonitor() {
-    const focusedName = hypr.get_focused_monitor().get_name()
-    const m = app.get_monitors().find((mon) => mon.get_connector() === focusedName)
+    const m = getFocusedGdkMonitor()
     if (m) (osd as any).gdkmonitor = m
   }
 
