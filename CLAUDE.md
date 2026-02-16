@@ -167,6 +167,7 @@ args = parser.run()
 - The `j` launcher shows required args first (must fill in), then optional args (skippable)
 - Choice args (e.g., `choices=["off", "on"]`) get numbered selection in `j`
 - Scripts still work standalone: `copy_album /src /dest "Album" --dry-run`
+- `j` remembers args from the last invocation of each script (`~/.local/state/j/history.json`) and offers them as defaults — press Enter to reuse
 
 **Scripts that read stdin** (like `perplexity_chat`) should guard the parser:
 ```python

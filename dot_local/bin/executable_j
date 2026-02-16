@@ -14,6 +14,27 @@ import subprocess
 import sys
 from pathlib import Path
 
+# ── History ────────────────────────────────────────────────────────────
+HISTORY_DIR = Path(
+    os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state")
+) / "j"
+HISTORY_FILE = HISTORY_DIR / "history.json"
+
+
+def load_history() -> dict:
+    """Load per-script arg history from disk."""
+    try:
+        return json.loads(HISTORY_FILE.read_text())
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def save_history(history: dict):
+    """Persist per-script arg history to disk."""
+    HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+    HISTORY_FILE.write_text(json.dumps(history, indent=2))
+
+
 # ── ANSI helpers ──────────────────────────────────────────────────────
 BOLD = "\033[1m"
 CYAN = "\033[36m"
@@ -159,35 +180,59 @@ def prompt_value(label: str, help_text: str, default=None, choices=None) -> str:
         return val if val else (str(default) if default is not None else "")
 
 
-def prompt_flag(label: str, help_text: str) -> bool:
-    """Prompt for a boolean flag."""
-    raw = input(f"  {CYAN}{label}{RESET}  {help_text} [{YELLOW}y/N{RESET}]: ").strip()
+def prompt_flag(label: str, help_text: str, prev: bool = False) -> bool:
+    """Prompt for a boolean flag, with optional previous-value default."""
+    if prev:
+        hint = f"{YELLOW}Y/n{RESET}"
+    else:
+        hint = f"{YELLOW}y/N{RESET}"
+    raw = input(f"  {CYAN}{label}{RESET}  {help_text} [{hint}]: ").strip()
+    if not raw:
+        return prev
     return raw.lower() in ("y", "yes")
 
 
-def interactive_args(meta: dict) -> list[str]:
-    """Walk user through args from --_j_meta JSON. Returns argv list."""
+def interactive_args(meta: dict, prev: dict | None = None) -> tuple[list[str], dict]:
+    """Walk user through args from --_j_meta JSON.
+
+    Returns (argv_list, values_dict) where values_dict maps arg names
+    to their chosen values for history storage.
+    """
     args_spec = meta.get("args", [])
     if not args_spec:
-        return []
+        return [], {}
 
+    prev = prev or {}
     positional = [a for a in args_spec if a["positional"] and a["required"]]
     optional_pos = [a for a in args_spec if a["positional"] and not a["required"]]
     optional_flags = [a for a in args_spec if not a["positional"]]
 
     result_positional = []
     result_optional = []
+    values = {}  # for history
 
+    has_prev = bool(prev)
     enable_path_completion()
+
+    # Show previous invocation if available
+    if has_prev:
+        print(f"  {DIM}(previous args remembered — press Enter to reuse){RESET}")
 
     # ── Required positional args ──
     if positional:
         print(f"\n  {BOLD}Required:{RESET}")
         for arg in positional:
+            # Use previous value as default if available
+            prev_val = prev.get(arg["name"])
+            default = prev_val if prev_val is not None else None
             while True:
-                val = prompt_value(arg["name"], arg["help"], choices=arg["choices"])
+                val = prompt_value(
+                    arg["name"], arg["help"],
+                    default=default, choices=arg["choices"],
+                )
                 if val:
                     result_positional.append(val)
+                    values[arg["name"]] = val
                     break
                 print(f"    {DIM}(required){RESET}")
 
@@ -195,38 +240,64 @@ def interactive_args(meta: dict) -> list[str]:
     if optional_pos:
         print(f"\n  {BOLD}Optional positional:{RESET}")
         for arg in optional_pos:
+            prev_val = prev.get(arg["name"])
+            default = prev_val if prev_val is not None else arg["default"]
             val = prompt_value(
                 arg["name"], arg["help"],
-                default=arg["default"], choices=arg["choices"],
+                default=default, choices=arg["choices"],
             )
             if val:
                 result_positional.append(val)
+                values[arg["name"]] = val
 
     # ── Optional flags/options ──
     if optional_flags:
-        # Show summary
+        # Check if any flags were set previously
+        prev_flags_set = any(prev.get(a["name"]) for a in optional_flags)
         flag_count = len(optional_flags)
-        raw = input(
-            f"\n  {BOLD}{flag_count} option{'s' if flag_count != 1 else ''}"
-            f" available.{RESET} Configure? [{YELLOW}y/N{RESET}]: "
-        ).strip()
 
-        if raw.lower() in ("y", "yes"):
+        if prev_flags_set:
+            hint = f"{YELLOW}Y/n{RESET}"
+            prompt_text = (
+                f"\n  {BOLD}{flag_count} option{'s' if flag_count != 1 else ''}"
+                f" available{RESET} {DIM}(some set previously){RESET}."
+                f" Configure? [{hint}]: "
+            )
+        else:
+            hint = f"{YELLOW}y/N{RESET}"
+            prompt_text = (
+                f"\n  {BOLD}{flag_count} option{'s' if flag_count != 1 else ''}"
+                f" available.{RESET} Configure? [{hint}]: "
+            )
+
+        raw = input(prompt_text).strip()
+        show_options = raw.lower() in ("y", "yes") if raw else prev_flags_set
+
+        if show_options:
             for arg in optional_flags:
                 flag = arg["flags"][0] if arg["flags"] else f"--{arg['name']}"
+                prev_val = prev.get(arg["name"])
                 if arg["is_flag"]:
-                    if prompt_flag(flag, arg["help"]):
+                    was_set = bool(prev_val)
+                    if prompt_flag(flag, arg["help"], prev=was_set):
                         result_optional.append(flag)
+                        values[arg["name"]] = True
+                    else:
+                        values[arg["name"]] = False
                 else:
+                    default = prev_val if prev_val is not None else arg["default"]
                     val = prompt_value(
                         flag, arg["help"],
-                        default=arg["default"], choices=arg["choices"],
+                        default=default, choices=arg["choices"],
                     )
                     if val and val != str(arg["default"]):
                         result_optional.append(flag)
                         result_optional.append(val)
+                        values[arg["name"]] = val
+                    else:
+                        values[arg["name"]] = None
 
-    return result_positional + result_optional
+    return result_positional + result_optional, values
 
 
 def main():
@@ -240,13 +311,19 @@ def main():
 
     # Try to get script metadata for interactive prompts
     meta = get_meta(selected)
+    history = load_history()
+    prev = history.get(selected)
 
     if meta:
         desc = meta.get("description", "")
         if desc:
             print(f"\n  {BOLD}{CYAN}{selected}{RESET} — {desc}")
 
-        argv = interactive_args(meta)
+        argv, values = interactive_args(meta, prev)
+
+        # Save to history
+        history[selected] = values
+        save_history(history)
     else:
         # Fallback: plain text prompt
         raw = input(f"  args (Enter to skip): ").strip()
