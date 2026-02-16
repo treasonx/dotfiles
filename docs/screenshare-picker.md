@@ -122,6 +122,30 @@ The Python script parses `XDPH_WINDOW_SHARING_LIST` to build a mapping from Hypr
 7. Python wraps it: `[SELECTION]r/screen:DP-1` and prints to its own stdout
 8. XDPH reads the picker's stdout and starts screencopy
 
+## Known Issues & Gotchas
+
+### XDPH must be restarted after config or picker changes
+
+XDPH caches `xdph.conf` (including `custom_picker_binary`) at startup. If you change the picker script or config, you **must** restart XDPH:
+
+```bash
+systemctl --user restart xdg-desktop-portal-hyprland
+```
+
+Without this, XDPH continues using the old config/state. Symptoms: the picker script is never invoked (empty debug log), XDPH logs `SHAREDATA returned selection -1`, and the browser falls back to its built-in tab picker.
+
+### XDPH coredumps when the picker fails (hyprutils bug)
+
+If the picker binary exits non-zero, XDPH's `CProcess::runSync()` calls `exit()` which triggers Mesa's gallium `atexit_handler` and produces a coredump. This is a bug in hyprutils v0.10.0 — the parent process shouldn't call `exit()` on child failure. The coredumps are harmless (systemd restarts XDPH), but they can leave XDPH in a degraded state where it stops spawning the picker entirely. Fix: restart XDPH.
+
+### The picker must accept `--allow-token`
+
+XDPH passes `--allow-token` as a CLI argument when `allow_token_by_default = true` in xdph.conf. If the picker script uses argparse (via `JParser`) and doesn't register `--allow-token`, argparse rejects it and exits with code 2 — the script never reaches `main()`. XDPH sees no `[SELECTION]` output and returns `selection -1`.
+
+### Manual testing won't show windows
+
+When testing the picker manually (`~/.local/bin/screenshare_picker --allow-token`), the `XDPH_WINDOW_SHARING_LIST` env var is empty (only XDPH sets it). All windows will be skipped with "no handle_id". Screens still work. To test with windows, trigger a real screen share from a browser.
+
 ## Debugging
 
 ### Log files

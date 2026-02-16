@@ -24,7 +24,10 @@ XDPH config (xdph.conf):
 
 from j_lib import JParser
 
-JParser(description="Screen share picker for Hyprland portal").run()
+parser = JParser(description="Screen share picker for Hyprland portal")
+parser.add_argument("--allow-token", action="store_true",
+                    help="Allow restore token (passed by XDPH when allow_token_by_default=true)")
+args = parser.run()
 
 import json
 import os
@@ -328,8 +331,8 @@ def main() -> int:
     try:
         log(f"=== picker started, args={sys.argv} ===")
 
-        # Check for --allow-token flag from XDPH
-        allow_token = "--allow-token" in sys.argv
+        # --allow-token is parsed by JParser above
+        allow_token = args.allow_token
 
         # Phase 1: Gather metadata (fast — just hyprctl IPC)
         manifest = build_manifest_metadata()
