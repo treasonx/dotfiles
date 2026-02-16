@@ -18,7 +18,7 @@ import WallpaperPanel from "./widget/wallpaper/WallpaperPanel"
 import { toggleWallpaper } from "./widget/wallpaper/wallpaper-state"
 
 function log(msg: string) {
-  print(`[ags:monitors] ${msg}`)
+  printerr(`[ags:monitors] ${msg}`)
 }
 
 app.start({
@@ -65,13 +65,17 @@ app.start({
       // Check if Hyprland knows about monitors that GDK doesn't have yet.
       // This happens when DPMS wakes a monitor — Hyprland fires
       // "monitor-added" before GDK creates the GdkMonitor object.
+      // Retry with increasing delays because GDK can take several seconds
+      // after DPMS wake to create all monitor objects.
       const missing = hyprMonitors.filter(name => !activeConnectors.has(name))
       if (missing.length > 0) {
-        log(`  GDK missing monitors: [${missing.join(", ")}] — scheduling retry`)
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
-          syncBars("retry")
-          return GLib.SOURCE_REMOVE
-        })
+        log(`  GDK missing monitors: [${missing.join(", ")}] — scheduling retries`)
+        for (const delay of [500, 1500, 3000]) {
+          GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
+            syncBars(`retry-${delay}ms`)
+            return GLib.SOURCE_REMOVE
+          })
+        }
       }
     }
 

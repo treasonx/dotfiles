@@ -22,8 +22,9 @@ for _prs in "${_ps[@]}"; do
     fi
 done
 
-# Kill AGS (gjs process started by "ags run")
-pkill -f "ags run" 2>/dev/null
+# Kill AGS — the Go binary exec's into gjs, so the running process is
+# "gjs -m /run/user/…/ags.js", NOT "ags run". Match the actual process.
+pkill -f 'gjs.*ags\.js' 2>/dev/null
 
 sleep 0.3
 
