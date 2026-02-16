@@ -185,12 +185,7 @@ bind = $mainMod, F, exec, $scriptsDir/float_center.py
 # Applications
 bind = $mainMod, Return, exec, $term
 bind = $mainMod, T, exec, $files
-# TODO: once desktop vicinae is updated past v0.9.6, remove this branch and use "vicinae toggle" everywhere
-{{- if eq .machine "desktop" }}
-bind = $mainMod, SPACE, exec, vicinae
-{{- else }}
 bind = $mainMod, SPACE, exec, vicinae toggle
-{{- end }}
 bind = $mainMod ALT, C, exec, $UserScripts/RofiCalc.sh
 
 # Features
