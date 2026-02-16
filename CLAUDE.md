@@ -113,14 +113,75 @@ chezmoi managed            # List all managed files
 
 When performing admin tasks that could be reused, create a Python script in `dot_local/bin/`. chezmoi deploys it to `~/.local/bin/` (already on PATH).
 
-1. **Always use Python** - Scripts must be Python 3.10+
-2. **Prefer standard library** - Use `subprocess`, `pathlib`, `shutil`, `json`, etc.
-3. **Make scripts executable** - Add shebang `#!/usr/bin/env python3` and `chmod +x`
-4. **Include docstrings** - Document what the script does and how to use it
-5. **Use argparse for CLI** - Scripts with options should use `argparse`
-6. **Apply after adding** - Run `chezmoi apply` to deploy
+1. **Always use Python** — Scripts must be Python 3.10+
+2. **Prefer standard library** — Use `subprocess`, `pathlib`, `shutil`, `json`, etc.
+3. **No `.py` extension** — Scripts are invoked by name (e.g., `copy_album` not `copy_album.py`). The shebang handles interpreter selection. Only importable libraries keep `.py` (e.g., `j_lib.py`, `hypr_layout.py`).
+4. **Chezmoi source name** — `executable_script_name` (no `.py`), deploys to `~/.local/bin/script_name`
+5. **Make scripts executable** — Add shebang `#!/usr/bin/env python3` and `chmod +x`
+6. **Include docstrings** — Document what the script does and how to use it
+7. **Use `j_lib.JParser`** — See "j Launcher Integration" below
+8. **Register in `j`** — Add an entry to the `SCRIPTS` list in `executable_j`
+9. **Apply after adding** — Run `chezmoi apply` to deploy
 
-### Naming: lowercase with underscores, verb_noun pattern (`backup_configs.py`)
+### Naming
+Lowercase with underscores, verb_noun pattern: `backup_configs`, `sync_music`
+
+### j Launcher Integration
+
+All scripts use `j_lib.JParser` instead of `argparse.ArgumentParser`. This enables the `j` launcher to introspect arguments via `--_j_meta` and walk users through them interactively.
+
+**Minimal script (no args):**
+```python
+#!/usr/bin/env python3
+"""Short description of what this does."""
+
+from j_lib import JParser
+
+parser = JParser(description="Short description of what this does")
+parser.run()
+
+# ... script logic ...
+```
+
+**Script with arguments:**
+```python
+#!/usr/bin/env python3
+"""Copy files by album tag."""
+
+from pathlib import Path
+from j_lib import JParser
+
+parser = JParser(description="Copy audio files by album")
+parser.add_argument("source_dir", type=Path, help="Directory containing audio files")
+parser.add_argument("dest_dir", type=Path, help="Destination directory")
+parser.add_argument("--dry-run", "-n", action="store_true", help="Show without copying")
+args = parser.run()
+
+# Use args.source_dir, args.dest_dir, args.dry_run ...
+```
+
+**Key points:**
+- `JParser` is a drop-in replacement for `argparse.ArgumentParser` — same API
+- Call `parser.run()` instead of `parser.parse_args()` — this handles `--_j_meta` introspection
+- `--_j_meta` outputs JSON describing all arguments (used by `j` for interactive prompts)
+- The `j` launcher shows required args first (must fill in), then optional args (skippable)
+- Choice args (e.g., `choices=["off", "on"]`) get numbered selection in `j`
+- Scripts still work standalone: `copy_album /src /dest "Album" --dry-run`
+
+**Scripts that read stdin** (like `perplexity_chat`) should guard the parser:
+```python
+import sys
+if "--_j_meta" in sys.argv or "-h" in sys.argv or "--help" in sys.argv:
+    from j_lib import JParser
+    JParser(description="Stream chat completions").run()
+```
+
+### Checklist for adding a new script
+1. Create `dot_local/bin/executable_my_script` (no `.py` extension)
+2. Add shebang, docstring, `JParser` with description and arguments
+3. Add `"my_script:Short description"` to the `SCRIPTS` list in `executable_j`
+4. `chezmoi apply -v`
+5. Verify: `my_script --_j_meta` outputs JSON, `my_script --help` works, `j` shows it in the picker
 
 ## AGS v2 (Custom Desktop Shell)
 
@@ -130,8 +191,8 @@ Quick reference:
 - `ags run` — Run the shell (bundles TypeScript on-the-fly)
 - `ags inspect` — GTK Inspector for CSS debugging
 - `ags request <msg>` — Send command to running instance
-- `install_ags_deps.py --check` — Verify AGS v2 + Astal dependencies
-- AGS stderr logs: `~/.local/state/ags/ags.log` (truncated each restart via `start_ags.sh`)
+- `install_ags_deps --check` — Verify AGS v2 + Astal dependencies
+- AGS stderr logs: `~/.local/state/ags/ags.log` (truncated each restart via `start_ags`)
 
 ## Common Tasks
 

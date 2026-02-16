@@ -1,32 +1,29 @@
-#!/bin/bash
+#!/usr/bin/env python3
+"""Create M3U playlists using beets."""
 
-# Check if beets is installed
-if ! command -v beet &> /dev/null; then
-    echo "Beets is not installed. Please install Beets first."
-    exit 1
-fi
+import shutil
+import subprocess
+import sys
+from pathlib import Path
 
-# Function to create an M3U playlist
-create_playlist() {
-    local query="$1"
-    local playlist_name="$2"
+from j_lib import JParser
 
-    # Create playlist directory if it doesn't exist
-    mkdir -p playlists
+parser = JParser(description="Create M3U playlists using beets")
+parser.add_argument("query", help="Beets query to match tracks")
+parser.add_argument("playlist_name", help="Name for the playlist (without .m3u)")
+args = parser.run()
 
-    # Use beets to generate the playlist
-    beet ls -f '$path' "$query" > "playlists/$playlist_name.m3u"
+if not shutil.which("beet"):
+    print("Beets is not installed. Please install Beets first.", file=sys.stderr)
+    sys.exit(1)
 
-    echo "Playlist 'playlists/$playlist_name.m3u' created successfully."
-}
+playlist_dir = Path("playlists")
+playlist_dir.mkdir(exist_ok=True)
 
-# Main script
-if [ "$#" -ne 2 ]; then
-    echo "Usage: $0 <query> <playlist_name>"
-    exit 1
-fi
-
-query="$1"
-playlist_name="$2"
-
-create_playlist "$query" "$playlist_name"
+output = playlist_dir / f"{args.playlist_name}.m3u"
+result = subprocess.run(
+    ["beet", "ls", "-f", "$path", args.query],
+    capture_output=True, text=True,
+)
+output.write_text(result.stdout)
+print(f"Playlist '{output}' created successfully.")

@@ -9,6 +9,10 @@ Usage:
     ./camera_toggle.py
 """
 
+from j_lib import JParser
+
+JParser(description="Camera viewer — show/toggle eufy camera streams").run()
+
 import asyncio
 import json
 import os

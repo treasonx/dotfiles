@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""Start AGS shell with stderr logging.
+
+Used by hyprland exec-once and Refresh.sh to avoid duplicating launch flags.
+Loads environment.d configs so AGS inherits API keys, then polls D-Bus
+for org.kde.StatusNotifierWatcher before returning (so tray icons register).
+"""
+
+import os
+import subprocess
+import time
+from pathlib import Path
+
+from j_lib import JParser
+
+parser = JParser(description="Start AGS shell with logging")
+parser.run()
+
+# Load environment.d configs (API keys, etc.) so AGS inherits them.
+# systemd loads these at login, but Hyprland exec-once may run before that.
+env_dir = Path.home() / ".config" / "environment.d"
+if env_dir.is_dir():
+    for conf in sorted(env_dir.glob("*.conf")):
+        for line in conf.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, _, val = line.partition("=")
+                os.environ[key.strip()] = val.strip()
+
+# Create log directory
+state_home = os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local" / "state"))
+log_dir = Path(state_home) / "ags"
+log_dir.mkdir(parents=True, exist_ok=True)
+log_file = log_dir / "ags.log"
+
+# Launch AGS with stderr redirected to log
+with open(log_file, "w") as log:
+    subprocess.Popen(
+        ["ags", "run", "--gtk", "4"],
+        stderr=log,
+        stdout=subprocess.DEVNULL,
+    )
+
+# Wait for AGS to claim org.kde.StatusNotifierWatcher on the session bus.
+# Electron apps (Slack, 1Password, etc.) only try to register their tray icon
+# once at startup — if no watcher exists yet, they silently give up forever.
+for _ in range(50):
+    result = subprocess.run(
+        ["busctl", "--user", "status", "org.kde.StatusNotifierWatcher"],
+        capture_output=True,
+    )
+    if result.returncode == 0:
+        break
+    time.sleep(0.1)

@@ -15,7 +15,7 @@ Files written:
     ~/.config/hypr/layout_commands.json — command mappings
 """
 
-import argparse
+from j_lib import JParser
 import json
 import re
 from datetime import date
@@ -260,7 +260,7 @@ def collect_layout() -> dict:
 # Main
 # ---------------------------------------------------------------------------
 def main() -> None:
-    parser = argparse.ArgumentParser(
+    parser = JParser(
         description="Save Hyprland window layout to JSON."
     )
     parser.add_argument(
@@ -268,7 +268,7 @@ def main() -> None:
         action="store_true",
         help="(No-op, kept for backwards compatibility.)",
     )
-    parser.parse_args()
+    parser.run()
 
     # Collect current state
     layout = collect_layout()

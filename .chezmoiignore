@@ -14,6 +14,9 @@
 .claude/skills/
 .claude/projects/
 
+# Python bytecode cache
+.local/bin/__pycache__
+
 # AGS v2 generated files (created by ags init / ags types)
 .config/ags/node_modules
 .config/ags/@girs

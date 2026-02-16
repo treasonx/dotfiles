@@ -11,7 +11,7 @@ Usage:
     install_ags_deps.py --check   # Just check what's installed/missing
 """
 
-import argparse
+from j_lib import JParser
 import subprocess
 import sys
 
@@ -80,9 +80,9 @@ def install(missing: list[str], remove_v1: bool):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Install AGS v2 + Astal dependencies")
+    parser = JParser(description="Install AGS v2 + Astal dependencies")
     parser.add_argument("--check", action="store_true", help="Only check status, don't install")
-    args = parser.parse_args()
+    args = parser.run()
 
     print("AGS v2 + Astal dependency status:\n")
     missing, v1_present = check_status()

@@ -1,17 +1,34 @@
-#!/usr/bin/env bash
-# Remove a git worktree using fzf for selection
-# Usage: git wtr
+#!/usr/bin/env python3
+"""Remove a git worktree using fzf for selection."""
 
-worktrees=$(git worktree list | grep -v "(bare)" | tail -n +2)
+import subprocess
+import sys
 
-if [ -z "$worktrees" ]; then
-    echo "No worktrees to remove"
-    exit 0
-fi
+from j_lib import JParser
 
-selected=$(echo "$worktrees" | fzf --prompt="Remove worktree: ")
+parser = JParser(description="Remove git worktree via fzf picker")
+parser.run()
 
-if [ -n "$selected" ]; then
-    path=$(echo "$selected" | awk '{print $1}')
-    git worktree remove "$path"
-fi
+# List worktrees, skip bare repo (first line)
+result = subprocess.run(
+    ["git", "worktree", "list"], capture_output=True, text=True,
+)
+lines = [
+    line for line in result.stdout.strip().splitlines()[1:]
+    if "(bare)" not in line
+]
+
+if not lines:
+    print("No worktrees to remove")
+    sys.exit(0)
+
+# Pick with fzf
+fzf = subprocess.run(
+    ["fzf", "--prompt=Remove worktree: "],
+    input="\n".join(lines), capture_output=True, text=True,
+)
+if fzf.returncode != 0 or not fzf.stdout.strip():
+    sys.exit(0)
+
+path = fzf.stdout.strip().split()[0]
+subprocess.run(["git", "worktree", "remove", path])

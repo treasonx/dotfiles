@@ -1,11 +1,47 @@
-#!/bin/sh
+#!/usr/bin/env python3
+"""Monitor power control via DDC/CI.
+
+Sends DPMS commands to portable monitors using ddccontrol.
+Register 0xd6: 5 = off, 1 = on.
+"""
+
+import subprocess
+import time
+
+from j_lib import JParser
+
+MONITORS = ["/dev/i2c-5", "/dev/i2c-6"]
+
+parser = JParser(description="Monitor power control via DDC/CI")
+parser.add_argument(
+    "action", choices=["off", "on", "cycle"],
+    help="off = sleep, on = wake, cycle = off then on",
+)
+args = parser.run()
 
 
-    # Turning screen off...
-    # Top Portable Monitor
-ddccontrol -r 0xd6 -w 5 dev:/dev/i2c-5
-ddccontrol -r 0xd6 -w 5 dev:/dev/i2c-6
-sleep 2
-ddccontrol -r 0xd6 -w 1 dev:/dev/i2c-5
-ddccontrol -r 0xd6 -w 1 dev:/dev/i2c-6
+def ddccontrol(device: str, value: int):
+    subprocess.run(
+        ["ddccontrol", "-r", "0xd6", "-w", str(value), f"dev:{device}"],
+        capture_output=True,
+    )
 
+
+def monitors_off():
+    for dev in MONITORS:
+        ddccontrol(dev, 5)
+
+
+def monitors_on():
+    for dev in MONITORS:
+        ddccontrol(dev, 1)
+
+
+if args.action == "off":
+    monitors_off()
+elif args.action == "on":
+    monitors_on()
+else:  # cycle
+    monitors_off()
+    time.sleep(2)
+    monitors_on()

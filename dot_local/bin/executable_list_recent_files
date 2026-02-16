@@ -13,6 +13,8 @@ Commands:
 from __future__ import annotations
 
 import argparse
+
+from j_lib import JParser
 import hashlib
 import json
 import mimetypes
@@ -212,8 +214,8 @@ def cmd_copy_content(args: argparse.Namespace) -> int:
     return 0
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=__doc__)
+def build_parser() -> JParser:
+    parser = JParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     list_parser = subparsers.add_parser("list", help="List recent files")
@@ -247,7 +249,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     parser = build_parser()
-    args = parser.parse_args()
+    args = parser.run()
     return args.func(args)
 
 

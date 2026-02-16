@@ -23,6 +23,8 @@ Examples:
 """
 
 import argparse
+
+from j_lib import JParser
 import subprocess
 import sys
 
@@ -88,7 +90,7 @@ def build_rsync_command(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
+    parser = JParser(
         description='Upload files to a remote server via rsync with bandwidth control.',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
@@ -134,7 +136,7 @@ Speed reference (approximate transfer times for 200GB):
         help='Delete files on destination that do not exist in source (use with caution!)'
     )
 
-    args = parser.parse_args()
+    args = parser.run()
 
     cmd = build_rsync_command(
         source=args.source,

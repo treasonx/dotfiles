@@ -1,8 +1,20 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python3
+"""Display weather via rustormy."""
 
-if [ -z "$WEATHER_LAT" ] || [ -z "$WEATHER_LON" ]; then
-    echo "Set WEATHER_LAT and WEATHER_LON in ~/.config/zsh/zshrc.local"
-    exit 1
-fi
+import os
+import subprocess
+import sys
 
-rustormy --lat "$WEATHER_LAT" --lon "$WEATHER_LON" --colors -u imperial
+from j_lib import JParser
+
+parser = JParser(description="Display weather via rustormy")
+parser.run()
+
+lat = os.environ.get("WEATHER_LAT")
+lon = os.environ.get("WEATHER_LON")
+
+if not lat or not lon:
+    print("Set WEATHER_LAT and WEATHER_LON in ~/.config/zsh/zshrc.local")
+    sys.exit(1)
+
+subprocess.run(["rustormy", "--lat", lat, "--lon", lon, "--colors", "-u", "imperial"])

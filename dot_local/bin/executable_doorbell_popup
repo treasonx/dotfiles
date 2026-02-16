@@ -10,7 +10,7 @@ Usage:
     ./doorbell_popup.py [--ws-url URL] [-v]
 """
 
-import argparse
+from j_lib import JParser
 import asyncio
 import base64
 import json
@@ -339,13 +339,13 @@ class DoorbellHandler:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Doorbell video popup")
+    parser = JParser(description="Doorbell video popup")
     parser.add_argument(
         "--ws-url", default="ws://localhost:3777",
         help="WebSocket URL (default: ws://localhost:3777)"
     )
     parser.add_argument("-v", "--verbose", action="store_true")
-    args = parser.parse_args()
+    args = parser.run()
 
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)

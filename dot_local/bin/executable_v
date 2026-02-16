@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+"""Open file in nvim by fuzzy name match.
+
+No argument: opens nvim with no file.
+With argument: finds files matching the pattern, shows fzf picker if
+multiple matches, auto-selects if unique.
+"""
+
+import shutil
+import subprocess
+import sys
+
+
+def find_files(pattern: str) -> str:
+    """Find files matching pattern using fd (fast) or find (fallback)."""
+    if shutil.which("fd"):
+        cmd = ["fd", "--type", "f", pattern]
+    elif shutil.which("fdfind"):
+        cmd = ["fdfind", "--type", "f", pattern]
+    else:
+        cmd = ["find", ".", "-type", "f", "-name", f"*{pattern}*"]
+    return subprocess.run(cmd, capture_output=True, text=True).stdout
+
+
+def main():
+    if len(sys.argv) < 2:
+        subprocess.run(["nvim"])
+        return
+
+    pattern = sys.argv[1]
+    files = find_files(pattern)
+    if not files.strip():
+        return
+
+    result = subprocess.run(
+        ["fzf", "--select-1", "--exit-0", "--preview", "head -100 {}"],
+        input=files, capture_output=True, text=True,
+    )
+    if result.stdout.strip():
+        subprocess.run(["nvim", result.stdout.strip()])
+
+
+if __name__ == "__main__":
+    main()

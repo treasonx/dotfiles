@@ -9,7 +9,7 @@ Usage:
     copy_album.py <source_dir> <dest_dir> <album_name> [--dry-run] [--prefix]
 """
 
-import argparse
+from j_lib import JParser
 import shutil
 from pathlib import Path
 
@@ -130,7 +130,7 @@ def get_next_track_number(dest_dir: Path) -> int:
 
 
 def main():
-    parser = argparse.ArgumentParser(
+    parser = JParser(
         description='Copy audio files from a specific album to a destination directory.'
     )
     parser.add_argument('source_dir', type=Path, help='Directory containing audio files')
@@ -141,7 +141,7 @@ def main():
     parser.add_argument('--prefix', '-p', action='store_true',
                         help='Add sequential number prefix (continues from existing files in dest)')
 
-    args = parser.parse_args()
+    args = parser.run()
 
     if not args.source_dir.is_dir():
         print(f"Error: Source directory does not exist: {args.source_dir}")

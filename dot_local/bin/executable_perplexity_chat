@@ -21,6 +21,13 @@ Usage:
     echo '{"messages":[{"role":"user","content":"hi"}]}' | perplexity_chat.py
 """
 
+import sys as _sys
+
+# Only handle --_j_meta / --help; normal use reads JSON from stdin.
+if "--_j_meta" in _sys.argv or "--help" in _sys.argv or "-h" in _sys.argv:
+    from j_lib import JParser
+    JParser(description="Stream Perplexity API chat completions").run()
+
 import http.client
 import json
 import os

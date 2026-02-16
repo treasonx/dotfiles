@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+"""Git add with fuzzy matching.
+
+No argument: pick from modified/untracked files.
+With argument: find files matching the pattern.
+"""
+
+import shutil
+import subprocess
+import sys
+
+
+def find_files(pattern: str) -> str:
+    if shutil.which("fd"):
+        cmd = ["fd", "--type", "f", pattern]
+    elif shutil.which("fdfind"):
+        cmd = ["fdfind", "--type", "f", pattern]
+    else:
+        cmd = ["find", ".", "-type", "f", "-name", f"*{pattern}*"]
+    return subprocess.run(cmd, capture_output=True, text=True).stdout
+
+
+def main():
+    if len(sys.argv) < 2:
+        # Pick from git modified/untracked files
+        status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True, text=True,
+        )
+        files = "\n".join(
+            line.split(maxsplit=1)[-1] for line in status.stdout.splitlines() if line
+        )
+        fzf_args = ["fzf", "--multi", "--preview", "git diff --color=always {} 2>/dev/null || cat {}"]
+    else:
+        files = find_files(sys.argv[1])
+        fzf_args = ["fzf", "--select-1", "--exit-0"]
+
+    if not files.strip():
+        return
+
+    result = subprocess.run(fzf_args, input=files, capture_output=True, text=True)
+    selected = result.stdout.strip()
+    if selected:
+        # fzf --multi returns one file per line
+        file_list = selected.splitlines()
+        subprocess.run(["git", "add"] + file_list)
+        for f in file_list:
+            print(f"Added: {f}")
+
+
+if __name__ == "__main__":
+    main()

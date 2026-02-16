@@ -16,7 +16,7 @@ Usage:
     fix_layout.py --all           # Fix all workspaces from saved layout
 """
 
-import argparse
+from j_lib import JParser
 import math
 import sys
 import time
@@ -292,7 +292,7 @@ def fix_workspace(ws, layout, top_override=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(
+    parser = JParser(
         description="Fix hy3 tiling layout into a grid"
     )
     parser.add_argument(
@@ -307,7 +307,7 @@ def main():
         "--all", "-a", action="store_true",
         help="Fix all workspaces from saved layout",
     )
-    args = parser.parse_args()
+    args = parser.run()
 
     layout = load_saved_layout()
 

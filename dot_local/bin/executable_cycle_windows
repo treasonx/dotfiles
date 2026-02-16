@@ -8,7 +8,7 @@ Usage:
     cycle_windows.py [--reverse]
 """
 
-import argparse
+from j_lib import JParser
 import json
 import subprocess
 import sys
@@ -19,9 +19,9 @@ def hyprctl(*args: str) -> str:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Cycle windows across workspaces")
+    parser = JParser(description="Cycle windows across workspaces")
     parser.add_argument("--reverse", action="store_true", help="Cycle in reverse order")
-    args = parser.parse_args()
+    args = parser.run()
 
     clients = json.loads(hyprctl("clients", "-j"))
     if not clients:

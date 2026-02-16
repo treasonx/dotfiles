@@ -10,7 +10,7 @@ Commands:
     delete <raw_line>     Delete an entry from cliphist
 """
 
-import argparse
+from j_lib import JParser
 import json
 import os
 import re
@@ -171,7 +171,7 @@ def cmd_delete(raw_line: str) -> int:
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = JParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
     list_p = sub.add_parser("list", help="List clipboard entries as JSON")
@@ -183,7 +183,7 @@ def main():
     delete_p = sub.add_parser("delete", help="Delete an entry")
     delete_p.add_argument("raw_line", help="Full cliphist list line")
 
-    args = parser.parse_args()
+    args = parser.run()
 
     if args.command == "list":
         return cmd_list(args.limit)

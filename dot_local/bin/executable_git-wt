@@ -1,49 +1,48 @@
-#!/usr/bin/env bash
-# Create a git worktree in ../ with slashes replaced by dashes
+#!/usr/bin/env python3
+"""Create a git worktree in ../ with slashes replaced by dashes.
 
-usage() {
-    echo "Usage: git wt <branch> [-d directory] [-b base-branch]"
-    echo ""
-    echo "Creates a worktree in ../ relative to the repo root."
-    echo "Directory is prefixed with repo name, slashes become dashes."
-    echo ""
-    echo "Options:"
-    echo "  -d directory    Custom directory suffix (default: branch name)"
-    echo "  -b base-branch  Create new branch from base-branch"
-    echo ""
-    echo "Examples (in repo 'guided-selling'):"
-    echo "  git wt main                    # ../guided-selling-main"
-    echo "  git wt feat/login              # ../guided-selling-feat-login"
-    echo "  git wt feat/login -d mydir     # ../guided-selling-mydir"
-    echo "  git wt feat/new -b main        # ../guided-selling-feat-new"
-    exit 1
-}
+Examples (in repo 'guided-selling'):
+  git-wt main                    # ../guided-selling-main
+  git-wt feat/login              # ../guided-selling-feat-login
+  git-wt feat/login -d mydir     # ../guided-selling-mydir
+  git-wt feat/new -b main        # ../guided-selling-feat-new
+"""
 
-[ -z "$1" ] && usage
+import subprocess
+import sys
 
-branch="$1"
-shift
+from j_lib import JParser
 
-while getopts "d:b:" opt; do
-    case $opt in
-        d) dir="$OPTARG" ;;
-        b) base="$OPTARG" ;;
-        *) usage ;;
-    esac
-done
+parser = JParser(description="Create git worktree with slug name")
+parser.add_argument("branch", help="Branch name for the worktree")
+parser.add_argument(
+    "-d", "--directory", metavar="DIR",
+    help="Custom directory suffix (default: branch name)",
+)
+parser.add_argument(
+    "-b", "--base", metavar="BRANCH",
+    help="Create new branch from this base branch",
+)
+args = parser.run()
 
-repo=$(basename "$(git rev-parse --show-toplevel)")
-suffix="${dir:-$branch}"
-suffix=$(echo "$suffix" | tr "/" "-")
-dir="${repo}-${suffix}"
+# Get repo root name
+result = subprocess.run(
+    ["git", "rev-parse", "--show-toplevel"],
+    capture_output=True, text=True,
+)
+if result.returncode != 0:
+    print("Not in a git repository", file=sys.stderr)
+    sys.exit(1)
 
-if [ -n "$base" ]; then
-    git worktree add -b "$branch" "../$dir" "$base"
-else
-    git worktree add "../$dir" "$branch"
-fi
+repo = result.stdout.strip().rsplit("/", 1)[-1]
+suffix = (args.directory or args.branch).replace("/", "-")
+dirname = f"../{repo}-{suffix}"
 
-if [ $? -eq 0 ]; then
-    echo ""
-    echo "cd ../$dir"
-fi
+if args.base:
+    cmd = ["git", "worktree", "add", "-b", args.branch, dirname, args.base]
+else:
+    cmd = ["git", "worktree", "add", dirname, args.branch]
+
+result = subprocess.run(cmd)
+if result.returncode == 0:
+    print(f"\ncd {dirname}")

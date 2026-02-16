@@ -13,7 +13,7 @@ Usage:
     startup_layout.py --dry-run    # Print what would be launched
 """
 
-import argparse
+from j_lib import JParser
 import json
 import subprocess
 import sys
@@ -81,14 +81,14 @@ def collect_commands(windows: list[dict]) -> list[str]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
+    parser = JParser(
         description="Launch saved apps and restore Hyprland layout."
     )
     parser.add_argument(
         "--dry-run", action="store_true",
         help="Print launch commands without executing.",
     )
-    args = parser.parse_args()
+    args = parser.run()
 
     layout = load_layout()
     if not layout or not layout.get("workspaces"):

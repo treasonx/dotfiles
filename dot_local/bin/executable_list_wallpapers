@@ -10,6 +10,10 @@ Usage:
   list_wallpapers.py          # JSON output of all wallpapers by folder
 """
 
+from j_lib import JParser
+
+JParser(description="List wallpapers with cached thumbnails for AGS").run()
+
 from __future__ import annotations
 
 import hashlib

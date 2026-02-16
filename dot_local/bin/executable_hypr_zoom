@@ -1,5 +1,28 @@
-#!/usr/bin/env bash
-# Thin client for hypr_zoomd — writes command to FIFO (<1ms).
-# Usage: hypr_zoom in|out|toggle|reset
-FIFO="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr_zoom.fifo"
-[[ -p "$FIFO" ]] && printf '%s\n' "${1:?usage: hypr_zoom in|out|toggle|reset}" > "$FIFO"
+#!/usr/bin/env python3
+"""Hyprland zoom — send command to the zoom daemon via FIFO.
+
+Thin client for hypr_zoomd. Writes a single command word to the
+named pipe at $XDG_RUNTIME_DIR/hypr_zoom.fifo (<1ms).
+"""
+
+import os
+import sys
+from pathlib import Path
+
+from j_lib import JParser
+
+parser = JParser(description="Send zoom command to hypr_zoomd daemon")
+parser.add_argument(
+    "command", choices=["in", "out", "toggle", "reset"],
+    help="Zoom action to send",
+)
+args = parser.run()
+
+runtime = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+fifo = Path(runtime) / "hypr_zoom.fifo"
+
+if not fifo.is_fifo():
+    print("hypr_zoomd not running (FIFO not found)", file=sys.stderr)
+    sys.exit(1)
+
+fifo.write_text(args.command + "\n")

@@ -1,40 +1,269 @@
-#!/usr/bin/env bash
-# Quick launcher for custom scripts in ~/.local/bin/
-# Uses fzf to fuzzy-find from a curated list with descriptions.
+#!/usr/bin/env python3
+"""Quick launcher for custom scripts in ~/.local/bin/.
 
-SCRIPTS=(
-  "camera_toggle.py:Camera viewer — show/toggle eufy camera streams"
-  "clipboard_history.py:Clipboard history helper for AGS sidebar"
-  "copy_album.py:Copy audio files by album using metadata tags"
-  "convert_webp:Convert WebP images to other formats"
-  "cycle_windows.py:Cycle through all windows across workspaces"
-  "dmps:Monitor power control via DDC/CI"
-  "doorbell_popup.py:Doorbell video popup when eufy doorbell rings"
-  "download_tidal.py:Download music from TIDAL (CLI wrapper)"
-  "eufy_2fa.py:Enter Eufy 2FA verification code"
-  "fix_layout.py:Rearrange tiled windows into grid layout"
-  "fuzzy_helpers.sh:Fuzzy file helper functions (source library)"
-  "git-wt:Create git worktree with slug name"
-  "git-wtr:Remove git worktree via fzf picker"
-  "hypr_zoom:Hyprland zoom — send command to daemon (in/out/toggle/reset)"
-  "hypr_zoomd:Hyprland zoom daemon — velocity-based smooth zoom"
-  "install_ags_deps.py:Install AGS v2 and Astal dependencies"
-  "list_recent_files.py:List recent files (JSON for AGS widgets)"
-  "perplexity_chat.py:Stream Perplexity API chat completions"
-  "playlist:Create M3U playlists using beets"
-  "rsync_upload.py:Upload files via rsync with bandwidth control"
-  "save_layout.py:Save window layout to JSON for startup restore"
-  "startup_layout.py:Launch saved apps and restore window layout"
-  "screenshare_picker.py:Screen share picker for Hyprland portal"
-  "start_ags.sh:Start AGS shell with logging"
-  "weather:Display weather via rustormy"
-)
+Uses fzf to fuzzy-find from a curated list with descriptions, then
+introspects the selected script's arguments via --_j_meta and walks
+the user through required and optional args interactively.
+"""
 
-selected=$(printf '%s\n' "${SCRIPTS[@]}" | \
-  column -t -s ':' | \
-  fzf --prompt="script> " --height=~50% --reverse | \
-  awk '{print $1}')
+import json
+import os
+import readline
+import shlex
+import subprocess
+import sys
+from pathlib import Path
 
-[[ -z "$selected" ]] && exit 0
+# ── ANSI helpers ──────────────────────────────────────────────────────
+BOLD = "\033[1m"
+CYAN = "\033[36m"
+DIM = "\033[2m"
+YELLOW = "\033[33m"
+GREEN = "\033[32m"
+RESET = "\033[0m"
 
-exec "$selected" "$@"
+# ── Script registry ───────────────────────────────────────────────────
+# Format: "command_name:Short description"
+SCRIPTS = [
+    "camera_toggle:Camera viewer — show/toggle eufy camera streams",
+    "copy_album:Copy audio files by album using metadata tags",
+    "convert_webp:Convert WebP images to other formats",
+    "dmps:Monitor power control via DDC/CI",
+    "download_tidal:Download music from TIDAL (CLI wrapper)",
+    "eufy_2fa:Enter Eufy 2FA verification code",
+    "fp:Find and print full path via fzf",
+    "ga:Git add with fuzzy matching",
+    "gco:Git checkout file with fuzzy matching",
+    "install_ags_deps:Install AGS v2 and Astal dependencies",
+    "playlist:Create M3U playlists using beets",
+    "rsync_upload:Upload files via rsync with bandwidth control",
+    "v:Open file in nvim by fuzzy name match",
+    "weather:Display weather via rustormy",
+]
+
+# Scripts NOT in the j picker (still work standalone):
+# Hyprland — launched by exec-once, keybinds, or portals:
+#   cycle_windows, doorbell_popup, fix_layout, hypr_zoom, hypr_zoomd,
+#   save_layout, screenshare_picker, start_ags, startup_layout
+# AGS internals — called programmatically by the shell:
+#   clipboard_history, list_recent_files, list_wallpapers, perplexity_chat
+# Git aliases — invoked as `git wt` / `git wtr`:
+#   git-wt, git-wtr
+
+
+def fzf_select() -> str | None:
+    """Show fzf picker and return the selected script name."""
+    # Build aligned display: pad name column to max width
+    entries = []
+    max_name = 0
+    for entry in SCRIPTS:
+        name, desc = entry.split(":", 1)
+        max_name = max(max_name, len(name))
+        entries.append((name, desc))
+
+    lines = [f"{name:<{max_name}}  {desc}" for name, desc in entries]
+    display = "\n".join(lines)
+
+    try:
+        result = subprocess.run(
+            ["fzf", "--prompt=script> ", "--height=~50%", "--reverse"],
+            input=display,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        print("fzf not found", file=sys.stderr)
+        sys.exit(1)
+
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+
+    # Extract the script name (first whitespace-delimited token)
+    return result.stdout.strip().split()[0]
+
+
+def get_meta(script: str) -> dict | None:
+    """Run script --_j_meta and return parsed JSON, or None."""
+    try:
+        result = subprocess.run(
+            [script, "--_j_meta"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return json.loads(result.stdout)
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
+        pass
+    return None
+
+
+def enable_path_completion():
+    """Enable readline tab-completion for file paths."""
+    readline.set_completer_delims(" \t\n")
+    readline.parse_and_bind("tab: complete")
+
+    def path_completer(text, state):
+        # Expand ~ and find matches
+        expanded = os.path.expanduser(text)
+        parent = Path(expanded).parent if expanded else Path(".")
+        prefix = Path(expanded).name if expanded else ""
+
+        try:
+            matches = []
+            search_dir = parent if parent.is_dir() else Path(".")
+            for p in search_dir.iterdir():
+                name = str(p) if text.startswith(("/", "~")) else p.name
+                # Rebuild relative to what the user typed
+                if parent != Path("."):
+                    candidate = str(parent / p.name)
+                else:
+                    candidate = p.name
+                if candidate.startswith(expanded) or p.name.startswith(prefix):
+                    if p.is_dir():
+                        candidate += "/"
+                    matches.append(candidate)
+            matches.sort()
+            return matches[state] if state < len(matches) else None
+        except (OSError, IndexError):
+            return None
+
+    readline.set_completer(path_completer)
+
+
+def prompt_value(label: str, help_text: str, default=None, choices=None) -> str:
+    """Prompt for a single value with optional default and choices."""
+    if choices:
+        # Numbered choice selection
+        print(f"  {CYAN}{label}{RESET} — {help_text}")
+        for i, c in enumerate(choices, 1):
+            marker = f" {DIM}(default){RESET}" if str(c) == str(default) else ""
+            print(f"    {YELLOW}{i}{RESET}) {c}{marker}")
+        while True:
+            suffix = f" [default: {default}]" if default is not None else ""
+            raw = input(f"    choose{suffix}: ").strip()
+            if not raw and default is not None:
+                return str(default)
+            try:
+                idx = int(raw)
+                if 1 <= idx <= len(choices):
+                    return str(choices[idx - 1])
+            except ValueError:
+                if raw in [str(c) for c in choices]:
+                    return raw
+            print(f"    {DIM}pick 1-{len(choices)} or type a value{RESET}")
+    else:
+        suffix = f" [{DIM}default: {default}{RESET}]" if default is not None else ""
+        prompt_str = f"  {CYAN}{label}{RESET} ({help_text}){suffix}: "
+        val = input(prompt_str).strip()
+        return val if val else (str(default) if default is not None else "")
+
+
+def prompt_flag(label: str, help_text: str) -> bool:
+    """Prompt for a boolean flag."""
+    raw = input(f"  {CYAN}{label}{RESET}  {help_text} [{YELLOW}y/N{RESET}]: ").strip()
+    return raw.lower() in ("y", "yes")
+
+
+def interactive_args(meta: dict) -> list[str]:
+    """Walk user through args from --_j_meta JSON. Returns argv list."""
+    args_spec = meta.get("args", [])
+    if not args_spec:
+        return []
+
+    positional = [a for a in args_spec if a["positional"] and a["required"]]
+    optional_pos = [a for a in args_spec if a["positional"] and not a["required"]]
+    optional_flags = [a for a in args_spec if not a["positional"]]
+
+    result_positional = []
+    result_optional = []
+
+    enable_path_completion()
+
+    # ── Required positional args ──
+    if positional:
+        print(f"\n  {BOLD}Required:{RESET}")
+        for arg in positional:
+            while True:
+                val = prompt_value(arg["name"], arg["help"], choices=arg["choices"])
+                if val:
+                    result_positional.append(val)
+                    break
+                print(f"    {DIM}(required){RESET}")
+
+    # ── Optional positional args ──
+    if optional_pos:
+        print(f"\n  {BOLD}Optional positional:{RESET}")
+        for arg in optional_pos:
+            val = prompt_value(
+                arg["name"], arg["help"],
+                default=arg["default"], choices=arg["choices"],
+            )
+            if val:
+                result_positional.append(val)
+
+    # ── Optional flags/options ──
+    if optional_flags:
+        # Show summary
+        flag_count = len(optional_flags)
+        raw = input(
+            f"\n  {BOLD}{flag_count} option{'s' if flag_count != 1 else ''}"
+            f" available.{RESET} Configure? [{YELLOW}y/N{RESET}]: "
+        ).strip()
+
+        if raw.lower() in ("y", "yes"):
+            for arg in optional_flags:
+                flag = arg["flags"][0] if arg["flags"] else f"--{arg['name']}"
+                if arg["is_flag"]:
+                    if prompt_flag(flag, arg["help"]):
+                        result_optional.append(flag)
+                else:
+                    val = prompt_value(
+                        flag, arg["help"],
+                        default=arg["default"], choices=arg["choices"],
+                    )
+                    if val and val != str(arg["default"]):
+                        result_optional.append(flag)
+                        result_optional.append(val)
+
+    return result_positional + result_optional
+
+
+def main():
+    selected = fzf_select()
+    if not selected:
+        return
+
+    # If j was called with extra args, pass them through directly
+    if len(sys.argv) > 1:
+        os.execvp(selected, [selected] + sys.argv[1:])
+
+    # Try to get script metadata for interactive prompts
+    meta = get_meta(selected)
+
+    if meta:
+        desc = meta.get("description", "")
+        if desc:
+            print(f"\n  {BOLD}{CYAN}{selected}{RESET} — {desc}")
+
+        argv = interactive_args(meta)
+    else:
+        # Fallback: plain text prompt
+        raw = input(f"  args (Enter to skip): ").strip()
+        argv = shlex.split(raw) if raw else []
+
+    # Show the command we're about to run
+    if argv:
+        cmd_display = " ".join(shlex.quote(a) for a in argv)
+        print(f"\n  {DIM}→ {selected} {cmd_display}{RESET}\n")
+    else:
+        print()
+
+    os.execvp(selected, [selected] + argv)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print()

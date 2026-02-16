@@ -22,6 +22,10 @@ XDPH config (xdph.conf):
   }
 """
 
+from j_lib import JParser
+
+JParser(description="Screen share picker for Hyprland portal").run()
+
 import json
 import os
 import shutil

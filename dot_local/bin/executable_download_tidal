@@ -18,6 +18,8 @@ Usage:
 """
 
 import argparse
+
+from j_lib import JParser
 import shutil
 import subprocess
 import sys
@@ -140,7 +142,7 @@ def main() -> int:
         print("Install it with: pipx install --python python3.12 git+https://github.com/r3ferrei/tidal-dl-ng-1.git")
         return 1
 
-    parser = argparse.ArgumentParser(
+    parser = JParser(
         description="Download music from TIDAL (CLI wrapper for tidal-dl-ng).",
         epilog="Run 'setup' once, then 'login', then start downloading.",
     )
@@ -167,7 +169,7 @@ def main() -> int:
         help="Only download items added after this date (YYYY-MM-DD)",
     )
 
-    args = parser.parse_args()
+    args = parser.run()
     handlers = {
         "setup": cmd_setup,
         "login": cmd_login,
