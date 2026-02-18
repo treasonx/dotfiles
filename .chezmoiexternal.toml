@@ -1,0 +1,12 @@
+# External dependencies managed by chezmoi
+# These are cloned/updated automatically on `chezmoi apply`
+
+[".config/zsh/oh-my-zsh-custom/plugins/zsh-autosuggestions"]
+    type = "git-repo"
+    url = "https://github.com/zsh-users/zsh-autosuggestions.git"
+    refreshPeriod = "168h"  # check for updates weekly
+
+[".config/zsh/oh-my-zsh-custom/plugins/zsh-syntax-highlighting"]
+    type = "git-repo"
+    url = "https://github.com/zsh-users/zsh-syntax-highlighting.git"
+    refreshPeriod = "168h"

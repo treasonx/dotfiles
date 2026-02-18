@@ -17,9 +17,38 @@ CATPPUCCIN_FLAVOR="mocha"
 CATPPUCCIN_SHOW_TIME=true
 
 # Plugins (add wisely - too many slow down shell startup)
-plugins=(git)
+# zsh-syntax-highlighting and zsh-autosuggestions cloned into ~/.config/zsh/oh-my-zsh-custom/plugins/
+plugins=(git zsh-autosuggestions zsh-syntax-highlighting)
 
 source $ZSH/oh-my-zsh.sh
+
+# -----------------------------------------------------------------------------
+# Plugin colors (must be after oh-my-zsh source)
+# -----------------------------------------------------------------------------
+
+# zsh-autosuggestions: muted overlay for ghost text
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=#6c7086"  # overlay0
+
+# zsh-syntax-highlighting: catppuccin mocha palette
+typeset -A ZSH_HIGHLIGHT_STYLES
+ZSH_HIGHLIGHT_STYLES[command]="fg=#a6e3a1"              # green — valid commands
+ZSH_HIGHLIGHT_STYLES[builtin]="fg=#a6e3a1"              # green — builtins (cd, echo)
+ZSH_HIGHLIGHT_STYLES[alias]="fg=#a6e3a1"                # green — aliases
+ZSH_HIGHLIGHT_STYLES[unknown-token]="fg=#f38ba8"         # red — typos/not found
+ZSH_HIGHLIGHT_STYLES[path]="fg=#89b4fa,underline"        # blue underlined — file paths
+ZSH_HIGHLIGHT_STYLES[globbing]="fg=#fab387"              # peach — globs (*.txt)
+ZSH_HIGHLIGHT_STYLES[single-quoted-argument]="fg=#f9e2af" # yellow — 'strings'
+ZSH_HIGHLIGHT_STYLES[double-quoted-argument]="fg=#f9e2af" # yellow — "strings"
+ZSH_HIGHLIGHT_STYLES[dollar-quoted-argument]="fg=#f9e2af" # yellow — $'strings'
+ZSH_HIGHLIGHT_STYLES[command-substitution]="fg=#cba6f7"   # mauve — $(subshells)
+ZSH_HIGHLIGHT_STYLES[commandseparator]="fg=#f5c2e7"      # pink — ; && || |
+ZSH_HIGHLIGHT_STYLES[redirection]="fg=#f5c2e7"           # pink — > >> <
+ZSH_HIGHLIGHT_STYLES[argument]="fg=#cdd6f4"              # text — regular arguments
+ZSH_HIGHLIGHT_STYLES[single-hyphen-option]="fg=#94e2d5"  # teal — -flags
+ZSH_HIGHLIGHT_STYLES[double-hyphen-option]="fg=#94e2d5"  # teal — --flags
+ZSH_HIGHLIGHT_STYLES[comment]="fg=#6c7086"               # overlay0 — # comments
+ZSH_HIGHLIGHT_STYLES[back-quoted-argument]="fg=#cba6f7"   # mauve — `backticks`
+ZSH_HIGHLIGHT_STYLES[assign]="fg=#fab387"                # peach — VAR=value
 
 # =============================================================================
 # ENVIRONMENT VARIABLES
@@ -28,6 +57,11 @@ source $ZSH/oh-my-zsh.sh
 export EDITOR='nvim'
 export DOCKER_API_VERSION=1.44
 export SF_USE_GENERIC_UNIX_KEYCHAIN=true
+
+# bat integrations (syntax-highlighted man pages and fzf file preview)
+export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+export FZF_CTRL_T_OPTS="--preview 'bat --color=always --style=numbers --line-range=:500 {}'"
+export FZF_ALT_C_OPTS="--preview 'eza --tree --icons --level=2 {}'"
 
 # SDK paths (used in PATH below)
 export VOLTA_HOME="$HOME/.volta"
@@ -69,9 +103,16 @@ typeset -U path
 # Homebrew (adds to PATH dynamically)
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
+# vivid LS_COLORS (catppuccin mocha file type colors for ls/eza/tab-completion)
+# Must be after brew shellenv since vivid is brew-installed
+export LS_COLORS="$(vivid generate catppuccin-mocha)"
+
 # Google Cloud SDK
 [[ -f "$HOME/google-cloud-sdk/path.zsh.inc" ]] && source "$HOME/google-cloud-sdk/path.zsh.inc"
 [[ -f "$HOME/google-cloud-sdk/completion.zsh.inc" ]] && source "$HOME/google-cloud-sdk/completion.zsh.inc"
+
+# fzf keybindings: Ctrl+T (file finder), Ctrl+R (history), Alt+C (cd into directory)
+source /usr/share/fzf/shell/key-bindings.zsh
 
 # Zoxide (smarter cd command)
 eval "$(zoxide init zsh)"
@@ -92,6 +133,9 @@ command -v jj &>/dev/null && source <(jj util completion zsh)
 # =============================================================================
 # SHELL FUNCTIONS
 # =============================================================================
+
+# Colorized --help output via bat (usage: help git, help docker, help cargo)
+help() { "$@" --help 2>&1 | bat --plain --language=help; }
 
 # Clipboard that works over SSH (uses OSC 52) or locally (wl-copy)
 clip() {

@@ -118,6 +118,7 @@ sudo dnf install \
   neovim \
   lazygit \
   zellij \
+  bat \
   btop \
   fastfetch \
   nvtop \
@@ -128,6 +129,7 @@ sudo dnf install \
 - `neovim` — Primary text editor (LazyVim config included in dotfiles)
 - `lazygit` — Full-featured git TUI
 - `zellij` — Terminal multiplexer (tmux alternative)
+- `bat` — Syntax-highlighted cat replacement (aliased as `cat` in zsh)
 - `btop` — System resource monitor
 - `fastfetch` — System info display (neofetch replacement)
 - `nvtop` — GPU process monitor
@@ -318,6 +320,7 @@ sed -i 's/^from config import HandlingApp/from tidal_dl_ng.config import Handlin
 ## Cargo Packages
 
 ```bash
+cargo install eza         # Modern ls replacement (icons, git status, tree view)
 cargo install rustormy    # Weather CLI (used by weather script)
 cargo install jj-cli      # Jujutsu VCS (git-compatible)
 ```
@@ -426,7 +429,7 @@ sudo systemctl enable --now bluetooth
 |----------|----------|
 | Desktop (Hyprland) | hyprland, hyprlock, hypridle, waybar, rofi, swaync, wlogout, swww, vicinae, ags, pyprland |
 | Terminals | ghostty, kitty |
-| Shell | zsh, oh-my-zsh, fzf, fd-find, zoxide |
+| Shell | zsh, oh-my-zsh, fzf, fd-find, zoxide, eza |
 | Editors | neovim (LazyVim), lazygit, zellij |
 | Screenshot | grim, slurp, swappy, wl-clipboard, cliphist |
 | Audio | pipewire, wireplumber, pamixer, playerctl, pavucontrol |

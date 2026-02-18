@@ -6,11 +6,20 @@ alias ...='cd ../..'
 alias ....='cd ../../..'
 alias ~='cd ~'
 
-# Listing (consistent patterns)
-alias ll='ls -alF'
-alias la='ls -A'
-alias l='ls -CF'
-alias ls='ls --color=auto'
+# Listing (eza — modern ls replacement with icons and git integration)
+alias ls='eza --icons'
+alias ll='eza -la --icons --git'
+alias la='eza -a --icons'
+alias l='eza --icons'
+alias tree='eza --tree --icons'
+
+# File viewing (bat — syntax-highlighted cat replacement)
+alias cat='bat --paging=never'
+
+# Modern coreutils replacements (cargo/dnf installed)
+alias du='dust'          # disk usage with bar charts
+alias df='duf'           # pretty disk free table
+alias grep='rg'          # ripgrep — fast, respects .gitignore
 
 # Git shortcuts (matches Neovim git plugin patterns)
 alias gs='git status'
@@ -45,8 +54,8 @@ alias reload='source ~/.config/zsh/.zshrc'  # Reload config
 alias md='mkdir -p'  # Make directory
 alias rd='rmdir'     # Remove directory
 
-# Process management (consistent with Neovim patterns)
-alias ps='ps aux'
+# Process management (procs — colored process list with tree view)
+alias ps='procs'
 alias k='kill'
 alias ka='killall'
 
