@@ -11,6 +11,7 @@ export function BarPanel({
   gdkmonitor,
   anchor = Astal.WindowAnchor.BOTTOM,
   layer = Astal.Layer.OVERLAY,
+  keymode = Astal.Keymode.EXCLUSIVE,
   onEscape,
   padding = "12px",
   gap = 16,
@@ -26,6 +27,7 @@ export function BarPanel({
   gdkmonitor: Gdk.Monitor
   anchor?: number
   layer?: Astal.Layer
+  keymode?: Astal.Keymode
   onEscape: () => void
   padding?: string
   gap?: number
@@ -69,7 +71,7 @@ export function BarPanel({
       anchor={anchor}
       exclusivity={Astal.Exclusivity.NORMAL}
       layer={layer}
-      keymode={Astal.Keymode.EXCLUSIVE}
+      keymode={keymode}
       application={app}
       {...windowExtras}
     >

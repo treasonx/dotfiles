@@ -377,6 +377,7 @@ export default function PerplexityPanel(gdkmonitor: Gdk.Monitor) {
       gdkmonitor={gdkmonitor}
       anchor={BOTTOM | LEFT}
       layer={Astal.Layer.TOP}
+      keymode={Astal.Keymode.ON_DEMAND}
       onEscape={togglePanel}
       padding="0"
       gap={0}
