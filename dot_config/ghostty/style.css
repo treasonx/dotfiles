@@ -1,0 +1,89 @@
+/* Ghostty custom CSS — Catppuccin Mocha minimal tabs
+ *
+ * Ghostty uses AdwTabBar (libadwaita) for tabs.
+ * Selectors target the Adw tab bar widget hierarchy.
+ */
+
+/* ── Tab bar background: match terminal base ── */
+tabbar, .top-bar {
+  background-color: #1e1e2e;  /* base */
+  box-shadow: none;
+  border: none;
+}
+
+/* ── Individual tabs ── */
+tabbar tab {
+  background-color: transparent;
+  border-radius: 6px;
+  margin: 2px 1px;
+  padding: 2px 8px;
+  min-height: 24px;
+  border: none;
+  color: #6c7086;  /* overlay0 — inactive tab text muted */
+}
+
+/* Active/selected tab */
+tabbar tab:checked,
+tabbar tab:selected {
+  background-color: #313244;  /* surface0 — subtle lift */
+  color: #cdd6f4;             /* text */
+}
+
+/* Hover state */
+tabbar tab:hover:not(:checked):not(:selected) {
+  background-color: #24273a;  /* slightly lighter than base */
+  color: #a6adc8;             /* subtext0 */
+}
+
+/* Tab close button — hidden until hover */
+tabbar tab button {
+  opacity: 0;
+  min-width: 16px;
+  min-height: 16px;
+}
+
+tabbar tab:hover button,
+tabbar tab:checked button {
+  opacity: 0.6;
+}
+
+tabbar tab button:hover {
+  opacity: 1;
+  color: #f38ba8;  /* red — destructive hint */
+}
+
+/* ── Headerbar / titlebar: blend with terminal ── */
+headerbar {
+  background-color: #1e1e2e;  /* base */
+  box-shadow: none;
+  border-bottom: 1px solid #313244;  /* surface0 — subtle separator */
+  min-height: 32px;
+  padding: 0 4px;
+}
+
+/* ── New tab button ── */
+tabbar .new-tab-button {
+  color: #6c7086;  /* overlay0 */
+  opacity: 0.7;
+}
+
+tabbar .new-tab-button:hover {
+  color: #89b4fa;  /* blue */
+  opacity: 1;
+}
+
+/* ── Scrollbar — thin and translucent ── */
+scrollbar {
+  background: transparent;
+}
+
+scrollbar slider {
+  background: rgba(108, 112, 134, 0.3);  /* overlay0 */
+  border-radius: 8px;
+  min-width: 6px;
+  min-height: 30px;
+}
+
+scrollbar slider:hover {
+  background: rgba(108, 112, 134, 0.5);
+}

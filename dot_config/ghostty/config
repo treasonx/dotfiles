@@ -24,6 +24,12 @@ background-image-fit = cover
 window-padding-x = 4
 window-padding-y = 4
 window-decoration = false
+window-theme = ghostty
+
+# Tab bar — minimal catppuccin mocha styling
+gtk-wide-tabs = false
+gtk-toolbar-style = flat
+gtk-custom-css = ~/.config/ghostty/style.css
 
 # Cursor Configuration
 cursor-style = block
