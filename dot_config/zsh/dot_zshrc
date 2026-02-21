@@ -57,6 +57,7 @@ ZSH_HIGHLIGHT_STYLES[assign]="fg=#fab387"                # peach — VAR=value
 export EDITOR='nvim'
 export DOCKER_API_VERSION=1.44
 export SF_USE_GENERIC_UNIX_KEYCHAIN=true
+export PC_THEME="Custom Style"
 
 # bat integrations (syntax-highlighted man pages and fzf file preview)
 export MANPAGER="sh -c 'col -bx | bat -l man -p'"

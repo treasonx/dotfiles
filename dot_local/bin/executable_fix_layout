@@ -27,6 +27,7 @@ from hypr_layout import (
     dispatch,
     get_active_workspace,
     get_workspace_clients,
+    hyprctl_json,
     load_saved_layout,
     notify,
     restore_monitor_workspaces,
@@ -92,19 +93,25 @@ def get_saved_slots(layout, ws_id):
 
 
 def match_windows_to_slots(clients, saved_rows):
-    """Match current windows to saved layout slots by class.
+    """Match current windows to saved layout slots by class, preserving grid shape.
 
     Returns a list of rows, where each row is a list of matched slots.
     Each slot is a dict:
       - addresses: list of window addresses (1 for normal, 2+ for tabs)
+      - _needed: how many addresses this slot wants (from saved classes)
       - size: [w, h] or None
       - is_tab: bool
 
-    Missing windows are skipped.  Extra windows are appended to the last row.
+    The algorithm prioritizes grid shape over exact class matching:
+      Pass 1: Match by class name (exact match)
+      Pass 2: Backfill underfilled/empty slots from remaining available pool
+      Pass 3: Append leftover windows to the last row
+      Pass 4: Drop slots that are still truly empty (no windows at all)
     """
     available = list(clients)  # copy so we can pop
     matched_rows: list[list[dict]] = []
 
+    # Pass 1: match by class — always keep the slot even if empty
     for saved_row in saved_rows:
         row: list[dict] = []
         for slot in saved_row:
@@ -114,26 +121,37 @@ def match_windows_to_slots(clients, saved_rows):
                     if client["class"] == cls:
                         addrs.append(available.pop(i)["address"])
                         break
-            if addrs:
-                row.append({
-                    "addresses": addrs,
-                    "size": slot["size"],
-                    "is_tab": slot["is_tab"] and len(addrs) >= 2,
-                })
+            row.append({
+                "addresses": addrs,
+                "_needed": len(slot["classes"]),
+                "size": slot["size"],
+                "is_tab": slot["is_tab"],
+            })
         matched_rows.append(row)
 
-    # Append leftover windows (not in saved layout) to the last row
+    # Pass 2: backfill underfilled/empty slots from remaining pool (any class)
+    for row in matched_rows:
+        for slot in row:
+            while len(slot["addresses"]) < slot["_needed"] and available:
+                slot["addresses"].append(available.pop(0)["address"])
+            # Update is_tab: only valid if we have 2+ windows
+            slot["is_tab"] = slot["is_tab"] and len(slot["addresses"]) >= 2
+
+    # Pass 3: append leftover windows to the last row
     if available:
         if not matched_rows:
             matched_rows.append([])
         for client in available:
             matched_rows[-1].append({
                 "addresses": [client["address"]],
+                "_needed": 1,
                 "size": None,
                 "is_tab": False,
             })
 
-    # Drop any rows that ended up empty
+    # Pass 4: drop slots that are still truly empty, then drop empty rows
+    for i, row in enumerate(matched_rows):
+        matched_rows[i] = [s for s in row if s["addresses"]]
     matched_rows = [r for r in matched_rows if r]
     return matched_rows
 
@@ -174,6 +192,103 @@ def resize_matched_rows(matched_rows):
             if slot["size"]:
                 w, h = slot["size"]
                 dispatch("resizewindowpixel", f"exact {w} {h},address:{slot['addresses'][0]}")
+
+
+def allocate_windows_to_monitors(monitor_saved, active_monitors, available):
+    """Fairly allocate windows to monitors based on saved layout demands.
+
+    Handles shared classes (e.g. ghostty on multiple monitors) by fulfilling
+    unique-class wishes first, then distributing shared classes round-robin.
+
+    Args:
+        monitor_saved: {monitor_name: {ws_id, windows, monitor, ...}}
+        active_monitors: list of connected monitor names that have saved data
+        available: list of {address, class} dicts for all tiled clients
+
+    Returns:
+        (monitor_clients, main_monitor) where:
+        - monitor_clients: {monitor_name: [client_dicts]}
+        - main_monitor: name of the monitor with the most saved windows
+    """
+    # Determine main monitor (most saved windows — receives leftovers)
+    main_monitor = max(
+        active_monitors,
+        key=lambda m: len(monitor_saved[m].get("windows", []))
+    )
+
+    # Build per-monitor wish lists: [(class, count_needed)]
+    monitor_wishes: dict[str, dict[str, int]] = {}
+    for mon in active_monitors:
+        wishes: dict[str, int] = {}
+        for w in monitor_saved[mon]["windows"]:
+            wishes[w["class"]] = wishes.get(w["class"], 0) + 1
+        monitor_wishes[mon] = wishes
+
+    # Pool of available windows grouped by class
+    pool: dict[str, list[dict]] = {}
+    for client in available:
+        pool.setdefault(client["class"], []).append(client)
+
+    # Find which classes are unique (wanted by one monitor) vs shared
+    all_classes = set()
+    for wishes in monitor_wishes.values():
+        all_classes.update(wishes.keys())
+
+    unique_classes: dict[str, str] = {}   # class → sole monitor
+    shared_classes: set[str] = set()
+    for cls in all_classes:
+        wanting = [m for m in active_monitors if monitor_wishes[m].get(cls, 0) > 0]
+        if len(wanting) == 1:
+            unique_classes[cls] = wanting[0]
+        else:
+            shared_classes.add(cls)
+
+    monitor_clients: dict[str, list[dict]] = {m: [] for m in active_monitors}
+
+    # Fulfill unique-class wishes first (no contention)
+    for cls, mon in unique_classes.items():
+        if cls not in pool:
+            continue
+        take = min(monitor_wishes[mon][cls], len(pool[cls]))
+        monitor_clients[mon].extend(pool[cls][:take])
+        pool[cls] = pool[cls][take:]
+        if not pool[cls]:
+            del pool[cls]
+
+    # Fulfill shared-class wishes round-robin
+    for cls in shared_classes:
+        if cls not in pool:
+            continue
+        # Build list of (monitor, remaining_demand) sorted by demand desc
+        demanders = [
+            (m, monitor_wishes[m].get(cls, 0))
+            for m in active_monitors
+            if monitor_wishes[m].get(cls, 0) > 0
+        ]
+        demanders.sort(key=lambda x: -x[1])
+
+        remaining = pool[cls]
+        # Round-robin: each monitor gets one per round until supply/demand exhausted
+        while remaining and demanders:
+            next_round = []
+            for mon, demand in demanders:
+                if not remaining:
+                    break
+                monitor_clients[mon].append(remaining.pop(0))
+                if demand - 1 > 0:
+                    next_round.append((mon, demand - 1))
+            demanders = next_round
+
+        if remaining:
+            pool[cls] = remaining
+        else:
+            pool.pop(cls, None)
+
+    # Assign remaining unallocated windows to main monitor
+    for cls, clients in pool.items():
+        monitor_clients[main_monitor].extend(clients)
+
+    return monitor_clients, main_monitor
 
 
 def fix_workspace(ws, layout, top_override=None):
@@ -311,19 +426,87 @@ def main():
 
     layout = load_saved_layout()
 
-    # --all mode: iterate every workspace in the saved layout
+    # Capture focused window so we can restore focus after fixing
+    active_window = hyprctl_json("activewindow")
+    focused_addr = active_window.get("address") if active_window else None
+
+    # --all mode: iterate by monitor, not workspace ID.
+    # The exact workspace number doesn't matter — what matters is that
+    # windows end up on the correct monitor with the saved tree structure.
     if args.all:
         if not layout or not layout.get("workspaces"):
             print("No saved layout found. Run save_layout first.")
             sys.exit(1)
-        ws_ids = sorted(layout["workspaces"].keys(), key=int)
-        print(f"Fixing {len(ws_ids)} workspaces: {', '.join(ws_ids)}")
-        for ws_id in ws_ids:
-            fix_workspace(int(ws_id), layout)
-        restore_monitor_workspaces(layout)
-        notify("Layout fixed", f"All {len(ws_ids)} workspaces rearranged",
+
+        # Build monitor → saved workspace data mapping
+        monitor_saved: dict[str, dict] = {}
+        for ws_id, ws_data in layout["workspaces"].items():
+            mon = ws_data.get("monitor")
+            if mon:
+                monitor_saved[mon] = {"ws_id": ws_id, **ws_data}
+
+        # Get current monitor → active workspace mapping
+        monitors = hyprctl_json("monitors")
+        current_ws_for_monitor = {
+            m["name"]: m["activeWorkspace"]["id"] for m in monitors
+        }
+
+        # Collect all tiled clients across all workspaces
+        all_clients = hyprctl_json("clients")
+        available = [
+            {"address": c["address"], "class": c["class"]}
+            for c in all_clients
+            if not c["floating"] and c["workspace"]["id"] > 0
+        ]
+
+        # Determine which saved monitors are currently connected
+        active_monitors = [
+            m for m in monitor_saved
+            if m in current_ws_for_monitor
+        ]
+        skipped = [m for m in monitor_saved if m not in current_ws_for_monitor]
+        for m in skipped:
+            print(f"Monitor {m} not connected, skipping.")
+
+        # Allocate windows fairly across monitors (handles shared classes)
+        monitor_clients, main_monitor = allocate_windows_to_monitors(
+            monitor_saved, active_monitors, available
+        )
+
+        fixed_count = 0
+        for monitor_name in active_monitors:
+            target_ws = current_ws_for_monitor[monitor_name]
+            saved = monitor_saved[monitor_name]
+            clients = monitor_clients[monitor_name]
+            print(f"Monitor {monitor_name} (ws {target_ws}): "
+                  f"placing {len(clients)} windows from saved ws {saved['ws_id']}")
+
+            # Move allocated windows to the target workspace
+            for client in clients:
+                dispatch("movetoworkspacesilent",
+                         f"{target_ws},address:{client['address']}")
+
+            # Remap the saved layout to the target ws so fix_workspace
+            # can look up the saved rows by current ws ID
+            original_ws_id = saved["ws_id"]
+            if str(target_ws) != original_ws_id:
+                layout["workspaces"][str(target_ws)] = layout["workspaces"][original_ws_id]
+            fix_workspace(target_ws, layout)
+            fixed_count += 1
+
+        # Restore each monitor to its real workspace (fix ws 99 leak).
+        # fix_workspace evacuates windows to ws 99 during rebuild, which
+        # can leave it visible on an unrelated monitor.
+        for monitor_name in active_monitors:
+            target_ws = current_ws_for_monitor[monitor_name]
+            dispatch("focusmonitor", monitor_name)
+            dispatch("workspace", str(target_ws))
+
+        if focused_addr:
+            dispatch("focuswindow", f"address:{focused_addr}")
+        notify("Layout fixed", f"{fixed_count} monitors rearranged",
                icon="view-grid-symbolic", app="fix_layout")
-        print("Done — all workspaces fixed.")
+        print("Done — all monitors fixed.")
         return
 
     # Single-workspace mode (original behavior)
@@ -339,6 +522,8 @@ def main():
 
     fix_workspace(ws, layout, top_override=args.top)
     restore_monitor_workspaces(layout)
+    if focused_addr:
+        dispatch("focuswindow", f"address:{focused_addr}")
     print("Done.")
 
     saved_rows = get_saved_slots(layout, ws)
