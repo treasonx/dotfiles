@@ -85,6 +85,20 @@ _ctp_disk_precmd() {
 
 add-zsh-hook precmd _ctp_disk_precmd
 
+# --- Terminal title: dir + git branch (shows in Ghostty tab) ---
+_ctp_title_precmd() {
+    local title="${PWD##*/}"
+    if git rev-parse --is-inside-work-tree &>/dev/null; then
+        local branch
+        branch=$(git branch --show-current 2>/dev/null)
+        [[ -z "$branch" ]] && branch=$(git rev-parse --short HEAD 2>/dev/null)
+        title+=" [${branch}]"
+    fi
+    printf '\e]2;%s\a' "$title"
+}
+
+add-zsh-hook precmd _ctp_title_precmd
+
 # --- Build PROMPT ---
 PROMPT='$(_ctp_exit_code) '
 

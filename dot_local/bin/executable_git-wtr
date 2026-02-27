@@ -31,4 +31,22 @@ if fzf.returncode != 0 or not fzf.stdout.strip():
     sys.exit(0)
 
 path = fzf.stdout.strip().split()[0]
-subprocess.run(["git", "worktree", "remove", path])
+rm = subprocess.run(["git", "worktree", "remove", path], capture_output=True, text=True)
+
+if rm.returncode == 0:
+    print(rm.stdout, end="")
+else:
+    print(rm.stderr, end="")
+    # Show untracked/modified files blocking removal
+    status = subprocess.run(
+        ["git", "-C", path, "status", "--short"],
+        capture_output=True, text=True,
+    )
+    if status.stdout.strip():
+        print(f"\nBlocking files in {path}:")
+        print(status.stdout)
+    answer = input("Force remove worktree? [y/N] ").strip().lower()
+    if answer == "y":
+        subprocess.run(["git", "worktree", "remove", "--force", path])
+    else:
+        print("Aborted")
