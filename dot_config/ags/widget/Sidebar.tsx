@@ -8,6 +8,7 @@ import { ActionButton } from "../lib/ActionButton"
 import { SidebarItem } from "./SidebarItem"
 import { RecentFilesTab } from "./RecentFilesTab"
 import { ClipboardTab } from "./ClipboardTab"
+import { WezTermTab } from "./WezTermTab"
 import { sidebarVisible, SIDEBAR_WIDTH_FRACTION, TABS, activeTab, switchTab } from "./sidebar-state"
 
 function NotificationHistory() {
@@ -147,6 +148,7 @@ export default function Sidebar(gdkmonitor: Gdk.Monitor) {
           <NotificationHistory />
           <ClipboardTab />
           <PlaceholderTab />
+          <WezTermTab />
           <TabBar />
         </Box>
       </Gtk.Revealer>

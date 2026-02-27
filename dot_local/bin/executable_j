@@ -68,7 +68,7 @@ SCRIPTS = [
 #   cycle_windows, doorbell_popup, fix_layout, hypr_zoom, hypr_zoomd,
 #   save_layout, screenshare_picker, start_ags, startup_layout
 # AGS internals — called programmatically by the shell:
-#   clipboard_history, list_recent_files, list_wallpapers, perplexity_chat
+#   clipboard_history, list_recent_files, list_wallpapers, perplexity_chat, wezterm_panes
 # Git aliases — invoked as `git wt` / `git wtr`:
 #   git-wt, git-wtr
 

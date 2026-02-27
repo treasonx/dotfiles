@@ -10,12 +10,13 @@ export { sidebarVisible }
 export const SIDEBAR_WIDTH_FRACTION = 0.25
 
 // Tab definitions — add new tabs here
-export type TabId = "notifications" | "clipboard" | "files"
+export type TabId = "notifications" | "clipboard" | "files" | "wezterm"
 
 export const TABS: { id: TabId; icon: string }[] = [
   { id: "notifications", icon: "󰂚" }, // nf-md-bell
   { id: "clipboard", icon: "󰅌" },     // nf-md-clipboard_text
   { id: "files", icon: "󰉋" },     // nf-md-folder
+  { id: "wezterm", icon: "󰆍" },   // nf-md-console
 ]
 
 // Persist active tab to JSON so it survives reboots
