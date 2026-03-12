@@ -6,6 +6,21 @@
     "docker": {
       "command": "uvx",
       "args": ["mcp-server-docker"]
+    },
+    "context7": {
+      "url": "https://mcp.context7.com/mcp"
+    },
+    "perplexity": {
+      "command": "npx",
+      "args": ["-y", "@perplexity-ai/mcp-server"]
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+    },
+    "auggie": {
+      "command": "/home/james/.npm-global/bin/auggie",
+      "args": ["--mcp", "--mcp-auto-workspace"]
     }
   }
 }

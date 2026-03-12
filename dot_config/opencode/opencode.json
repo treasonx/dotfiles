@@ -112,7 +112,7 @@
         "uvx",
         "mcp-server-docker"
       ],
-      "enabled": false
+      "enabled": true
     },
     "context7": {
       "type": "remote",
@@ -137,7 +137,7 @@
       ],
       "enabled": true
     },
-    "auggie-mcp": {
+    "auggie": {
       "type": "local",
       "command": [
         "/home/james/.npm-global/bin/auggie",

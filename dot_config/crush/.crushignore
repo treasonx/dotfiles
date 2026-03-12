@@ -1,0 +1,42 @@
+# Crush ignore file - similar to .gitignore
+# Patterns for files/directories Crush should ignore
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+dist/
+build/
+target/
+*.o
+*.so
+*.dylib
+*.dll
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and temp files
+*.log
+tmp/
+temp/
+*.tmp
+
+# Git
+.git/
+.gitignore
+
+# Secrets and environment files
+.env
+.env.*
+*.pem
+*.key

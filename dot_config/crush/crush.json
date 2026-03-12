@@ -1,0 +1,54 @@
+{
+  "$schema": "https://charm.land/crush.json",
+  "mcp": {
+    "linux": {
+      "type": "stdio",
+      "command": "linux-mcp-server",
+      "timeout": 30,
+      "disabled": false
+    },
+    "docker": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["mcp-server-docker"],
+      "timeout": 60,
+      "disabled": false
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "timeout": 60,
+      "disabled": false
+    },
+    "perplexity": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@perplexity-ai/mcp-server"],
+      "timeout": 60,
+      "disabled": false
+    },
+    "puppeteer": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
+      "timeout": 120,
+      "disabled": false
+    },
+    "auggie": {
+      "type": "stdio",
+      "command": "/home/james/.npm-global/bin/auggie",
+      "args": ["--mcp", "--mcp-auto-workspace"],
+      "timeout": 30,
+      "disabled": false
+    }
+  },
+  "options": {
+    "skills_paths": [
+      "~/.config/crush/skills",
+      "~/.config/ags/.claude/skills"
+    ]
+  },
+  "permissions": {
+    "allowed_tools": []
+  }
+}

@@ -1,0 +1,21 @@
+{{- $servers := .mcpServers -}}
+{{- $names := keys $servers | sortAlpha -}}
+{
+  "mcpServers": {
+{{- range $i, $name := $names }}
+    {{- $cfg := index $servers $name -}}
+    "{{ $name }}": {
+{{- if hasKey $cfg "url" }}
+      "url": "{{ $cfg.url }}"
+{{- else }}
+      "command": "{{ $cfg.command }}"{{- if hasKey $cfg "args" }},
+      "args": [
+{{- range $j, $arg := $cfg.args }}
+        "{{ $arg }}"{{- if lt (add $j 1) (len $cfg.args) }},{{ end }}
+{{- end }}
+      ]{{- end }}
+{{- end }}
+    }{{- if lt (add $i 1) (len $names) }},{{ end }}
+{{- end }}
+  }
+}
