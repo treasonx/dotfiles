@@ -14,6 +14,9 @@
 .claude/skills/
 .claude/projects/
 
+# Monitor config (managed by hyprmoncfg, not chezmoi)
+.config/hypr/monitors.conf
+
 # Python bytecode cache
 .local/bin/__pycache__
 
