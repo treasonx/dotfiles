@@ -1,6 +1,6 @@
 #!/bin/bash
 # Install Homebrew packages needed by shell config.
-# run_once_ means chezmoi runs this exactly once per machine.
+# run_onchange_ means chezmoi re-runs this whenever the file content changes.
 
 if ! command -v brew &>/dev/null; then
     echo "Homebrew not found, skipping brew packages."
@@ -14,6 +14,7 @@ packages=(
     dust      # modern du with bar charts
     duf       # pretty disk free table
     procs     # colored process list with tree view
+    fnm       # fast Node.js version manager (auto-switches via .nvmrc)
 )
 
 for pkg in "${packages[@]}"; do

@@ -65,7 +65,6 @@ export FZF_CTRL_T_OPTS="--preview 'bat --color=always --style=numbers --line-ran
 export FZF_ALT_C_OPTS="--preview 'eza --tree --icons --level=2 {}'"
 
 # SDK paths (used in PATH below)
-export VOLTA_HOME="$HOME/.volta"
 export BUN_INSTALL="$HOME/.bun"
 export PLAYDATE_SDK_PATH="$HOME/PlaydateSDK-2.7.5"
 
@@ -85,7 +84,6 @@ path=(
     $PLAYDATE_SDK_PATH/bin
     $BUN_INSTALL/bin
     $HOME/.npm-global/bin
-    $VOLTA_HOME/bin
     $HOME/.cargo/bin
     $HOME/bin
     $HOME/.local/bin
@@ -107,6 +105,11 @@ eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 # vivid LS_COLORS (catppuccin mocha file type colors for ls/eza/tab-completion)
 # Must be after brew shellenv since vivid is brew-installed
 export LS_COLORS="$(vivid generate catppuccin-mocha)"
+
+# fnm (Fast Node Manager) — auto-switches Node version per .nvmrc on cd
+if command -v fnm &>/dev/null; then
+    eval "$(fnm env --use-on-cd --shell zsh)"
+fi
 
 # Google Cloud SDK
 [[ -f "$HOME/google-cloud-sdk/path.zsh.inc" ]] && source "$HOME/google-cloud-sdk/path.zsh.inc"
