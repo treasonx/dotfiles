@@ -33,6 +33,15 @@ log_dir = Path(state_home) / "ags"
 log_dir.mkdir(parents=True, exist_ok=True)
 log_file = log_dir / "ags.log"
 
+# Stop any running instance first so the new one doesn't race with it.
+# Without this, each call stacks another ags process briefly — the new one
+# eventually wins, but the handover makes restarts feel sluggish.
+subprocess.run(["ags", "quit"], capture_output=True)
+for _ in range(30):
+    if subprocess.run(["pgrep", "-f", "ags run"], capture_output=True).returncode != 0:
+        break
+    time.sleep(0.1)
+
 # Launch AGS with stderr redirected to log
 with open(log_file, "w") as log:
     subprocess.Popen(
