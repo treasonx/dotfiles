@@ -1,4 +1,5 @@
 import GLib from "gi://GLib"
+import Gio from "gi://Gio"
 import Gdk from "gi://Gdk?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
 import Hyprland from "gi://AstalHyprland"
@@ -6,7 +7,19 @@ import Mpris from "gi://AstalMpris"
 import "gnim"
 import { createBinding, createExternal } from "gnim"
 
-const hasBattery = GLib.file_test("/sys/class/power_supply/BAT0", GLib.FileTest.EXISTS)
+function detectBattery(): boolean {
+  try {
+    const iter = Gio.File.new_for_path("/sys/class/power_supply")
+      .enumerate_children("standard::name", Gio.FileQueryInfoFlags.NONE, null)
+    let info: Gio.FileInfo | null
+    while ((info = iter.next_file(null)) !== null) {
+      if (info.get_name().startsWith("BAT")) return true
+    }
+  } catch {}
+  return false
+}
+
+const hasBattery = detectBattery()
 
 // Query Hyprland for configured workspace rules (runs once at startup)
 const hypr = Hyprland.get_default()
@@ -38,8 +51,6 @@ import {
   Text,
   Icon,
   NetworkIndicator,
-  BatteryIndicator,
-  BatteryLabel,
   PowerProfilesIndicator,
   BluetoothIndicator,
 } from "marble/components"
@@ -47,6 +58,7 @@ import { SystemMetrics } from "./SystemMetrics"
 import { AudioPopover } from "./AudioPopover"
 import { CavaVisualizer } from "./CavaVisualizer"
 import { NetworkPopover } from "./NetworkPopover"
+import { BatteryPopover } from "./BatteryPopover"
 import { LayoutButtons } from "./LayoutButtons"
 
 // Groups the cava visualizer + media player title/popover into one unit
@@ -257,8 +269,7 @@ export default function StatusBar(gdkmonitor: Gdk.Monitor) {
             </TrayItems>
           </Box>
           <NetworkPopover />
-          {hasBattery && <BatteryIndicator colored />}
-          {hasBattery && <BatteryLabel hideOnFull />}
+          {hasBattery && <BatteryPopover />}
           {hasBattery && <PowerProfilesIndicator hideBalanced />}
           <BluetoothIndicator />
         </Box>
