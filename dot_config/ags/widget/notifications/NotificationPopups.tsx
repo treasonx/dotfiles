@@ -1,11 +1,11 @@
 import { Gdk } from "ags/gtk4"
 import Notifd from "gi://AstalNotifd"
-import Hyprland from "gi://AstalHyprland"
 import { NotificationPopups } from "marble/components"
 import { NotificationCard } from "./NotificationCard"
 import { sidebarVisible } from "../sidebar-state"
 import { useConnect } from "gnim-hooks"
 import { getFocusedGdkMonitor } from "../../lib/monitor"
+import { compositor } from "../../lib/compositor"
 
 export default function Popups(gdkmonitor: Gdk.Monitor) {
   const notifd = Notifd.get_default()
@@ -23,9 +23,9 @@ export default function Popups(gdkmonitor: Gdk.Monitor) {
         if (sidebarVisible() === true) return true
 
         // Skip popup when the notification's app is the focused window
-        const focused = Hyprland.get_default().get_focused_client()
+        const focused = compositor.focusedWindow.peek()
         if (focused) {
-          const cls = focused.get_class().toLowerCase()
+          const cls = focused.appId.toLowerCase()
           const app = notif.appName.toLowerCase()
           if (cls && app && (cls.includes(app) || app.includes(cls))) return true
         }

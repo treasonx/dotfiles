@@ -1,12 +1,9 @@
 import app from "ags/gtk4/app"
-import Hyprland from "gi://AstalHyprland"
 import { OSD } from "marble/components"
-import { useConnect } from "gnim-hooks"
+import { compositor } from "../lib/compositor"
 import { getFocusedGdkMonitor } from "../lib/monitor"
 
 export function BarOsd() {
-  const hypr = Hyprland.get_default()
-
   const osd = (
     <OSD
       namespace="bar-osd"
@@ -26,8 +23,8 @@ export function BarOsd() {
     if (m) (osd as any).gdkmonitor = m
   }
 
-  useConnect(hypr, "notify::focused-workspace", syncMonitor)
-  useConnect(hypr, "notify::monitors", syncMonitor)
+  compositor.focusedWorkspace.subscribe(syncMonitor)
+  compositor.outputs.subscribe(syncMonitor)
   syncMonitor()
 
   return osd

@@ -1,14 +1,13 @@
-import Hyprland from "gi://AstalHyprland"
 import Gdk from "gi://Gdk?version=4.0"
 import app from "ags/gtk4/app"
+import { compositor } from "./compositor"
 
-/** Get the Hyprland focused monitor name, or null if unavailable (e.g. DPMS) */
+/** Get the compositor's focused monitor name, or null if unavailable */
 export function getFocusedMonitorName(): string | null {
-  const focused = Hyprland.get_default().get_focused_monitor()
-  return focused ? focused.get_name() : null
+  return compositor.focusedOutput.peek()
 }
 
-/** Get the GDK monitor matching the focused Hyprland monitor, or null */
+/** Get the GDK monitor matching the focused compositor monitor, or null */
 export function getFocusedGdkMonitor(): Gdk.Monitor | null {
   const name = getFocusedMonitorName()
   if (!name) return null

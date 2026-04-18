@@ -1,6 +1,7 @@
 import { createState } from "gnim"
 import GLib from "gi://GLib"
 import { moveToFocusedMonitor } from "../../lib/monitor"
+import { compositor } from "../../lib/compositor"
 
 // ── Reactive State ─────────────────────────────────────────────────
 
@@ -21,11 +22,11 @@ export function hideSession() {
 
 export function doLock() {
   setSessionVisible(false)
-  GLib.spawn_command_line_async("hyprlock")
+  compositor.lock()
 }
 
 export function doLogout() {
-  GLib.spawn_command_line_async("hyprctl dispatch exit 0")
+  compositor.quit()
 }
 
 export function doReboot() {

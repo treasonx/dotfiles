@@ -56,6 +56,7 @@ SCRIPTS = [
     "ga:Git add with fuzzy matching",
     "gco:Git checkout file with fuzzy matching",
     "install_ags_deps:Install AGS v2 and Astal dependencies",
+    "niri_rescue_floating:Recenter floating niri windows after monitor changes",
     "playlist:Create M3U playlists using beets",
     "rsync_upload:Upload files via rsync with bandwidth control",
     "transcode_video:Transcode videos to H.265 1080p MP4 via HandBrake",

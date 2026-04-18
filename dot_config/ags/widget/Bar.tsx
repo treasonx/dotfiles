@@ -6,6 +6,8 @@ import Hyprland from "gi://AstalHyprland"
 import Mpris from "gi://AstalMpris"
 import "gnim"
 import { createBinding, createExternal } from "gnim"
+import { compositor } from "../lib/compositor"
+import { Workspaces } from "./Workspaces"
 
 function detectBattery(): boolean {
   try {
@@ -21,16 +23,22 @@ function detectBattery(): boolean {
 
 const hasBattery = detectBattery()
 
-// Query Hyprland for configured workspace rules (runs once at startup)
-const hypr = Hyprland.get_default()
-const workspaceRules = JSON.parse(hypr.message("j/workspacerules"))
-const workspaceCount = workspaceRules.filter((r: any) => /^\d+$/.test(r.workspaceString)).length
+// On hyprland we pin the workspace dot count to the configured rules so empty
+// workspaces still render. On niri workspaces are dynamic, so render all live ones.
+const workspaceLength = (() => {
+  if (compositor.kind !== "hyprland") return 0
+  try {
+    const rules = JSON.parse(Hyprland.get_default().message("j/workspacerules"))
+    return rules.filter((r: any) => /^\d+$/.test(r.workspaceString)).length
+  } catch {
+    return 0
+  }
+})()
 
 import {
   Bar,
   Box,
   Calendar,
-  HyprlandWorkspaces,
   ClockLabel,
   TrayItems,
   TrayButton,
@@ -243,7 +251,7 @@ export default function StatusBar(gdkmonitor: Gdk.Monitor) {
       position="bottom"
       start={
         <Box gap={12} css="padding: 6px 12px;">
-          <HyprlandWorkspaces length={workspaceCount} />
+          <Workspaces length={workspaceLength} />
           <SystemMetrics compact={isCompact} />
         </Box>
       }

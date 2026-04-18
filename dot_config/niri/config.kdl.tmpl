@@ -1,0 +1,312 @@
+// niri config — parallel to dot_config/hypr/hyprland.conf.tmpl
+// https://yalter.github.io/niri/Configuration:-Introduction
+
+input {
+    keyboard {
+        xkb {
+            layout "us"
+            options "caps:escape"
+        }
+        repeat-delay 300
+        repeat-rate 50
+        numlock
+    }
+
+    {{- if eq .machine "laptop" }}
+    touchpad {
+        tap
+        dwt
+        natural-scroll
+        click-method "clickfinger"
+    }
+    {{- end }}
+
+    mouse {
+        accel-profile "flat"
+    }
+
+    focus-follows-mouse max-scroll-amount="0%"
+}
+
+{{- if eq .machine "laptop" }}
+output "eDP-1" {
+    mode "2560x1600@165.000"
+    scale 1.0
+    position x=0 y=0
+}
+{{- else }}
+// Desktop outputs — run `niri msg outputs` inside niri to list connectors/modes
+// and fill these in. Example:
+//
+// output "DP-1" {
+//     mode "3840x2160@144.000"
+//     scale 1.5
+//     position x=0 y=0
+//     variable-refresh-rate on-demand=true
+// }
+{{- end }}
+
+layout {
+    gaps 12
+    center-focused-column "on-overflow"
+
+    preset-column-widths {
+        proportion 0.33333
+        proportion 0.5
+        proportion 0.66667
+    }
+
+    default-column-width { proportion 0.5; }
+
+    focus-ring {
+        off
+    }
+
+    border {
+        width 4
+        active-color "#1A0A2E"
+        inactive-color "#1A0A2E66"
+        urgent-color "#9b0000"
+    }
+
+    shadow {
+        on
+        softness 20
+        spread 3
+        offset x=0 y=4
+        color "#00000066"
+    }
+}
+
+prefer-no-csd
+
+cursor {
+    xcursor-theme "catppuccin-mocha-mauve-cursors"
+    xcursor-size 24
+}
+
+environment {
+    XCURSOR_THEME "catppuccin-mocha-mauve-cursors"
+    XCURSOR_SIZE "24"
+    HYPRCURSOR_THEME "catppuccin-mocha-mauve-cursors"
+    HYPRCURSOR_SIZE "24"
+    CLUTTER_BACKEND "wayland"
+    GDK_BACKEND "wayland,x11"
+    QT_QPA_PLATFORM "wayland;xcb"
+    QT_QPA_PLATFORMTHEME "qt6ct"
+    QT_WAYLAND_DISABLE_WINDOWDECORATION "1"
+    XDG_CURRENT_DESKTOP "niri"
+    XDG_SESSION_DESKTOP "niri"
+    XDG_SESSION_TYPE "wayland"
+    MOZ_ENABLE_WAYLAND "1"
+    ELECTRON_OZONE_PLATFORM_HINT "auto"
+    {{- if eq .machine "desktop" }}
+    LIBVA_DRIVER_NAME "nvidia"
+    __GLX_VENDOR_LIBRARY_NAME "nvidia"
+    NVD_BACKEND "direct"
+    {{- end }}
+}
+
+screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
+
+// === Autostart ===
+// Run under niri-session so systemd user units + xdg-desktop-autostart work.
+// Session-type env broadcast:
+spawn-at-startup "dbus-update-activation-environment" "--systemd" "WAYLAND_DISPLAY" "XDG_CURRENT_DESKTOP"
+spawn-at-startup "systemctl" "--user" "import-environment" "WAYLAND_DISPLAY" "XDG_CURRENT_DESKTOP"
+
+// Wallpaper
+spawn-at-startup "swww-daemon" "--format" "xrgb"
+
+// Polkit agent (from hyprland stack — it's just a polkit-gnome launcher)
+spawn-at-startup "/home/james/.config/hypr/scripts/Polkit.sh"
+
+// AGS shell (bar, overlays, sidebar). start_ags claims StatusNotifierWatcher
+// before backgrounding so the tray is ready when apps launch.
+spawn-at-startup "start_ags"
+
+// Network manager tray (appears once AGS claims the watcher above)
+spawn-at-startup "nm-applet" "--indicator"
+
+// Clipboard history
+spawn-sh-at-startup "wl-paste --type text --watch cliphist store"
+spawn-sh-at-startup "wl-paste --type image --watch cliphist store"
+
+// Scratchpad manager (works on any Wayland compositor)
+spawn-at-startup "pypr"
+
+// Rofi/app-launcher server
+spawn-at-startup "vicinae" "server"
+
+// Doorbell popup daemon
+spawn-at-startup "/home/james/.local/bin/doorbell_popup"
+
+// Idle + lock — swayidle replaces hypridle, swaylock replaces hyprlock.
+// Install with: sudo dnf install swayidle swaylock
+spawn-sh-at-startup "swayidle -w timeout 1800 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors' before-sleep 'swaylock -f'"
+
+// === Window rules ===
+
+// Global: rounded corners + subtle inactive opacity to match hyprland look
+window-rule {
+    geometry-corner-radius 15
+    clip-to-geometry true
+}
+
+window-rule {
+    match is-focused=false
+    opacity 0.98
+}
+
+// Float rules (ported 1:1 from hyprland windowrulev2 float entries)
+window-rule { match app-id=r#"(?i)thunar"# title="File Operation Progress"; open-floating true; }
+window-rule { match app-id=r#"(?i)thunar"# title="Confirm to replace files"; open-floating true; }
+window-rule { match app-id=r#"xdg-desktop-portal-gtk"#; open-floating true; }
+window-rule { match app-id=r#"org\.gnome\.Calculator"#; open-floating true; }
+window-rule { match app-id=r#"(codium|codium-url-handler|VSCodium)"# title="Add Folder to Workspace"; open-floating true; }
+window-rule { match app-id=r#"(?i)rofi"#; open-floating true; }
+window-rule { match app-id=r#"^eog$"#; open-floating true; }
+window-rule { match app-id=r#"^(pavucontrol|org\.pulseaudio\.pavucontrol)$"#; open-floating true; }
+window-rule { match app-id=r#"^(nwg-look|qt5ct|qt6ct|mpv)$"#; open-floating true; }
+window-rule { match app-id=r#"^(nm-applet|nm-connection-editor|blueman-manager)$"#; open-floating true; }
+window-rule { match app-id=r#"^(gnome-system-monitor|org\.gnome\.SystemMonitor)$"#; open-floating true; }
+window-rule { match app-id=r#"^yad$"#; open-floating true; }
+window-rule { match app-id=r#"^(file-roller|org\.gnome\.FileRoller)$"#; open-floating true; }
+window-rule { match app-id=r#"(?i)(baobab|org\.gnome\.baobab)"#; open-floating true; }
+window-rule { match title="Kvantum Manager"; open-floating true; }
+window-rule { match app-id=r#"(?i)qalculate-gtk"#; open-floating true; }
+
+// Doorbell video popup
+window-rule {
+    match title=r#"^\[Doorbell\]"#
+    open-floating true
+    default-floating-position x=24 y=24 relative-to="top-right"
+    default-column-width { fixed 400; }
+    opacity 1.0
+    border { off; }
+}
+
+// Camera grid feeds
+window-rule {
+    match title=r#"^\[Camera\]"#
+    open-floating true
+    default-floating-position x=24 y=24 relative-to="bottom-right"
+    opacity 1.0
+    border { off; }
+}
+
+// === Binds ===
+// Mod is Super on TTY.
+binds {
+    // Session
+    Ctrl+Alt+Delete { quit; }
+    Mod+Shift+E     { quit; }
+
+    // Applications
+    Mod+Return   hotkey-overlay-title="Terminal" { spawn "ghostty"; }
+    Mod+T                                        { spawn "thunar"; }
+    Mod+Space    hotkey-overlay-title="Launcher" { spawn "vicinae" "toggle"; }
+    Mod+Alt+C                                    { spawn "/home/james/.config/hypr/UserScripts/RofiCalc.sh"; }
+    Mod+V                                        { spawn "/home/james/.local/bin/camera_toggle"; }
+    Mod+S                                        { spawn "flatpak" "run" "io.github.seadve.Kooha"; }
+
+    // AGS overlays (toggle via the AGS request IPC)
+    Mod+W        hotkey-overlay-title="Wallpaper picker" { spawn "ags" "request" "wallpaper"; }
+    Mod+B        hotkey-overlay-title="Sidebar"          { spawn "ags" "request" "sidebar"; }
+    Mod+Slash    hotkey-overlay-title="Perplexity"       { spawn "ags" "request" "perplexity"; }
+    Mod+L        hotkey-overlay-title="Session menu"     { spawn "ags" "request" "session"; }
+
+    // Screenshot — niri's built-in interactive UI, plus the swappy pipeline
+    Print           { screenshot; }
+    Ctrl+Print      { screenshot-screen; }
+    Alt+Print       { screenshot-window; }
+    Mod+Shift+S     { spawn "/home/james/.config/hypr/scripts/ScreenShot.sh" "--swappy"; }
+
+    // Window management
+    Mod+Q repeat=false { close-window; }
+    Mod+Shift+Q        { spawn "/home/james/.config/hypr/scripts/KillActiveProcess.sh"; }
+    Mod+F              { toggle-window-floating; }
+    Mod+Shift+F        { fullscreen-window; }
+    Mod+Ctrl+F         { maximize-column; }
+    Mod+C              { spawn "niri_rescue_floating"; }
+
+    // Columns (horizontal movement within a workspace)
+    Mod+Left        { focus-column-left; }
+    Mod+Right       { focus-column-right; }
+    Mod+Shift+Left  { move-column-left; }
+    Mod+Shift+Right { move-column-right; }
+    Mod+Home        { focus-column-first; }
+    Mod+End         { focus-column-last; }
+    Mod+R           { switch-preset-column-width; }
+    Mod+Shift+R     { switch-preset-window-height; }
+    Mod+Ctrl+R      { reset-window-height; }
+    Mod+Comma       { consume-window-into-column; }
+    Mod+Period      { expel-window-from-column; }
+    Mod+BracketLeft  { consume-or-expel-window-left; }
+    Mod+BracketRight { consume-or-expel-window-right; }
+
+    // Windows within a column
+    Mod+Up       { focus-window-up; }
+    Mod+Down     { focus-window-down; }
+    Mod+Shift+Up   { move-window-up; }
+    Mod+Shift+Down { move-window-down; }
+    Mod+Tab      { toggle-column-tabbed-display; }
+
+    // Workspaces (niri-native: per-monitor, vertical)
+    Mod+1 { focus-workspace 1; }
+    Mod+2 { focus-workspace 2; }
+    Mod+3 { focus-workspace 3; }
+    Mod+4 { focus-workspace 4; }
+    Mod+5 { focus-workspace 5; }
+    Mod+6 { focus-workspace 6; }
+    Mod+7 { focus-workspace 7; }
+    Mod+8 { focus-workspace 8; }
+    Mod+9 { focus-workspace 9; }
+    Mod+Shift+1 { move-column-to-workspace 1; }
+    Mod+Shift+2 { move-column-to-workspace 2; }
+    Mod+Shift+3 { move-column-to-workspace 3; }
+    Mod+Shift+4 { move-column-to-workspace 4; }
+    Mod+Shift+5 { move-column-to-workspace 5; }
+    Mod+Shift+6 { move-column-to-workspace 6; }
+    Mod+Shift+7 { move-column-to-workspace 7; }
+    Mod+Shift+8 { move-column-to-workspace 8; }
+    Mod+Shift+9 { move-column-to-workspace 9; }
+
+    Mod+Page_Up        { focus-workspace-up; }
+    Mod+Page_Down      { focus-workspace-down; }
+    Mod+Ctrl+Page_Up   { move-column-to-workspace-up; }
+    Mod+Ctrl+Page_Down { move-column-to-workspace-down; }
+    Mod+Shift+Page_Up   { move-workspace-up; }
+    Mod+Shift+Page_Down { move-workspace-down; }
+
+    Mod+WheelScrollDown      cooldown-ms=150 { focus-workspace-down; }
+    Mod+WheelScrollUp        cooldown-ms=150 { focus-workspace-up; }
+    Mod+WheelScrollRight      { focus-column-right; }
+    Mod+WheelScrollLeft       { focus-column-left; }
+
+    // Monitor navigation (niri-specific — useful on desktop multi-monitor)
+    Mod+Alt+Left  { focus-monitor-left; }
+    Mod+Alt+Right { focus-monitor-right; }
+    Mod+Alt+Up    { focus-monitor-up; }
+    Mod+Alt+Down  { focus-monitor-down; }
+
+    // Overview
+    Mod+O repeat=false { toggle-overview; }
+
+    // Audio (mirrors hyprland binds)
+    XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 0.01+"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.01-"; }
+    XF86AudioMute        allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"; }
+    XF86AudioMicMute     allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"; }
+
+    {{- if eq .machine "laptop" }}
+    XF86MonBrightnessUp   allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "+10%"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "10%-"; }
+    {{- end }}
+
+    // Hotkey overlay
+    Mod+Shift+Slash { show-hotkey-overlay; }
+
+    // Power
+    Mod+Shift+P { power-off-monitors; }
+}
