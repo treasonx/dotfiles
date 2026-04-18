@@ -138,10 +138,13 @@ environment {
 screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
 
 // === Animations ===
-// Custom-shader window-open/close from XansiVA/nirimation. Shader source is
-// vendored at .chezmoitemplates/nirimation/burn.kdl — swap that file to use a
-// different nirimation block (burn-multicolor, glitch, etc.).
-{{ includeTemplate "nirimation/burn.kdl" -}}
+// Window open = CRT monitor turn-on (horizontal trace unfolds vertically with
+// scanlines and phosphor glow). Window close = Catppuccin Mocha dark sweep.
+// Templates live in .chezmoitemplates/nirimation/ — swap include for alts:
+//   crt-burn.kdl      — current (CRT open + dark burn close)
+//   keyhole-burn.kdl  — SMW keyhole open + dark burn close
+//   burn.kdl          — original warm-ember burn on both ends
+{{ includeTemplate "nirimation/crt-burn.kdl" -}}
 
 // === Autostart ===
 // Run under niri-session so systemd user units + xdg-desktop-autostart work.

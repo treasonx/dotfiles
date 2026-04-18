@@ -1,0 +1,187 @@
+// CRT monitor turn-on open + Catppuccin-dark burn close.
+//
+//   Open : Classic CRT startup — a bright horizontal trace flashes at center,
+//          then unfolds vertically into the full picture while the image
+//          stays vertically squashed into the expanding band. Scanlines and
+//          a phosphor-white edge glow ride along with the sweep.
+//   Close: Catppuccin Mocha dark burn (unchanged from keyhole-burn.kdl).
+//
+// Included by dot_config/niri/config.kdl.tmpl via {{`{{ includeTemplate }}`}}.
+//
+// Quick dials (apply with `chezmoi apply`):
+//   flash_phase  — fraction of the animation spent as a thin hot line (0.15 default)
+//   scanline_freq — scanline density; higher = tighter lines
+//   duration-ms  — animation length per open
+animations {
+    workspace-switch {
+        duration-ms 300
+        curve "ease-out-cubic"
+    }
+
+    window-open {
+        duration-ms 600
+        curve "linear"
+        custom-shader r"
+            vec4 crt_startup(vec3 coords_geo, vec3 size_geo) {
+                if (coords_geo.x < 0.0 || coords_geo.x > 1.0 || coords_geo.y < 0.0 || coords_geo.y > 1.0) {
+                    return vec4(0.0);
+                }
+                vec2 uv = coords_geo.xy;
+                float t = niri_clamped_progress;
+
+                // Three phases:
+                //   0 – 0.15 : power-on flash — thin bright trace at center
+                //   0.15 – 1 : vertical unfold, squashed content with phosphor glow
+                float flash_phase = 0.15;
+                float band_half;
+                if (t < flash_phase) {
+                    // Keep the trace thin; tiny growth so the flash reads.
+                    band_half = mix(0.002, 0.006, t / flash_phase);
+                } else {
+                    // Ease-out unfold so it opens fast then settles.
+                    float expand_t = (t - flash_phase) / (1.0 - flash_phase);
+                    expand_t = 1.0 - pow(1.0 - expand_t, 2.5);
+                    band_half = mix(0.006, 0.5, expand_t);
+                }
+
+                float y_from_center = abs(uv.y - 0.5);
+                if (y_from_center > band_half) {
+                    // Outside the trace — fully transparent so the desktop /
+                    // windows behind show through (no black 'backdrop').
+                    return vec4(0.0);
+                }
+
+                // Squash the full image into the currently-visible band.
+                // This is the hallmark of a CRT de-gaussing / turning on:
+                // a whole frame crammed into a narrow horizontal strip that
+                // progressively decompresses as the beam sweep widens.
+                float local_y = (uv.y - 0.5) / band_half;   // -1..1 inside band
+                float sample_y = (local_y + 1.0) * 0.5;     // 0..1 across window
+
+                // --- CRT sync-lock shake -------------------------------------
+                // Rigid horizontal + vertical image shake as the deflection
+                // coils settle. The whole picture wobbles side to side a
+                // handful of times and damps out — the characteristic look of
+                // a CRT finishing its warm-up. Pure position offset (no
+                // stretching) so the content always stays intact.
+                //
+                //   Start shake (t=0.20→0.50): one gentle blip while the beam
+                //     is still finding its line — barely perceptible, mostly
+                //     there so the unfold doesn't feel robotically clean.
+                //   End shake (t=0.70→1.00): the real deal — ~4 full
+                //     oscillations decaying exponentially, with a smaller
+                //     orthogonal vertical jitter riding along.
+                float shake_x = 0.0;
+                float shake_y = 0.0;
+
+                if (t > 0.20 && t < 0.50) {
+                    float tn = (t - 0.20) / 0.30;
+                    shake_x += sin(tn * 6.28318 * 2.0) * exp(-tn * 3.0) * 0.045;
+                }
+                if (t > 0.70) {
+                    float tn = (t - 0.70) / 0.30;
+                    // Horizontal: 3 big oscillations, amplitude 15% of window
+                    shake_x += sin(tn * 6.28318 * 3.0) * exp(-tn * 2.0) * 0.15;
+                    // Vertical: out of phase (cos), 10% amplitude
+                    shake_y += cos(tn * 6.28318 * 4.0) * exp(-tn * 2.2) * 0.10;
+                }
+
+                // Apply shake as pure sample-coord translation.
+                float sx = uv.x + shake_x;
+                float sy = sample_y + shake_y;
+
+                vec3 coords_tex = niri_geo_to_tex * vec3(sx, sy, 1.0);
+                vec4 color = texture2D(niri_tex, coords_tex.st);
+
+                // Scanlines on the real pixel row so density is resolution-aware.
+                float scanline_freq = 0.5;
+                float pixel_y = uv.y * size_geo.y;
+                float scan = 0.85 + 0.15 * step(0.5, fract(pixel_y * scanline_freq));
+                color.rgb *= scan;
+
+                // Deep Catppuccin purple phosphor — dark enough that the flash
+                // reads as a dim theme-colored pulse rather than a bright wash.
+                vec3 phosphor = vec3(0.196, 0.157, 0.275);  // deep purple #322846
+
+                // Phosphor glow riding the expanding top/bottom edges.
+                float edge_dist = band_half - y_from_center;
+                float glow_width = max(0.004, band_half * 0.08);
+                float glow = min(exp(-edge_dist / glow_width * 3.0), 1.0);
+                color.rgb = mix(color.rgb, phosphor, glow * 0.55);
+
+                // Power-on flash: dim purple tint during flash_phase — no
+                // longer washes the content out to near-white.
+                if (t < flash_phase) {
+                    float intensity = 1.0 - (t / flash_phase);
+                    color.rgb = mix(color.rgb, phosphor, intensity * 0.60);
+                }
+
+                return color;
+            }
+            vec4 open_color(vec3 coords_geo, vec3 size_geo) {
+                return crt_startup(coords_geo, size_geo);
+            }
+        "
+    }
+
+    window-close {
+        duration-ms 1000
+        curve "linear"
+        custom-shader r"
+            float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+            }
+            float noise(vec2 p) {
+                vec2 i = floor(p);
+                vec2 f = fract(p);
+                f = f * f * (3.0 - 2.0 * f);
+                return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                           mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+            }
+            vec4 burn_close(vec3 coords_geo, vec3 size_geo) {
+                if (coords_geo.x < 0.0 || coords_geo.x > 1.0 || coords_geo.y < 0.0 || coords_geo.y > 1.0) {
+                    return vec4(0.0);
+                }
+                float speed = 1.0 + niri_random_seed;
+                float progress = min(niri_clamped_progress * speed, 1.0);
+                vec2 uv = coords_geo.xy;
+                vec3 coords_tex = niri_geo_to_tex * vec3(uv, 1.0);
+                vec4 color = texture2D(niri_tex, coords_tex.st);
+
+                float pixel_grid = 80.0;
+                vec2 pixel_uv = floor(uv * pixel_grid) / pixel_grid;
+
+                float edge_dist = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+                float n = noise(pixel_uv * 12.0 + niri_random_seed * 100.0) * 0.35;
+                float burn_line = edge_dist + n;
+                float threshold = progress * 0.85;
+
+                float band_width = 0.18;
+                float band = (burn_line - threshold) / band_width;
+
+                if (band < 0.0) {
+                    return vec4(0.0);
+                }
+                if (band > 1.0) {
+                    return color;
+                }
+
+                vec3 c_tip  = vec3(0.067, 0.067, 0.106);
+                vec3 c_hot  = vec3(0.094, 0.094, 0.145);
+                vec3 c_mid  = vec3(0.118, 0.118, 0.180);
+                vec3 c_cool = vec3(0.192, 0.196, 0.267);
+
+                vec3 ember = c_tip;
+                ember = mix(ember, c_hot,  step(0.25, band));
+                ember = mix(ember, c_mid,  step(0.50, band));
+                ember = mix(ember, c_cool, step(0.75, band));
+
+                float blend = step(0.75, band) * 0.4;
+                return vec4(mix(ember, color.rgb, blend), color.a);
+            }
+            vec4 close_color(vec3 coords_geo, vec3 size_geo) {
+                return burn_close(coords_geo, size_geo);
+            }
+        "
+    }
+}

@@ -1,0 +1,155 @@
+// SMW-inspired keyhole open + existing fire burn close.
+//
+//   Open : Super Mario World level-exit keyhole — pixelated silhouette
+//          (circle + shaft) expands from a point in the window's center,
+//          surrounding fill is Catppuccin Mocha base.
+//   Close: fire burn shader (unchanged from burn.kdl).
+//
+// Included by dot_config/niri/config.kdl.tmpl via {{`{{ includeTemplate }}`}}.
+//
+// Quick dials (apply with `chezmoi apply`):
+//   pixel_grid     — chunkier silhouette = lower number (try 48 very blocky, 120 finer)
+//   scale_max      — final keyhole size; raise if the corners still stay dark at end
+//   duration-ms    — animation length per open
+animations {
+    workspace-switch {
+        duration-ms 300
+        curve "ease-out-cubic"
+    }
+
+    window-open {
+        duration-ms 1400
+        curve "linear"
+        custom-shader r"
+            vec4 keyhole_open(vec3 coords_geo, vec3 size_geo) {
+                if (coords_geo.x < 0.0 || coords_geo.x > 1.0 || coords_geo.y < 0.0 || coords_geo.y > 1.0) {
+                    return vec4(0.0);
+                }
+                vec2 uv = coords_geo.xy;
+                vec3 coords_tex = niri_geo_to_tex * vec3(uv, 1.0);
+                vec4 color = texture2D(niri_tex, coords_tex.st);
+
+                // Center the coords at window middle, preserve aspect so
+                // the keyhole stays circular regardless of window shape.
+                float aspect = size_geo.x / size_geo.y;
+                vec2 p = (uv - 0.5) * vec2(aspect, 1.0);
+
+                // Snap to a chunky 16-bit grid — matches the burn shader's feel
+                // and gives the keyhole silhouette visible stepped edges.
+                float pixel_grid = 80.0;
+                p = floor(p * pixel_grid) / pixel_grid;
+
+                float t = niri_clamped_progress;
+
+                // Cubic ease-in on the scale: keyhole stays small and readable
+                // as a silhouette for the first ~70% of the animation, then
+                // rapidly expands to clear the window corners.
+                //   scale_min=0.4 — starting keyhole ~20% of window width;
+                //                   shaft is still ~5 pixels on the 80-grid.
+                //   scale_max=9.0 — clears corners on 16:9 at end.
+                float scale_min = 0.4;
+                float scale_max = 9.0;
+                float eased = t * t * t;
+                float s = mix(scale_min, scale_max, eased);
+
+                // Keyhole SDF at unit scale — classic SMW silhouette:
+                //   head   — prominent round top (diameter 0.68)
+                //   shaft  — narrow slot, ~27% as wide as the head
+                //   flare  — wider rectangular base (the old-lock bit cutout)
+                //
+                //     o o o
+                //    o     o
+                //    o head o
+                //     o   o
+                //       |
+                //       |shaft
+                //      _|_
+                //     |flare|
+                //     |_____|
+                vec2 np = p / s;
+                float head_d = length(np - vec2(0.0, -0.22)) - 0.34;
+                vec2 q_shaft = abs(np - vec2(0.0, 0.12)) - vec2(0.09, 0.24);
+                float shaft_d = min(max(q_shaft.x, q_shaft.y), 0.0) + length(max(q_shaft, 0.0));
+                vec2 q_flare = abs(np - vec2(0.0, 0.34)) - vec2(0.15, 0.08);
+                float flare_d = min(max(q_flare.x, q_flare.y), 0.0) + length(max(q_flare, 0.0));
+                float d = min(min(head_d, shaft_d), flare_d);
+
+                if (d < 0.0) {
+                    // Inside the keyhole — show actual window content.
+                    return color;
+                }
+                // Outside — opaque Catppuccin Mocha base #1e1e2e so the window
+                // rect reads as 'level fade' black rather than showing through.
+                return vec4(0.117647, 0.117647, 0.180392, 1.0);
+            }
+            vec4 open_color(vec3 coords_geo, vec3 size_geo) {
+                return keyhole_open(coords_geo, size_geo);
+            }
+        "
+    }
+
+    window-close {
+        duration-ms 1000
+        curve "linear"
+        custom-shader r"
+            float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+            }
+            float noise(vec2 p) {
+                vec2 i = floor(p);
+                vec2 f = fract(p);
+                f = f * f * (3.0 - 2.0 * f);
+                return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                           mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+            }
+            vec4 burn_close(vec3 coords_geo, vec3 size_geo) {
+                if (coords_geo.x < 0.0 || coords_geo.x > 1.0 || coords_geo.y < 0.0 || coords_geo.y > 1.0) {
+                    return vec4(0.0);
+                }
+                float speed = 1.0 + niri_random_seed;
+                float progress = min(niri_clamped_progress * speed, 1.0);
+                vec2 uv = coords_geo.xy;
+                vec3 coords_tex = niri_geo_to_tex * vec3(uv, 1.0);
+                vec4 color = texture2D(niri_tex, coords_tex.st);
+
+                float pixel_grid = 80.0;
+                vec2 pixel_uv = floor(uv * pixel_grid) / pixel_grid;
+
+                float edge_dist = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+                float n = noise(pixel_uv * 12.0 + niri_random_seed * 100.0) * 0.35;
+                float burn_line = edge_dist + n;
+                float threshold = progress * 0.85;
+
+                float band_width = 0.18;
+                float band = (burn_line - threshold) / band_width;
+
+                if (band < 0.0) {
+                    return vec4(0.0);
+                }
+                if (band > 1.0) {
+                    return color;
+                }
+
+                // Catppuccin Mocha darkest ramp — close sweeps the window into
+                // the void rather than setting it on fire. Leading edge is
+                // crust (the absolute darkest), fading up toward surface0 so
+                // the trailing edge blends with the remaining window content.
+                vec3 c_tip  = vec3(0.067, 0.067, 0.106);  // crust   #11111b
+                vec3 c_hot  = vec3(0.094, 0.094, 0.145);  // mantle  #181825
+                vec3 c_mid  = vec3(0.118, 0.118, 0.180);  // base    #1e1e2e
+                vec3 c_cool = vec3(0.192, 0.196, 0.267);  // surface0 #313244
+
+                vec3 ember = c_tip;
+                ember = mix(ember, c_hot,  step(0.25, band));
+                ember = mix(ember, c_mid,  step(0.50, band));
+                ember = mix(ember, c_cool, step(0.75, band));
+
+                float blend = step(0.75, band) * 0.4;
+                return vec4(mix(ember, color.rgb, blend), color.a);
+            }
+            vec4 close_color(vec3 coords_geo, vec3 size_geo) {
+                return burn_close(coords_geo, size_geo);
+            }
+        "
+    }
+}
