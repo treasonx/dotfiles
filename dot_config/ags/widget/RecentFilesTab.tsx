@@ -7,7 +7,7 @@ import { For, createState } from "gnim"
 import { execAsync } from "ags/process"
 import { monitorFile } from "ags/file"
 import { timeout } from "ags/time"
-import { activeTab } from "./sidebar-state"
+import { renderedTab } from "./sidebar-state"
 
 type RecentFile = {
   path: string
@@ -158,7 +158,7 @@ void refreshSections()
 
 export function RecentFilesTab() {
   return (
-    <Box vertical vexpand visible={activeTab.as((t) => t === "files")}>
+    <Box vertical vexpand visible={renderedTab.as((t) => t === "files")}>
       <Box css="padding: 0 0 8px 0;">
         <Text size={1.1} bold>Recent Files</Text>
       </Box>

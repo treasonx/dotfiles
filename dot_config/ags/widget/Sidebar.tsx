@@ -9,13 +9,13 @@ import { SidebarItem } from "./SidebarItem"
 import { RecentFilesTab } from "./RecentFilesTab"
 import { ClipboardTab } from "./ClipboardTab"
 import { WezTermTab } from "./WezTermTab"
-import { sidebarVisible, SIDEBAR_WIDTH_FRACTION, TABS, activeTab, switchTab } from "./sidebar-state"
+import { sidebarVisible, SIDEBAR_WIDTH_FRACTION, type Tab, visibleTabs, renderedTab, switchTab } from "./sidebar-state"
 
 function NotificationHistory() {
   const notifd = Notifd.get_default()
   const notifications = createBinding(notifd, "notifications")
   const hasNotifications = notifications.as((ns) => ns.length > 0)
-  const isActive = activeTab.as((t) => t === "notifications")
+  const isActive = renderedTab.as((t) => t === "notifications")
 
   function clearAll() {
     notifd.get_notifications().forEach((n) => n.dismiss())
@@ -86,11 +86,11 @@ function PlaceholderTab() {
   return <RecentFilesTab />
 }
 
-function TabButton({ tab }: { tab: (typeof TABS)[number] }) {
+function TabButton({ tab }: { tab: Tab }) {
   return (
     <Button
       onPrimaryClick={() => switchTab(tab.id)}
-      css={activeTab.as((t) =>
+      css={renderedTab.as((t) =>
         t === tab.id
           ? "padding: 8px 16px; border-radius: 8px; background: alpha(@accent_bg_color, 0.3);"
           : "padding: 8px 16px; border-radius: 8px; background: none; opacity: 0.5;"
@@ -108,9 +108,9 @@ function TabBar() {
       gap={4}
       css="padding: 8px 0 0 0; border-top: 1px solid alpha(@view_fg_color, 0.1);"
     >
-      {TABS.map((tab) => (
-        <TabButton tab={tab} />
-      ))}
+      <For each={visibleTabs}>
+        {(tab: Tab) => <TabButton tab={tab} />}
+      </For>
     </Box>
   )
 }

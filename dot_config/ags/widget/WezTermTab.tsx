@@ -5,7 +5,7 @@ import { For, createState } from "gnim"
 import { execAsync } from "ags/process"
 import { monitorFile } from "ags/file"
 import { timeout } from "ags/time"
-import { activeTab } from "./sidebar-state"
+import { renderedTab } from "./sidebar-state"
 
 // ── Types ──
 
@@ -371,7 +371,7 @@ export function WezTermTab() {
   const isEmpty = tabs.as((t) => t.length === 0)
 
   return (
-    <Box vertical vexpand visible={activeTab.as((t) => t === "wezterm")}>
+    <Box vertical vexpand visible={renderedTab.as((t) => t === "wezterm")}>
       <Gtk.ScrolledWindow
         vexpand
         hscrollbarPolicy={Gtk.PolicyType.NEVER}

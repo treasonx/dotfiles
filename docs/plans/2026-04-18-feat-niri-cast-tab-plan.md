@@ -156,14 +156,19 @@ Files modified:
 - `dot_config/ags/widget/Sidebar.tsx` — `TabBar` iterates `visibleTabs` instead of `TABS`; render container picks active tab id from `visibleTabs` for fallback rendering only
 
 Hyprland inertness contract (must hold):
-- A tab without `visible` predicate is always in `visibleTabs`.
-- Under hyprland, no tab registers a predicate, so `visibleTabs.length === TABS.length`.
-- Acceptance: a unit-style assertion in dev mode (or a manual smoke test) confirms this.
+- [x] A tab without `visible` predicate is always in `visibleTabs` (filter clause: `!t.visible || t.visible()`)
+- [x] Under hyprland, no tab registers a predicate, so `visibleTabs.length === TABS.length` (no predicates registered until Phase 3)
+- [ ] Manual smoke test on user's running AGS confirms hyprland sidebar tabs render identically
 
 Active-tab persistence rules:
-- Persist user's last-active tab id verbatim (don't overwrite with fallback).
-- Render uses `activeTab ∈ visibleTabs ? activeTab : visibleTabs[0]`.
-- When the previously-active tab re-appears (cast restarts), it auto-becomes the rendered tab without user action.
+- [x] Persist user's last-active tab id verbatim (`activeTab` is never overwritten by fallback logic)
+- [x] Render uses `activeTab ∈ visibleTabs ? activeTab : visibleTabs[0]` (implemented as `renderedTab` derived)
+- [x] When the previously-active tab re-appears, it auto-becomes the rendered tab (reactive `renderedTab` re-evaluates on `visibleTabs` change)
+
+Acceptance Phase 2:
+- [x] `ags bundle app.ts ... --gtk 4` succeeds (esbuild compiles all changes cleanly)
+- [ ] AGS restarted: hyprland tabs (notifications/clipboard/files/wezterm) still render and switch normally *(needs user verification)*
+- [ ] Persisted `activeTab="cast"` (no Cast tab yet) falls back to notifications without overwriting persisted value *(needs Phase 3 to test)*
 
 #### Phase 3 — Cast tab UI
 

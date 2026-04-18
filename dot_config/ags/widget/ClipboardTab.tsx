@@ -7,7 +7,7 @@ import { For, createState } from "gnim"
 import { execAsync } from "ags/process"
 import { monitorFile } from "ags/file"
 import { timeout } from "ags/time"
-import { activeTab } from "./sidebar-state"
+import { renderedTab } from "./sidebar-state"
 
 type ClipboardEntry = {
   id: string
@@ -116,7 +116,7 @@ export function ClipboardTab() {
   const isEmpty = entries.as((e) => e.length === 0)
 
   return (
-    <Box vertical vexpand visible={activeTab.as((t) => t === "clipboard")}>
+    <Box vertical vexpand visible={renderedTab.as((t) => t === "clipboard")}>
       <Box css="padding: 0 0 8px 0;">
         <Text size={1.1} bold>Clipboard</Text>
         <Box hexpand />
