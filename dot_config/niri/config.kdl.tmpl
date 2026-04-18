@@ -112,6 +112,12 @@ environment {
 
 screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
 
+// === Animations ===
+// Custom-shader window-open/close from XansiVA/nirimation. Shader source is
+// vendored at .chezmoitemplates/nirimation/burn.kdl — swap that file to use a
+// different nirimation block (burn-multicolor, glitch, etc.).
+{{ includeTemplate "nirimation/burn.kdl" -}}
+
 // === Autostart ===
 // Run under niri-session so systemd user units + xdg-desktop-autostart work.
 // Session-type env broadcast:

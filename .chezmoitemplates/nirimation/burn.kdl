@@ -1,0 +1,160 @@
+// Vendored from https://github.com/XansiVA/nirimation
+//   animations/burn.kdl @ main, then customized:
+//     • 16-bit retro flame look — pixelated noise + 4-step indexed palette
+//       (no smooth gradient), wider burn band so all steps are visible.
+//     • Catppuccin Mocha dim ember ramp — peach → wine → maroon → plum,
+//       darkened ~50% so the burn sits with the base instead of glowing off it.
+//     • Per-window randomized speed: duration-ms is the slowest case (1000ms);
+//       the shader scales niri_clamped_progress by a per-window factor so each
+//       burn lands somewhere in 500–1000ms.
+// Included by dot_config/niri/config.kdl.tmpl via {{`{{ includeTemplate }}`}}.
+//
+// Quick dials (apply with `chezmoi apply`):
+//   pixel_grid   — chunkier pixels = lower number (try 48 for very blocky, 120 for finer)
+//   band_width   — wider band = thicker flame line (0.12 thin, 0.25 dramatic)
+//   duration-ms  — animation length per open/close
+animations {
+    workspace-switch {
+        duration-ms 300
+        curve "ease-out-cubic"
+    }
+
+    window-open {
+        duration-ms 1000
+        curve "linear"
+        custom-shader r"
+            float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+            }
+            float noise(vec2 p) {
+                vec2 i = floor(p);
+                vec2 f = fract(p);
+                f = f * f * (3.0 - 2.0 * f);
+                return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                           mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+            }
+            vec4 burn_open(vec3 coords_geo, vec3 size_geo) {
+                if (coords_geo.x < 0.0 || coords_geo.x > 1.0 || coords_geo.y < 0.0 || coords_geo.y > 1.0) {
+                    return vec4(0.0);
+                }
+                // Per-window speed in [1.0, 2.0]. duration-ms above is the
+                // slowest case (1000ms); speed 2.0 finishes the burn at real
+                // time 500ms, giving an effective per-window range of 500–1000ms.
+                float speed = 1.0 + niri_random_seed;
+                float progress = min(niri_clamped_progress * speed, 1.0);
+                vec2 uv = coords_geo.xy;
+                vec3 coords_tex = niri_geo_to_tex * vec3(uv, 1.0);
+                vec4 color = texture2D(niri_tex, coords_tex.st);
+
+                // Snap UV to a chunky grid before sampling noise — gives the
+                // burn line visible square pixels instead of smooth wisps.
+                float pixel_grid = 80.0;
+                vec2 pixel_uv = floor(uv * pixel_grid) / pixel_grid;
+
+                float edge_dist = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+                float n = noise(pixel_uv * 12.0 + niri_random_seed * 100.0) * 0.35;
+                float burn_line = edge_dist + n;
+                float threshold = progress * 0.85;
+
+                // Distance from the leading edge, normalized into 4 palette steps.
+                float band_width = 0.18;
+                float band = (threshold - burn_line) / band_width;
+
+                if (band < 0.0) {
+                    return vec4(0.0);
+                }
+                if (band > 1.0) {
+                    return color;
+                }
+
+                // Catppuccin warm flame ramp — hottest at the leading edge.
+                // Dim ember ramp — catppuccin warm hues at ~50% brightness so
+                // the burn line sits with the mocha base instead of glowing off it.
+                vec3 c_tip  = vec3(0.588, 0.421, 0.317);  // dim peach   #966b51
+                vec3 c_hot  = vec3(0.477, 0.273, 0.330);  // wine        #794654
+                vec3 c_mid  = vec3(0.413, 0.282, 0.304);  // deep maroon #69484d
+                vec3 c_cool = vec3(0.358, 0.293, 0.436);  // dim plum    #5b4b6f
+
+                vec3 ember = c_tip;
+                ember = mix(ember, c_hot,  step(0.25, band));
+                ember = mix(ember, c_mid,  step(0.50, band));
+                ember = mix(ember, c_cool, step(0.75, band));
+
+                // Bleed the underlying pixel through only at the cool trailing edge.
+                float blend = step(0.75, band) * 0.4;
+                return vec4(mix(ember, color.rgb, blend), color.a);
+            }
+            vec4 open_color(vec3 coords_geo, vec3 size_geo) {
+                return burn_open(coords_geo, size_geo);
+            }
+        "
+    }
+
+    window-close {
+        duration-ms 1000
+        curve "linear"
+        custom-shader r"
+            float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+            }
+            float noise(vec2 p) {
+                vec2 i = floor(p);
+                vec2 f = fract(p);
+                f = f * f * (3.0 - 2.0 * f);
+                return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                           mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+            }
+            vec4 burn_close(vec3 coords_geo, vec3 size_geo) {
+                if (coords_geo.x < 0.0 || coords_geo.x > 1.0 || coords_geo.y < 0.0 || coords_geo.y > 1.0) {
+                    return vec4(0.0);
+                }
+                // Per-window speed in [1.0, 2.0]. duration-ms above is the
+                // slowest case (1000ms); speed 2.0 finishes the burn at real
+                // time 500ms, giving an effective per-window range of 500–1000ms.
+                float speed = 1.0 + niri_random_seed;
+                float progress = min(niri_clamped_progress * speed, 1.0);
+                vec2 uv = coords_geo.xy;
+                vec3 coords_tex = niri_geo_to_tex * vec3(uv, 1.0);
+                vec4 color = texture2D(niri_tex, coords_tex.st);
+
+                float pixel_grid = 80.0;
+                vec2 pixel_uv = floor(uv * pixel_grid) / pixel_grid;
+
+                float edge_dist = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+                float n = noise(pixel_uv * 12.0 + niri_random_seed * 100.0) * 0.35;
+                float burn_line = edge_dist + n;
+                float threshold = progress * 0.85;
+
+                // For close: burn line travels outward, so band measures distance
+                // from threshold *up* toward the surviving content.
+                float band_width = 0.18;
+                float band = (burn_line - threshold) / band_width;
+
+                if (band < 0.0) {
+                    return vec4(0.0);
+                }
+                if (band > 1.0) {
+                    return color;
+                }
+
+                // Dim ember ramp — catppuccin warm hues at ~50% brightness so
+                // the burn line sits with the mocha base instead of glowing off it.
+                vec3 c_tip  = vec3(0.588, 0.421, 0.317);  // dim peach   #966b51
+                vec3 c_hot  = vec3(0.477, 0.273, 0.330);  // wine        #794654
+                vec3 c_mid  = vec3(0.413, 0.282, 0.304);  // deep maroon #69484d
+                vec3 c_cool = vec3(0.358, 0.293, 0.436);  // dim plum    #5b4b6f
+
+                vec3 ember = c_tip;
+                ember = mix(ember, c_hot,  step(0.25, band));
+                ember = mix(ember, c_mid,  step(0.50, band));
+                ember = mix(ember, c_cool, step(0.75, band));
+
+                float blend = step(0.75, band) * 0.4;
+                return vec4(mix(ember, color.rgb, blend), color.a);
+            }
+            vec4 close_color(vec3 coords_geo, vec3 size_geo) {
+                return burn_close(coords_geo, size_geo);
+            }
+        "
+    }
+}
