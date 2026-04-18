@@ -86,6 +86,9 @@ cursor {
 }
 
 environment {
+    // niri-session inherits a minimal PATH from gdm-wayland-session, so
+    // `spawn "ags"` and other ~/.local/bin scripts fail to exec. Prepend it.
+    PATH "/home/james/.local/bin:/home/james/.cargo/bin:/usr/local/bin:/usr/bin"
     XCURSOR_THEME "catppuccin-mocha-mauve-cursors"
     XCURSOR_SIZE "24"
     HYPRCURSOR_THEME "catppuccin-mocha-mauve-cursors"
@@ -318,6 +321,11 @@ binds {
     Mod+TouchpadScrollRight                  { focus-column-right; }
     Mod+TouchpadScrollLeft                   { focus-column-left; }
     {{- end }}
+
+    // Output scale (runtime only — restart reverts to config value)
+    Mod+Equal { spawn "niri_scale" "--step" "0.25"; }
+    Mod+Minus { spawn "niri_scale" "--step" "-0.25"; }
+    Mod+0     { spawn "niri_scale" "--set" "1.5"; }
 
     // Hotkey overlay
     Mod+Shift+Slash { show-hotkey-overlay; }

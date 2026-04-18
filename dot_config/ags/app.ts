@@ -4,6 +4,8 @@ import GLib from "gi://GLib"
 import "./theme"
 import Bar from "./widget/Bar"
 import { BarOsd } from "./widget/BarOsd"
+import { ScaleOsd } from "./widget/ScaleOsd"
+import { showScaleOsd } from "./widget/scale-osd-state"
 import Sidebar from "./widget/Sidebar"
 import Popups from "./widget/notifications/NotificationPopups"
 import { toggleSidebar } from "./widget/sidebar-state"
@@ -91,6 +93,7 @@ app.start({
     SessionPanel(app.get_monitors()[0])
     WallpaperPanel(app.get_monitors()[0])
     BarOsd()
+    ScaleOsd()
   },
   requestHandler(argv: string[], respond: (response: string) => void) {
     const command = argv[0]
@@ -106,6 +109,14 @@ app.start({
     } else if (command === "wallpaper") {
       toggleWallpaper()
       respond("ok")
+    } else if (command === "scale") {
+      const v = parseFloat(argv[1] ?? "")
+      if (Number.isFinite(v)) {
+        showScaleOsd(v)
+        respond("ok")
+      } else {
+        respond("scale: expected numeric value")
+      }
     } else if (command === "screenshare-pick") {
       // CRITICAL: Do NOT respond() synchronously — store it for the UI.
       // ags request blocks until the user makes a selection.
