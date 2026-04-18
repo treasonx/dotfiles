@@ -175,8 +175,9 @@ spawn-at-startup "vicinae" "server"
 // Doorbell popup daemon
 spawn-at-startup "/home/james/.local/bin/doorbell_popup"
 
-// Idle + lock — swayidle replaces hypridle, swaylock replaces hyprlock.
-// Install with: sudo dnf install swayidle swaylock
+// Idle + lock — swayidle handles idle, swaylock-effects is the lock screen.
+// Config lives at ~/.config/swaylock/config (generated from wallust template).
+// Install with: sudo dnf install swayidle swaylock-effects
 spawn-sh-at-startup "swayidle -w timeout 1800 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors' before-sleep 'swaylock -f'"
 
 // === Window rules ===
@@ -237,7 +238,12 @@ binds {
     Mod+Space    hotkey-overlay-title="Launcher" { spawn "vicinae" "toggle"; }
     Mod+Alt+C                                    { spawn "/home/james/.config/hypr/UserScripts/RofiCalc.sh"; }
     Mod+V                                        { spawn "/home/james/.local/bin/camera_toggle"; }
-    Mod+S                                        { spawn "flatpak" "run" "io.github.seadve.Kooha"; }
+    // Screen recording — wl-screenrec (wlr-screencopy, bypasses the broken
+    // portal path that Kooha's pipewiresrc can't negotiate on niri).
+    // First press starts recording, second press stops and copies path to clipboard.
+    Mod+S       hotkey-overlay-title="Record region" { spawn "screenrec" "--mode" "region"; }
+    Mod+Alt+S   hotkey-overlay-title="Record output" { spawn "screenrec" "--mode" "output"; }
+    Mod+Shift+Alt+S hotkey-overlay-title="Record output + audio" { spawn "screenrec" "--mode" "output" "--audio"; }
 
     // AGS overlays (toggle via the AGS request IPC)
     Mod+W        hotkey-overlay-title="Wallpaper picker" { spawn "ags" "request" "wallpaper"; }

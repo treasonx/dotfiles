@@ -60,6 +60,7 @@ SCRIPTS = [
     "niri_scale:Adjust niri output scale (--step N or --set N)",
     "playlist:Create M3U playlists using beets",
     "rsync_upload:Upload files via rsync with bandwidth control",
+    "screenrec:Toggle screen recording (region/output, wl-screenrec)",
     "transcode_video:Transcode videos to H.265 1080p MP4 via HandBrake",
     "v:Open file in nvim by fuzzy name match",
     "weather:Display weather via rustormy",
