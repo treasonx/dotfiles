@@ -78,6 +78,14 @@ layout {
     }
 }
 
+// Disable the top-left hot corner that auto-opens the overview.
+// Mod+O still toggles it; this just stops the mouse-in-corner trigger.
+gestures {
+    hot-corners {
+        off
+    }
+}
+
 // Aggressive zoom-out so every window on every workspace fits on screen.
 // Range 0.0–0.75, default 0.5. Lower = smaller tiles, more fit at once.
 overview {
