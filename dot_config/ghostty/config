@@ -16,7 +16,7 @@ theme = catppuccin-mocha
 
 # Background Image
 background-image = /home/james/.config/ghostty/a_drawing_of_a_bear_and_a_campfire.png
-background-opacity = 0.7
+background-opacity = 1.0
 background-image-opacity = 0.5
 background-image-fit = cover
 
