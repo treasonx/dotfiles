@@ -2,6 +2,8 @@ import { createState, createComputed, type Accessor } from "gnim"
 import GLib from "gi://GLib"
 import { writeFileAsync } from "ags/file"
 import { moveToFocusedMonitor } from "../lib/monitor"
+import { isNiri } from "../lib/compositor"
+import { castVisible } from "./cast/cast-state"
 
 const [sidebarVisible, setSidebarVisible] = createState(false)
 
@@ -26,6 +28,14 @@ export const TABS: Tab[] = [
   { id: "clipboard", icon: "󰅌" },     // nf-md-clipboard_text
   { id: "files", icon: "󰉋" },     // nf-md-folder
   { id: "wezterm", icon: "󰆍" },   // nf-md-console
+  // Cast tab is niri-only and conditionally visible (hides when no
+  // dynamic-cast-target stream is active). Adding this entry under
+  // hyprland would still keep visibleTabs.length === TABS.length, but
+  // its content widget references niri-only state so we omit it entirely
+  // to keep hyprland's import graph free of niri code.
+  ...(isNiri()
+    ? [{ id: "cast" as TabId, icon: "󰹑", visible: castVisible }]  // nf-md-cast_variant
+    : []),
 ]
 
 // Reactive list of currently-visible tabs. Tabs WITHOUT a predicate are

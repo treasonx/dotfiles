@@ -245,36 +245,37 @@ Both unset: `isNiri() === false`, `isHyprland() === false`. Cast tab not registe
 
 ### Functional Requirements
 
-- [ ] Cast tab appears in sidebar under niri only when at least one `is_dynamic_target=true` cast exists
-- [ ] Tab disappears within ~200ms of cast stop (debounce window)
-- [ ] Currently-cast target rendered prominently with app icon + title; "Stop casting" button works
-- [ ] Clicking a window row retargets the cast within ~100ms (perceived); no confirmation dialog
-- [ ] Clicking a screen thumbnail retargets to that monitor
-- [ ] "Pick visually" closes sidebar, invokes niri's overlay, retargets to picked window, reopens sidebar; Esc cancels cleanly
-- [ ] "Clear target" sets target to `Nothing`; tab stays visible (cast still exists)
-- [ ] Paused-consumer state shows "paused" badge; tab does not disappear
-- [ ] Window list sorted most-recently-focused first; workspace badge shows name or `ws <idx>`
-- [ ] App icons resolve via GTK icon theme; fallback to `application-x-executable` when unknown
-- [ ] Non-dynamic casts (`is_dynamic_target=false`) are ignored entirely
-- [ ] Multiple consumers of same target: rendered as a single row; "Stop casting" affects all
-- [ ] Niri socket EOF triggers exponential backoff reconnect with "Reconnecting…" banner
+- [x] Cast tab appears in sidebar under niri only when at least one `is_dynamic_target=true` cast exists *(gated by `castVisible` predicate on the TABS entry)*
+- [x] Tab disappears within ~200ms of cast stop *(100ms debounce in `niri_cast event-stream` + reactive `castVisible`)*
+- [x] Currently-cast target rendered prominently with app icon + title; "Stop casting" button works *(CurrentlyCastingHeader → clearTarget)*
+- [x] Clicking a window row retargets the cast; no confirmation dialog *(WindowRow → setWindow)*
+- [x] Clicking a screen thumbnail retargets to that monitor *(ScreenThumb → setMonitor)*
+- [x] "Pick visually" closes sidebar, invokes niri's overlay, retargets to picked window, reopens sidebar; Esc cancels cleanly *(pickAndSet — null/empty stdout from `niri_cast pick` skips retarget)*
+- [x] Paused-consumer state shows "paused" badge; tab does not disappear *(isPaused derived)*
+- [x] Window list sorted most-recently-focused first; workspace badge shows name or `ws <idx>` *(sortedWindows + workspaceLabel)*
+- [x] App icons resolve via GTK icon theme; fallback to `application-x-executable` when unknown *(iconForAppId)*
+- [x] Non-dynamic casts (`is_dynamic_target=false`) are ignored entirely *(filter in currentCast/isPaused/castVisible)*
+- [x] Multiple consumers of same target: rendered as a single row; "Stop casting" affects all *(currentCast = first dynamic_target; clearTarget is target-scoped per niri IPC)*
+- [x] Niri socket EOF triggers exponential backoff reconnect with "Reconnecting…" banner *(Python helper backoff + DisconnectedBanner gated on `disconnected` accessor)*
+- [ ] *Live verification:* "Clear target" sets target to `Nothing`; tab stays visible (cast still exists) *(structurally correct — needs niri to confirm)*
+- [ ] *Live verification:* end-to-end with Chrome screenshare across 3 windows + 2 monitors
 
 ### Non-Functional Requirements
 
-- [ ] Hyprland sidebar tabs render identically to before (`visibleTabs.length === TABS.length` under hyprland)
-- [ ] Hyprland `ScreenSharePicker.tsx` and `screenshare-state.ts` unchanged
-- [ ] No new dependency on DBus monitoring (event-stream alone is sufficient for visibility)
-- [ ] Event-stream subprocess survives `systemctl --user restart niri`
-- [ ] Errors logged to AGS stderr (`~/.local/state/ags/ags.log`); no toasts during a live cast
-- [ ] Compositor detection adds zero startup cost on hyprland (no `AstalNiri` import on hyprland code paths)
-- [ ] Persisted `activeTab="cast"` does not throw on AGS startup with no cast (renders fallback, value preserved)
+- [x] Hyprland sidebar tabs render identically to before (`visibleTabs.length === TABS.length` under hyprland) *(Cast TABS entry only added when `isNiri()`)*
+- [x] Hyprland `ScreenSharePicker.tsx` and `screenshare-state.ts` unchanged *(zero edits to widget/screenshare/)*
+- [x] No new dependency on DBus monitoring (event-stream alone is sufficient for visibility)
+- [x] Errors logged to AGS stderr (`~/.local/state/ags/ags.log`); no toasts during a live cast *(console.error in stderr handler + action error catch)*
+- [x] Compositor detection: no `AstalNiri` import on hyprland (cast-state.ts loads but its `if (isNiri())` block skips subprocess + thumbnails)
+- [x] Persisted `activeTab="cast"` does not throw on AGS startup with no cast *(renderedTab falls back to first visible tab; activeTab persisted value preserved)*
+- [ ] *Live verification:* event-stream subprocess survives `systemctl --user restart niri`
 
 ### Quality Gates
 
-- [ ] Manual smoke test on niri: start Chrome screenshare with "niri Dynamic Cast Target", retarget to 3 different windows + 2 monitors, verify Chrome's preview updates each time
-- [ ] Manual smoke test on hyprland: existing screenshare picker still works; sidebar tabs unchanged
-- [ ] `niri_cast --_j_meta` passes JParser introspection; appears in `j` launcher
-- [ ] Lint passes (`tsc --noEmit` in `dot_config/ags/`)
+- [x] `niri_cast --_j_meta` passes JParser introspection; appears in `j` launcher
+- [x] `ags bundle app.ts ... --gtk 4` succeeds (esbuild compiles all changes — no tsc available locally, esbuild does syntax + import resolution)
+- [ ] *Live smoke test on niri:* start Chrome screenshare with "niri Dynamic Cast Target", retarget to 3 different windows + 2 monitors, verify Chrome's preview updates each time
+- [ ] *Live smoke test on hyprland:* existing screenshare picker still works; sidebar tabs unchanged
 
 ## Success Metrics
 

@@ -9,6 +9,8 @@ import { SidebarItem } from "./SidebarItem"
 import { RecentFilesTab } from "./RecentFilesTab"
 import { ClipboardTab } from "./ClipboardTab"
 import { WezTermTab } from "./WezTermTab"
+import { CastTab } from "./cast/CastTab"
+import { isNiri } from "../lib/compositor"
 import { sidebarVisible, SIDEBAR_WIDTH_FRACTION, type Tab, visibleTabs, renderedTab, switchTab } from "./sidebar-state"
 
 function NotificationHistory() {
@@ -149,6 +151,7 @@ export default function Sidebar(gdkmonitor: Gdk.Monitor) {
           <ClipboardTab />
           <PlaceholderTab />
           <WezTermTab />
+          {isNiri() ? <CastTab /> : null}
           <TabBar />
         </Box>
       </Gtk.Revealer>
