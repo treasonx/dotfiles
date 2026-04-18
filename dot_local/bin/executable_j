@@ -58,6 +58,7 @@ SCRIPTS = [
     "install_noctalia_deps:Install Noctalia Shell + optional deps",
     "niri_rescue_floating:Recenter floating niri windows after monitor changes",
     "niri_scale:Adjust niri output scale (--step N or --set N)",
+    "niri_cast:Niri IPC bridge for AGS Cast tab",
     "playlist:Create M3U playlists using beets",
     "rsync_upload:Upload files via rsync with bandwidth control",
     "screenrec:Toggle screen recording (region/output, wl-screenrec)",
