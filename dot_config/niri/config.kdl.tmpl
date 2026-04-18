@@ -78,6 +78,23 @@ layout {
     }
 }
 
+// Aggressive zoom-out so every window on every workspace fits on screen.
+// Range 0.0–0.75, default 0.5. Lower = smaller tiles, more fit at once.
+overview {
+    zoom 0.25
+
+    // Catppuccin Mocha "crust" — the palette's darkest tone, matching the AGS shell void.
+    backdrop-color "#11111b"
+
+    // Calibrated for 1080px-tall workspaces pre-zoom, so ~2× the layout.shadow values.
+    workspace-shadow {
+        softness 40
+        spread 10
+        offset x=0 y=10
+        color "#00000099"
+    }
+}
+
 prefer-no-csd
 
 cursor {
