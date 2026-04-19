@@ -1,0 +1,63 @@
+# swaylock-effects config — best-effort approximation of hyprlock.
+# Static palette (no wallust). Tweak colors directly here.
+
+daemonize
+ignore-empty-password
+show-failed-attempts
+
+# Grace period (matches hyprlock `grace = 1`)
+grace=1
+grace-no-mouse
+grace-no-touch
+
+# Background: screenshot current desktop and blur.
+# Closest thing swaylock has to hyprlock's blurred wallpaper.
+screenshots
+effect-blur=7x5
+effect-vignette=0.5:0.5
+fade-in=0.2
+
+# Clock inside the indicator ring.
+# swaylock does NOT show a password prompt — user just types and hits Enter.
+# The clock is the main visual cue that this is the lock screen.
+clock
+timestr=%I:%M %p
+datestr=%a %-d %b
+font=JetBrainsMono Nerd Font
+font-size=36
+
+# Indicator geometry — wide enough for the clock text
+indicator
+indicator-radius=180
+indicator-thickness=12
+indicator-caps-lock
+indicator-idle-visible
+
+# --- Colors (RRGGBBAA, no #). Edit to taste. ---
+# Ring states: normal / verifying / wrong / clear (on backspace-all)
+ring-color=b48eadff
+ring-ver-color=88c0d0ff
+ring-wrong-color=bf616aff
+ring-clear-color=ebcb8bff
+
+# Inside the ring (semi-transparent dark)
+inside-color=2e3440cc
+inside-ver-color=2e3440cc
+inside-wrong-color=2e3440cc
+inside-clear-color=2e3440cc
+
+# Text (clock + status words)
+text-color=eceff4ff
+text-ver-color=eceff4ff
+text-wrong-color=eceff4ff
+text-clear-color=eceff4ff
+
+# Key / backspace highlights as you type
+key-hl-color=ffb900ff
+bs-hl-color=bf616aff
+
+# Invisible separator between clock and indicator
+separator-color=00000000
+
+# Line uses ring color (flush edge)
+line-uses-ring

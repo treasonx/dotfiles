@@ -52,11 +52,10 @@ layout {
 
     preset-column-widths {
         proportion 0.33333
-        proportion 0.5
         proportion 0.66667
     }
 
-    default-column-width { proportion 0.5; }
+    default-column-width { proportion 1.0; }
 
     focus-ring {
         off
@@ -228,6 +227,12 @@ window-rule {
     border { off; }
 }
 
+// Hotkey overlay
+hotkey-overlay {
+    skip-at-startup
+    hide-not-bound
+}
+
 // === Binds ===
 // Mod is Super on TTY.
 binds {
@@ -362,8 +367,6 @@ binds {
     Mod+Minus { spawn "niri_scale" "--step" "-0.25"; }
     Mod+0     { spawn "niri_scale" "--set" "1.5"; }
 
-    // Hotkey overlay
-    Mod+Shift+Slash { show-hotkey-overlay; }
 
     // Power
     Mod+Shift+P { power-off-monitors; }
