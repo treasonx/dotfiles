@@ -179,11 +179,9 @@ spawn-at-startup "vicinae" "server"
 // Doorbell popup daemon
 spawn-at-startup "/home/james/.local/bin/doorbell_popup"
 
-// Idle + lock — swayidle handles the DPMS timeout; Noctalia's WlSessionLock +
-// PAM is the lock screen. Noctalia's general.lockOnSuspend also fires on
-// suspend, but keeping before-sleep here as belt-and-suspenders.
-// Install with: sudo dnf install swayidle
-spawn-sh-at-startup "swayidle -w timeout 1800 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors' before-sleep 'qs -c noctalia-shell ipc call lockScreen lock'"
+// Idle + lock — fully handled by Noctalia's IdleService (DPMS timeouts,
+// lock, suspend) and its general.lockOnSuspend hook for systemd-initiated
+// suspends. Configure timeouts in the Noctalia settings UI.
 
 // === Window rules ===
 
