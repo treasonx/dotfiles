@@ -51,8 +51,9 @@ layout {
     center-focused-column "on-overflow"
 
     preset-column-widths {
-        proportion 0.33333
+        proportion 0.5
         proportion 0.66667
+        proportion 1.0
     }
 
     default-column-width { proportion 1.0; }
@@ -244,8 +245,6 @@ binds {
     Mod+Return   hotkey-overlay-title="Terminal" { spawn "ghostty"; }
     Mod+T                                        { spawn "thunar"; }
     Mod+Space    hotkey-overlay-title="Launcher" { spawn "vicinae" "toggle"; }
-    Mod+Alt+C                                    { spawn "/home/james/.config/hypr/UserScripts/RofiCalc.sh"; }
-    Mod+V                                        { spawn "/home/james/.local/bin/camera_toggle"; }
     // Screen recording — wl-screenrec (wlr-screencopy, bypasses the broken
     // portal path that Kooha's pipewiresrc can't negotiate on niri).
     // First press starts recording, second press stops and copies path to clipboard.
@@ -260,17 +259,17 @@ binds {
     Mod+L        hotkey-overlay-title="Session menu"     { spawn "ags" "request" "session"; }
 
     // Screenshot — niri's built-in interactive UI, plus the swappy pipeline
-    Print           { screenshot; }
+    //od+Shift+S     { screenshot; }
     Ctrl+Print      { screenshot-screen; }
     Alt+Print       { screenshot-window; }
-    Mod+Shift+S     { spawn "/home/james/.config/hypr/scripts/ScreenShot.sh" "--swappy"; }
+    Mod+Shift+S   { spawn "/home/james/.config/hypr/scripts/ScreenShot.sh" "--swappy"; }
 
     // Window management
     Mod+Q repeat=false { close-window; }
     Mod+Shift+Q        { spawn "/home/james/.config/hypr/scripts/KillActiveProcess.sh"; }
     Mod+F              { toggle-window-floating; }
-    Mod+Shift+F        { fullscreen-window; }
-    Mod+Ctrl+F         { maximize-column; }
+    // Mod+Shift+F     { fullscreen-window; }
+    Mod+Shift+F        { maximize-column; }
     Mod+C              { spawn "niri_rescue_floating"; }
 
     // Columns (horizontal movement within a workspace)
