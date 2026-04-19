@@ -55,7 +55,7 @@ SCRIPTS = [
     "fp:Find and print full path via fzf",
     "ga:Git add with fuzzy matching",
     "gco:Git checkout file with fuzzy matching",
-    "install_ags_deps:Install AGS v2 and Astal dependencies",
+    "install_noctalia_deps:Install Noctalia Shell + optional deps",
     "niri_rescue_floating:Recenter floating niri windows after monitor changes",
     "niri_scale:Adjust niri output scale (--step N or --set N)",
     "playlist:Create M3U playlists using beets",

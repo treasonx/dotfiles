@@ -64,9 +64,11 @@ layout {
 
     border {
         width 4
-        active-color "#1A0A2E"
-        inactive-color "#1A0A2E66"
-        urgent-color "#9b0000"
+        // Catppuccin Mocha: active = crust (darkest), urgent = red.
+        // Inactive reuses the active hue at ~40% alpha for a subtle focus gradient.
+        active-color "#11111b"
+        inactive-color "#11111b66"
+        urgent-color "#f38ba8"
     }
 
     shadow {
@@ -74,7 +76,8 @@ layout {
         softness 20
         spread 3
         offset x=0 y=4
-        color "#00000066"
+        // Match marble's --marble-shadow-color (rgba(0,0,0,0.6) == #00000099).
+        color "#00000099"
     }
 }
 
@@ -152,17 +155,15 @@ screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
 spawn-at-startup "dbus-update-activation-environment" "--systemd" "WAYLAND_DISPLAY" "XDG_CURRENT_DESKTOP"
 spawn-at-startup "systemctl" "--user" "import-environment" "WAYLAND_DISPLAY" "XDG_CURRENT_DESKTOP"
 
-// Wallpaper
-spawn-at-startup "swww-daemon" "--format" "xrgb"
-
 // Polkit agent (from hyprland stack — it's just a polkit-gnome launcher)
 spawn-at-startup "/home/james/.config/hypr/scripts/Polkit.sh"
 
-// AGS shell (bar, overlays, sidebar). start_ags claims StatusNotifierWatcher
-// before backgrounding so the tray is ready when apps launch.
-spawn-at-startup "start_ags"
+// Noctalia shell (bar, notifications, lock screen, wallpaper, control center,
+// session menu). Runs via the noctalia-qs Quickshell fork; config lives at
+// ~/.config/noctalia/settings.json. IPC: qs -c noctalia-shell ipc call ...
+spawn-at-startup "qs" "-c" "noctalia-shell"
 
-// Network manager tray (appears once AGS claims the watcher above)
+// Network manager tray
 spawn-at-startup "nm-applet" "--indicator"
 
 // Clipboard history
@@ -178,10 +179,11 @@ spawn-at-startup "vicinae" "server"
 // Doorbell popup daemon
 spawn-at-startup "/home/james/.local/bin/doorbell_popup"
 
-// Idle + lock — swayidle handles idle, swaylock-effects is the lock screen.
-// Config lives at ~/.config/swaylock/config (generated from wallust template).
-// Install with: sudo dnf install swayidle swaylock-effects
-spawn-sh-at-startup "swayidle -w timeout 1800 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors' before-sleep 'swaylock -f'"
+// Idle + lock — swayidle handles the DPMS timeout; Noctalia's WlSessionLock +
+// PAM is the lock screen. Noctalia's general.lockOnSuspend also fires on
+// suspend, but keeping before-sleep here as belt-and-suspenders.
+// Install with: sudo dnf install swayidle
+spawn-sh-at-startup "swayidle -w timeout 1800 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors' before-sleep 'qs -c noctalia-shell ipc call lockScreen lock'"
 
 // === Window rules ===
 
@@ -234,6 +236,25 @@ hotkey-overlay {
     hide-not-bound
 }
 
+// Recent-windows switcher (Alt+Tab-style). Its binds live here,
+// not in the global `binds` block, because the UI closes as soon
+// as the modifier is released.
+recent-windows {
+    // Catppuccin Mocha: mauve accent for the focused preview,
+    // red for urgent. Corner radius matches typical GTK/marble roundness.
+    highlight {
+        active-color "#cba6f7ff"
+        urgent-color "#f38ba8ff"
+        padding 20
+        corner-radius 12
+    }
+
+    binds {
+        Mod+Tab       { next-window; }
+        Mod+Shift+Tab { previous-window; }
+    }
+}
+
 // === Binds ===
 // Mod is Super on TTY.
 binds {
@@ -252,11 +273,11 @@ binds {
     Mod+Alt+S   hotkey-overlay-title="Record output" { spawn "screenrec" "--mode" "output"; }
     Mod+Shift+Alt+S hotkey-overlay-title="Record output + audio" { spawn "screenrec" "--mode" "output" "--audio"; }
 
-    // AGS overlays (toggle via the AGS request IPC)
-    Mod+W        hotkey-overlay-title="Wallpaper picker" { spawn "ags" "request" "wallpaper"; }
-    Mod+B        hotkey-overlay-title="Sidebar"          { spawn "ags" "request" "sidebar"; }
-    Mod+Slash    hotkey-overlay-title="Perplexity"       { spawn "ags" "request" "perplexity"; }
-    Mod+L        hotkey-overlay-title="Session menu"     { spawn "ags" "request" "session"; }
+    // Noctalia overlays (toggle via the noctalia-shell IPC)
+    Mod+W        hotkey-overlay-title="Wallpaper picker" { spawn "qs" "-c" "noctalia-shell" "ipc" "call" "wallpaper" "toggle"; }
+    Mod+B        hotkey-overlay-title="Control Center"   { spawn "qs" "-c" "noctalia-shell" "ipc" "call" "controlCenter" "toggle"; }
+    Mod+Slash    hotkey-overlay-title="Notifications"    { spawn "qs" "-c" "noctalia-shell" "ipc" "call" "notifications" "toggleHistory"; }
+    Mod+L        hotkey-overlay-title="Session menu"     { spawn "qs" "-c" "noctalia-shell" "ipc" "call" "sessionMenu" "toggle"; }
 
     // Screenshot — niri's built-in interactive UI, plus the swappy pipeline
     //od+Shift+S     { screenshot; }
@@ -293,7 +314,6 @@ binds {
     Mod+Down       { focus-workspace-down; }
     Mod+Shift+Up   { move-column-to-workspace-up; }
     Mod+Shift+Down { move-column-to-workspace-down; }
-    Mod+Tab        { toggle-column-tabbed-display; }
 
     // Workspaces (niri-native: per-monitor, vertical)
     Mod+1 { focus-workspace 1; }
