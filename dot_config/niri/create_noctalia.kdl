@@ -1,0 +1,3 @@
+// Placeholder so `include "./noctalia.kdl"` in config.kdl resolves on machines
+// where Noctalia hasn't enabled niri theming yet. Noctalia overwrites this
+// file when its niri-theming toggle is turned on.
