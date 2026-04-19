@@ -63,12 +63,7 @@ layout {
     }
 
     border {
-        width 4
-        // Catppuccin Mocha: active = crust (darkest), urgent = red.
-        // Inactive reuses the active hue at ~40% alpha for a subtle focus gradient.
-        active-color "#11111b"
-        inactive-color "#11111b66"
-        urgent-color "#f38ba8"
+        off
     }
 
     shadow {
@@ -388,3 +383,6 @@ binds {
     // Power
     Mod+Shift+P { power-off-monitors; }
 }
+
+// Noctalia writes live theming (colors, font, etc.) here.
+include "./noctalia.kdl"
