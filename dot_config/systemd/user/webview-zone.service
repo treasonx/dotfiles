@@ -1,0 +1,18 @@
+[Unit]
+Description=Glanceable web dashboard (wlr-layer-shell) on HDMI-A-1
+# Only wanted when a graphical session is up; stops when niri exits.
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/webview_zone
+Restart=on-failure
+RestartSec=3s
+# Kernel-level ceiling as belt-and-braces to WebKit's own MemoryPressureSettings.
+MemoryMax=2G
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Install]
+WantedBy=graphical-session.target

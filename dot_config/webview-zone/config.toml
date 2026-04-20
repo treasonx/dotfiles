@@ -1,0 +1,20 @@
+# webview-zone dashboard config.
+#
+# Security rules for this file:
+# - URLs MUST be https:// (http:// is only allowed for *.local / localhost).
+# - URLs MUST NOT contain credentials or tokens in the URL itself. All auth
+#   is delegated to cookies that persist in ~/.local/state/webview-zone/profile/.
+# - All URLs share one WebKit profile / cookie jar. Only list origins you
+#   trust with your session cookies.
+#
+# Edit then: pkill webview_zone && webview_zone &disown
+
+output      = "HDMI-A-1"
+zone_height = 720
+geometry    = [3840, 2160]   # fallback match if EDID model doesn't include "HDMI-A-1"
+
+urls = [
+    "https://example.com",
+    "https://example.com",
+    "https://example.com",
+]

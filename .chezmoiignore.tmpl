@@ -23,3 +23,10 @@
 # AGS v2 generated files (created by ags init / ags types)
 .config/ags/node_modules
 .config/ags/@girs
+
+# webview-zone dashboard — desktop only.
+{{- if ne .machine "desktop" }}
+.config/webview-zone
+.local/bin/webview_zone
+.config/systemd/user/webview-zone.service
+{{- end }}

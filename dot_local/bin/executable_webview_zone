@@ -1,0 +1,369 @@
+#!/usr/bin/env python3
+"""webview_zone — multi-URL glanceable dashboard in a wlr-layer-shell strut.
+
+Reserves the top `zone_height` pixels of the configured output and renders a
+chain of WebKit WebViews side-by-side with draggable splitters. Intended for
+glanceable reference dashboards (Home Assistant, Grafana, weather, etc.) in
+the ergonomically-out-of-reach top third of a tall monitor.
+
+Design notes & background: docs/plans/2026-04-19-feat-webview-zone-dashboard-plan.md
+"""
+import hashlib  # noqa: F401 — reserved for future use; keep for stdlib import locality
+import json
+import logging
+import os
+import signal
+import sys
+import tomllib
+from dataclasses import dataclass
+from pathlib import Path
+from urllib.parse import urlparse
+
+# Restrict permissions on state files (cookies, widths.json) before WebKit
+# touches the profile dir. Must precede any filesystem work.
+os.umask(0o077)
+
+# Force GDK onto Wayland — GTK can otherwise fall back to X11 in mixed
+# sessions, which makes layer-shell silently unavailable.
+os.environ.setdefault("GDK_BACKEND", "wayland")
+
+import gi  # noqa: E402
+
+gi.require_version("Gdk", "3.0")
+gi.require_version("Gtk", "3.0")
+gi.require_version("GtkLayerShell", "0.1")
+gi.require_version("WebKit2", "4.1")
+
+from gi.repository import Gdk, Gio, GLib, Gtk, GtkLayerShell as LS, WebKit2  # noqa: E402
+
+from j_lib import JParser  # noqa: E402
+
+
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "webview-zone" / "config.toml"
+STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "webview-zone"
+WIDTHS = STATE / "widths.json"
+PROFILE = STATE / "profile"
+
+BUS_NAME = "dev.morrin.WebviewZone"
+DEBOUNCE_MS = 500
+NIGHTLY_RELOAD_HOURS = 6
+WEB_PROCESS_MEMORY_LIMIT_MB = 1024
+MEMORY_POLL_INTERVAL_S = 30.0
+MIN_PANE_WIDTH = 200
+
+log = logging.getLogger("webview_zone")
+
+
+class ConfigError(Exception):
+    """Raised for expected config problems (missing, malformed, invalid URL)."""
+
+
+@dataclass(frozen=True, slots=True)
+class Config:
+    output: str
+    zone_height: int
+    geometry: tuple[int, int]
+    urls: tuple[str, ...]
+
+
+def _validate_url(u: str) -> str:
+    p = urlparse(u)
+    if p.scheme == "https":
+        return u
+    if p.scheme == "http" and (
+        p.hostname in ("localhost", "127.0.0.1")
+        or (p.hostname or "").endswith(".local")
+    ):
+        return u
+    raise ConfigError(f"refusing non-https URL: {u!r}")
+
+
+def load_config() -> Config:
+    if not CONFIG.exists():
+        raise ConfigError(f"config not found: {CONFIG}")
+    with CONFIG.open("rb") as f:
+        raw = tomllib.load(f)
+    try:
+        urls = tuple(_validate_url(u) for u in raw["urls"])
+        if not urls:
+            raise ConfigError("urls list is empty")
+        geometry = tuple(int(x) for x in raw.get("geometry", [0, 0]))
+        if len(geometry) != 2:
+            raise ConfigError("geometry must be [width, height]")
+        return Config(
+            output=str(raw["output"]),
+            zone_height=int(raw["zone_height"]),
+            geometry=geometry,  # type: ignore[arg-type]
+            urls=urls,
+        )
+    except KeyError as e:
+        raise ConfigError(f"missing required key: {e.args[0]}") from e
+
+
+def acquire_single_instance() -> bool:
+    """Return True if we claim the DBus name; False if another instance holds it."""
+    verdict: dict[str, bool | None] = {"ok": None}
+
+    def _acquired(_conn, _name):
+        verdict["ok"] = True
+
+    def _lost(_conn, _name):
+        if verdict["ok"] is None:
+            verdict["ok"] = False
+
+    # Keep the owner id alive for the process lifetime by stashing on the module.
+    global _bus_owner_id
+    _bus_owner_id = Gio.bus_own_name(
+        Gio.BusType.SESSION,
+        BUS_NAME,
+        Gio.BusNameOwnerFlags.DO_NOT_QUEUE,
+        None,
+        _acquired,
+        _lost,
+    )
+
+    ctx = GLib.MainContext.default()
+    while verdict["ok"] is None:
+        ctx.iteration(True)
+    return bool(verdict["ok"])
+
+
+_bus_owner_id: int | None = None
+
+
+def find_monitor(display: Gdk.Display, name: str, geometry: tuple[int, int]) -> Gdk.Monitor:
+    """Resolve output to GdkMonitor via EDID model, then geometry fallback."""
+    name_lc = (name or "").lower()
+    if name_lc:
+        for i in range(display.get_n_monitors()):
+            m = display.get_monitor(i)
+            model = (m.get_model() or "").lower()
+            if name_lc in model:
+                return m
+    if geometry != (0, 0):
+        for i in range(display.get_n_monitors()):
+            g = display.get_monitor(i).get_geometry()
+            if (g.width, g.height) == geometry:
+                return display.get_monitor(i)
+    log.warning("no monitor matched %r or geometry %s; falling back to monitor 0", name, geometry)
+    return display.get_monitor(0)
+
+
+def configure_layer_shell(window: Gtk.Window, monitor: Gdk.Monitor, zone_height: int) -> None:
+    LS.init_for_window(window)
+    LS.set_namespace(window, "webview-zone")
+    LS.set_layer(window, LS.Layer.TOP)
+    LS.set_anchor(window, LS.Edge.TOP, True)
+    LS.set_anchor(window, LS.Edge.LEFT, True)
+    LS.set_anchor(window, LS.Edge.RIGHT, True)
+    LS.set_exclusive_zone(window, zone_height)
+    LS.set_keyboard_mode(window, LS.KeyboardMode.ON_DEMAND)
+    LS.set_monitor(window, monitor)
+
+
+def configure_web_context() -> WebKit2.WebContext:
+    dm = WebKit2.WebsiteDataManager(base_data_directory=str(PROFILE))
+    try:
+        dm.set_itp_enabled(True)
+    except AttributeError:
+        # Older WebKit2GTK builds lack ITP toggle; proceed without it.
+        log.debug("WebsiteDataManager.set_itp_enabled unavailable; skipping")
+
+    ctx = WebKit2.WebContext.new_with_website_data_manager(dm)
+    ctx.set_cache_model(WebKit2.CacheModel.WEB_BROWSER)
+
+    # Memory-pressure tuning is best-effort: API shape differs across
+    # webkit2gtk versions and thresholds have ordering constraints
+    # (conservative < strict < kill). Skip gracefully if anything is missing.
+    try:
+        mps = WebKit2.MemoryPressureSettings.new()
+        mps.set_memory_limit(WEB_PROCESS_MEMORY_LIMIT_MB)
+        # Order matters: raise the ceilings first so each intermediate state
+        # still satisfies conservative < strict < kill.
+        mps.set_kill_threshold(0.95)
+        mps.set_strict_threshold(0.75)
+        mps.set_conservative_threshold(0.50)
+        mps.set_poll_interval(MEMORY_POLL_INTERVAL_S)
+        setter = getattr(ctx, "set_memory_pressure_settings", None)
+        if setter is not None:
+            setter(mps)
+        else:
+            log.debug("WebContext.set_memory_pressure_settings unavailable in this webkit2gtk build")
+    except (AttributeError, TypeError) as e:
+        log.debug("memory-pressure setup skipped: %s", e)
+
+    ctx.connect("download-started", lambda _c, d: d.cancel())
+    return ctx
+
+
+def _make_view(url: str, ctx: WebKit2.WebContext, zone_height: int) -> WebKit2.WebView:
+    view = WebKit2.WebView.new_with_context(ctx)
+    s = view.get_settings()
+    # Optional settings — applied best-effort, since webkit2gtk-4.1 builds
+    # vary in which setter methods they expose.
+    for setter, value in (
+        ("set_enable_developer_extras", False),
+        ("set_enable_spell_checking", False),
+        ("set_enable_page_cache", False),
+        ("set_enable_plugins", False),
+        ("set_enable_html5_database", False),
+        ("set_media_playback_requires_user_gesture", False),
+    ):
+        fn = getattr(s, setter, None)
+        if fn is not None:
+            fn(value)
+    if hasattr(s, "set_hardware_acceleration_policy"):
+        s.set_hardware_acceleration_policy(WebKit2.HardwareAccelerationPolicy.ALWAYS)
+    # Black background avoids a flash of white before first paint.
+    view.set_background_color(Gdk.RGBA(red=0, green=0, blue=0, alpha=1))
+    view.set_size_request(MIN_PANE_WIDTH, zone_height)
+    view.load_uri(url)
+    return view
+
+
+def build_panes(
+    urls: tuple[str, ...], ctx: WebKit2.WebContext, zone_height: int
+) -> tuple[Gtk.Widget, list[Gtk.Paned], list[WebKit2.WebView]]:
+    views = [_make_view(u, ctx, zone_height) for u in urls]
+    if len(views) == 1:
+        return views[0], [], views
+
+    # Nested Gtk.Paned chain: outermost holds views[0] + Paned holding views[1] + ...
+    def _nest(children: list[Gtk.Widget]) -> tuple[Gtk.Widget, list[Gtk.Paned]]:
+        if len(children) == 1:
+            return children[0], []
+        paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
+        paned.pack1(children[0], resize=True, shrink=False)
+        right, inner_paneds = _nest(children[1:])
+        paned.pack2(right, resize=True, shrink=False)
+        return paned, [paned, *inner_paneds]
+
+    root, paneds = _nest(views)  # type: ignore[arg-type]
+    return root, paneds, views
+
+
+def load_saved_widths(n_panes: int) -> list[int] | None:
+    try:
+        data = json.loads(WIDTHS.read_text())
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+    positions = data.get("positions")
+    if not isinstance(positions, list):
+        return None
+    if len(positions) != n_panes - 1:
+        log.info("saved widths count mismatch (%d vs %d); resetting to equal",
+                 len(positions), n_panes - 1)
+        return None
+    return [int(p) for p in positions]
+
+
+def _save_widths(paneds: list[Gtk.Paned]) -> None:
+    payload = json.dumps({"positions": [p.get_position() for p in paneds]})
+    tmp = WIDTHS.with_suffix(".json.tmp")
+    tmp.write_text(payload + "\n")
+    os.replace(tmp, WIDTHS)
+
+
+def persist_widths_on_drag(paneds: list[Gtk.Paned]) -> None:
+    state = {"source": 0}
+
+    def fire() -> bool:
+        state["source"] = 0
+        try:
+            _save_widths(paneds)
+        except OSError as e:
+            log.warning("failed to persist widths: %s", e)
+        return GLib.SOURCE_REMOVE  # one-shot
+
+    def on_notify(_paned: Gtk.Paned, _pspec) -> None:
+        if state["source"]:
+            GLib.source_remove(state["source"])
+        state["source"] = GLib.timeout_add(DEBOUNCE_MS, fire)
+
+    for p in paneds:
+        p.connect("notify::position", on_notify)
+
+
+def schedule_nightly_reload(views: list[WebKit2.WebView]) -> None:
+    def reload_all() -> bool:
+        log.info("scheduled reload of %d pane(s)", len(views))
+        for v in views:
+            v.reload_bypass_cache()
+        return True  # keep repeating
+
+    GLib.timeout_add_seconds(NIGHTLY_RELOAD_HOURS * 3600, reload_all)
+
+
+def load_css() -> None:
+    css = b"""
+    paned > separator {
+        min-width: 4px;
+        background-color: alpha(@theme_fg_color, 0.2);
+    }
+    paned > separator:hover {
+        background-color: alpha(@theme_fg_color, 0.6);
+        min-width: 6px;
+    }
+    """
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css)
+    Gtk.StyleContext.add_provider_for_screen(
+        Gdk.Screen.get_default(),
+        provider,
+        Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+    )
+
+
+def main() -> int:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s webview_zone %(levelname)s %(message)s",
+    )
+    JParser(description="Multi-URL glanceable dashboard in a wlr-layer-shell strut").run()
+
+    if not acquire_single_instance():
+        log.info("another instance already holds %s; exiting", BUS_NAME)
+        return 0
+
+    try:
+        cfg = load_config()
+    except (FileNotFoundError, tomllib.TOMLDecodeError, ConfigError) as e:
+        log.error("config: %s", e)
+        return 1
+
+    STATE.mkdir(parents=True, exist_ok=True)
+    PROFILE.mkdir(mode=0o700, parents=True, exist_ok=True)
+    os.chmod(PROFILE, 0o700)
+
+    ctx = configure_web_context()
+
+    window = Gtk.Window()
+    monitor = find_monitor(Gdk.Display.get_default(), cfg.output, cfg.geometry)
+    configure_layer_shell(window, monitor, cfg.zone_height)
+
+    root, paneds, views = build_panes(cfg.urls, ctx, cfg.zone_height)
+    root.set_size_request(-1, cfg.zone_height)
+    window.add(root)
+    load_css()
+    window.show_all()
+
+    saved = load_saved_widths(len(cfg.urls))
+    if saved:
+        def restore() -> bool:
+            for paned, pos in zip(paneds, saved):
+                paned.set_position(pos)
+            return False  # one-shot
+
+        GLib.idle_add(restore)
+
+    persist_widths_on_drag(paneds)
+    schedule_nightly_reload(views)
+    GLib.unix_signal_add(GLib.PRIORITY_HIGH, signal.SIGTERM, Gtk.main_quit)
+
+    log.info("webview_zone running: %d pane(s) on %r", len(views), cfg.output)
+    Gtk.main()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

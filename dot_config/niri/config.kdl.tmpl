@@ -35,15 +35,19 @@ output "eDP-2" {
     position x=0 y=0
 }
 {{- else }}
-// Desktop outputs — run `niri msg outputs` inside niri to list connectors/modes
-// and fill these in. Example:
-//
-// output "DP-1" {
-//     mode "3840x2160@144.000"
-//     scale 1.5
-//     position x=0 y=0
-//     variable-refresh-rate on-demand=true
-// }
+// Desktop outputs — physical layout:
+//   HDMI-A-1 (Samsung Odyssey Ark, 3840x2160) on the left.
+//   DP-2 (1920x1080) and DP-3 (1920x1080) stacked on the right; the stack
+//   sits ~40% down from HDMI's top edge (top of DP-2 at y=864).
+output "HDMI-A-1" {
+    position x=0 y=0
+}
+output "DP-2" {
+    position x=3840 y=864
+}
+output "DP-3" {
+    position x=3840 y=1944
+}
 {{- end }}
 
 layout {
@@ -173,6 +177,14 @@ spawn-at-startup "vicinae" "server"
 
 // Doorbell popup daemon
 spawn-at-startup "/home/james/.local/bin/doorbell_popup"
+
+{{- if eq .machine "desktop" }}
+// Glanceable web dashboard on HDMI-A-1 top 720px. Owns the layer-shell
+// exclusive zone; tiled + floating windows are clamped out of that area.
+// Config: ~/.config/webview-zone/config.toml. Escape hatch if WebKit on
+// NVIDIA misbehaves: prefix the command with `env WEBKIT_DISABLE_DMABUF_RENDERER=1`.
+spawn-at-startup "/home/james/.local/bin/webview_zone"
+{{- end }}
 
 // Idle + lock — fully handled by Noctalia's IdleService (DPMS timeouts,
 // lock, suspend) and its general.lockOnSuspend hook for systemd-initiated
