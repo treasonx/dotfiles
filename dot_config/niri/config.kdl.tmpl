@@ -41,6 +41,12 @@ output "eDP-2" {
 //   sits ~40% down from HDMI's top edge (top of DP-2 at y=864).
 output "HDMI-A-1" {
     position x=0 y=0
+    // Main monitor is large — spawn new columns at half width so two
+    // windows tile side-by-side by default. Other outputs keep the
+    // global default (proportion 1.0).
+    layout {
+        default-column-width { proportion 0.5; }
+    }
 }
 output "DP-2" {
     position x=3840 y=864
