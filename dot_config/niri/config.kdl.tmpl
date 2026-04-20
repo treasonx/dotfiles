@@ -179,10 +179,9 @@ spawn-at-startup "vicinae" "server"
 spawn-at-startup "/home/james/.local/bin/doorbell_popup"
 
 {{- if eq .machine "desktop" }}
-// Glanceable web dashboard on HDMI-A-1 top 720px. Owns the layer-shell
-// exclusive zone; tiled + floating windows are clamped out of that area.
-// Config: ~/.config/webview-zone/config.toml. Escape hatch if WebKit on
-// NVIDIA misbehaves: prefix the command with `env WEBKIT_DISABLE_DMABUF_RENDERER=1`.
+// Glanceable web dashboard (Qt/Chromium) on HDMI-A-1 top 720px. Owns the
+// layer-shell exclusive zone; tiled + floating windows are clamped out of
+// that area. URLs + geometry: ~/.config/webview-zone/config.toml.
 spawn-at-startup "/home/james/.local/bin/webview_zone"
 {{- end }}
 
