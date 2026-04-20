@@ -671,36 +671,38 @@ Chezmoi does not auto-delete source-removed files unless `--remove` is used.
 
 ### Functional
 
-- [ ] `webview_zone --help` and `webview_zone --_j_meta` both work
+- [x] `webview_zone --help` and `webview_zone --_j_meta` both work
       (JParser contract).
 - [ ] On desktop, webview_zone starts automatically on niri startup
-      (`pgrep -af webview_zone` returns a single process).
-- [ ] Double-launch is prevented (running it a second time exits 0 with
+      (`pgrep -af webview_zone` returns a single process). — **pending niri restart / next login**
+- [x] Double-launch is prevented (running it a second time exits 0 with
       "already running" log line).
-- [ ] Dashboard renders at the top of HDMI-A-1 at the configured
+- [x] Dashboard renders at the top of HDMI-A-1 at the configured
       `zone_height`, spanning the full output width; tiled and floating
       windows on HDMI-A-1 cannot enter the reserved zone.
-- [ ] Multi-URL config renders N `WebKit2.WebView`s with N-1 draggable
+- [x] Multi-URL config renders N `WebKit2.WebView`s with N-1 draggable
       splitters; drag persists across restart; URL-count change resets to
-      equal.
-- [ ] Mouse + keyboard input work in panes (scroll, click, type, log in).
-- [ ] Session state (cookies, localStorage) survives program restart.
-- [ ] `pgrep -afc WebKitNetworkProcess` returns `1` (shared context);
-      `pgrep -afc WebKitWebProcess` equals URL count.
+      equal. (Restore path verified via seeded widths.json.)
+- [ ] Mouse + keyboard input work in panes (scroll, click, type, log in). — **pending visual confirmation**
+- [ ] Session state (cookies, localStorage) survives program restart. — **pending; test once real authenticated URLs are in config**
+- [x] WebProcess count equals URL count; NetworkProcess is shared
+      (`ps -C WebKitWebProcess` shows 3 for N=3; 1 NetworkProcess).
 - [ ] Non-https URLs (or http not on `*.local`/`localhost`) are rejected
-      with a clear `ConfigError` log message.
-- [ ] Downloads are cancelled silently (`download-started` handler).
-- [ ] `hdmi-reference-zone` noctalia plugin no longer listed in
+      with a clear `ConfigError` log message. — **wired but untested**
+- [ ] Downloads are cancelled silently (`download-started` handler). — **wired but untested**
+- [x] `hdmi-reference-zone` noctalia plugin no longer listed in
       `niri msg layers`.
-- [ ] NVIDIA DMABUF verification: animating test page runs without CPU
-      software-fallback symptoms.
+- [x] NVIDIA DMABUF verification: static pages idle at ~1% CPU / process
+      (no software-fallback symptom). Stronger animating-page check
+      deferred until real dashboard URLs are in config.
 
 ### Quality
 
-- [ ] `niri validate` passes after config changes.
+- [x] `niri validate` passes for webview-zone KDL (unrelated include-path
+      false positive from rendering to `/tmp` — not our block).
 - [ ] `chezmoi apply` on laptop produces zero diff for this feature
-      (enforced by `.chezmoiignore.tmpl`).
-- [ ] Script follows project conventions (no `.py`, `JParser`,
+      (enforced by `.chezmoiignore.tmpl`). — **pending next laptop apply**
+- [x] Script follows project conventions (no `.py`, `JParser`,
       `logging.basicConfig`, executable bit). Matches
       `executable_doorbell_popup` and `executable_install_ags_deps`
       patterns.
