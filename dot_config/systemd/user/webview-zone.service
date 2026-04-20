@@ -3,16 +3,22 @@ Description=Glanceable web dashboard (wlr-layer-shell) on HDMI-A-1
 # Only wanted when a graphical session is up; stops when niri exits.
 PartOf=graphical-session.target
 After=graphical-session.target
+# StartLimit* belong in [Unit] per systemd.unit(5); systemd warns and
+# ignores them in [Service]. 5 restarts per minute is plenty for
+# output-hotplug churn without hiding an actual crash loop.
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple
 ExecStart=%h/.local/bin/webview_zone
-Restart=on-failure
+# Respawn on any exit — screen sleep/DPMS drops the wlr-layer-shell
+# output, Qt tears down its surface and exits cleanly (rc=0), so
+# Restart=on-failure would leave the dashboard dead until next login.
+Restart=always
 RestartSec=3s
 # Kernel-level ceiling as belt-and-braces to WebKit's own MemoryPressureSettings.
 MemoryMax=2G
-StartLimitIntervalSec=60
-StartLimitBurst=5
 
 [Install]
 WantedBy=graphical-session.target

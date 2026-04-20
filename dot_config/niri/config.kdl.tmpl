@@ -184,12 +184,12 @@ spawn-at-startup "vicinae" "server"
 // Doorbell popup daemon
 spawn-at-startup "/home/james/.local/bin/doorbell_popup"
 
-{{- if eq .machine "desktop" }}
-// Glanceable web dashboard (Qt/Chromium) on HDMI-A-1 top 720px. Owns the
-// layer-shell exclusive zone; tiled + floating windows are clamped out of
-// that area. URLs + geometry: ~/.config/webview-zone/config.toml.
-spawn-at-startup "/home/james/.local/bin/webview_zone"
-{{- end }}
+// Glanceable web dashboard is launched by the systemd user unit
+// webview-zone.service (WantedBy=graphical-session.target), not via
+// spawn-at-startup, so Restart=always can respawn the process when
+// screen sleep/DPMS disconnects HDMI-A-1 and tears down its layer-shell
+// surface. Enable the unit with `systemctl --user enable --now
+// webview-zone.service` on a fresh machine.
 
 // Idle + lock — fully handled by Noctalia's IdleService (DPMS timeouts,
 // lock, suspend) and its general.lockOnSuspend hook for systemd-initiated
