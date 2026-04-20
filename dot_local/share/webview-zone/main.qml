@@ -10,11 +10,22 @@ ApplicationWindow {
     width: 3840
     height: bridge.zoneHeight
 
+    // Decoupled from the live bridge property so drag-resize doesn't spam
+    // wl_layer_surface.set_exclusive_zone (Enhancement #13). Rebinds
+    // after a drag releases.
+    property bool _dragging: false
+    property int _frozenExclusionZone: bridge.zoneHeight + bridge.marginTop
+
     LayerShell.Window.scope: "webview-zone"
     LayerShell.Window.anchors: LayerShell.Window.AnchorTop
                              | LayerShell.Window.AnchorLeft
                              | LayerShell.Window.AnchorRight
-    LayerShell.Window.exclusionZone: bridge.zoneHeight
+    LayerShell.Window.margins.top: bridge.marginTop
+    LayerShell.Window.margins.left: bridge.marginLeft
+    LayerShell.Window.margins.right: bridge.marginRight
+    LayerShell.Window.exclusionZone: root._dragging
+        ? root._frozenExclusionZone
+        : (bridge.zoneHeight + bridge.marginTop)
     LayerShell.Window.layer: LayerShell.Window.LayerTop
     LayerShell.Window.keyboardInteractivity: LayerShell.Window.KeyboardInteractivityOnDemand
 
@@ -58,6 +69,52 @@ ApplicationWindow {
             if (!resizing) {
                 bridge.persistSplitState(split.saveState())
             }
+        }
+    }
+
+    // Bottom-edge drag-resize handle (Enhancement #13). Invisible hot-zone
+    // per open-question #1 in the plan.
+    MouseArea {
+        id: resizeHandle
+        height: 6
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+        cursorShape: Qt.SizeVerCursor
+        acceptedButtons: Qt.LeftButton
+        preventStealing: true
+
+        property int _startScreenY: 0
+        property int _startHeight: 0
+        property int _pendingHeight: 0
+
+        // Coalesce pointer moves to ~60 Hz. Pointer can fire at 144 Hz; a
+        // bridge.setZoneHeight() per event would thrash QML bindings.
+        Timer {
+            id: coalesce
+            interval: 16
+            repeat: false
+            onTriggered: bridge.setZoneHeight(resizeHandle._pendingHeight)
+        }
+
+        onPressed: function (mouse) {
+            _startScreenY = mouse.screenY
+            _startHeight = bridge.zoneHeight
+            _pendingHeight = _startHeight
+            root._frozenExclusionZone = bridge.zoneHeight + bridge.marginTop
+            root._dragging = true
+        }
+        onPositionChanged: function (mouse) {
+            if (pressed) {
+                _pendingHeight = _startHeight + (mouse.screenY - _startScreenY)
+                if (!coalesce.running) coalesce.start()
+            }
+        }
+        onReleased: {
+            coalesce.stop()
+            bridge.setZoneHeight(_pendingHeight)
+            root._dragging = false
+            // Bridge has already marked dirty and scheduled a debounced save.
+            // Explicitly flush so drag-release is durable without waiting 500 ms.
+            bridge.saveConfig()
         }
     }
 

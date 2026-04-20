@@ -877,12 +877,12 @@ Rectangle {
 
 ### Phase 2 — Drag-resize + margins + niri layer-rule
 
-- [ ] Wire `LayerShell.Window.margins.*` to Bridge; verify live
+- [x] Wire `LayerShell.Window.margins.*` to Bridge; verify live
       updates by tweaking values at runtime.
-- [ ] Add the bottom-edge `MouseArea` and `setZoneHeight` slot with
+- [x] Add the bottom-edge `MouseArea` and `setZoneHeight` slot with
       throttling + `exclusionZone` commit on release (Enhancement #13).
-- [ ] Clamp values in setters (`MIN_HEIGHT`, `MAX_*`, `MIN_MARGIN = 0`).
-- [ ] Add the `layer-rule { shadow {} geometry-corner-radius … }`
+- [x] Clamp values in setters (`MIN_HEIGHT`, `MAX_*`, `MIN_MARGIN = 0`).
+- [x] Add the `layer-rule { shadow {} geometry-corner-radius … }`
       block to `dot_config/niri/config.kdl.tmpl` (desktop-gated);
       visually verify the rounded-shadow floating-panel look.
 

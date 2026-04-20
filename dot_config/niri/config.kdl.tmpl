@@ -195,6 +195,27 @@ spawn-at-startup "/home/james/.local/bin/webview_zone"
 // lock, suspend) and its general.lockOnSuspend hook for systemd-initiated
 // suspends. Configure timeouts in the Noctalia settings UI.
 
+// === Layer rules ===
+
+{{- if eq .machine "desktop" }}
+// Float-panel look for webview-zone: rounded drop-shadow on the layer
+// surface. niri's geometry-corner-radius only rounds the *shadow*, not the
+// surface content — QtWebEngine can't be clipped to rounded bounds without
+// breaking pointer events (Qt bug QTBUG-44666). The shadow alone reads as
+// a floating panel; surface corners stay square by design.
+layer-rule {
+    match namespace="^webview-zone$"
+    geometry-corner-radius 12
+    shadow {
+        on
+        softness 32
+        spread 4
+        offset x=0 y=8
+        color "#00000080"
+    }
+}
+{{- end }}
+
 // === Window rules ===
 
 // Global: rounded corners + subtle inactive opacity to match hyprland look
