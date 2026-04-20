@@ -314,6 +314,37 @@ def load_css() -> None:
     )
 
 
+def install_keyboard_shortcuts(window: Gtk.Window, views: list[WebKit2.WebView]) -> None:
+    """Wire keyboard shortcuts at window level, captured before WebKit sees them.
+
+    Ctrl+R         → reload the focused pane (fallback: reload all)
+    Ctrl+Shift+R   → reload bypassing cache
+    """
+
+    def on_key_press(_win: Gtk.Window, event) -> bool:
+        if not (event.state & Gdk.ModifierType.CONTROL_MASK):
+            return False
+        if event.keyval not in (Gdk.KEY_r, Gdk.KEY_R):
+            return False
+
+        bypass = bool(event.state & Gdk.ModifierType.SHIFT_MASK)
+
+        # Walk up from the focused widget to find which WebView owns focus.
+        widget = window.get_focus()
+        while widget is not None:
+            if widget in views:
+                (widget.reload_bypass_cache if bypass else widget.reload)()
+                return True
+            widget = widget.get_parent()
+
+        # No specific pane has focus — reload all as fallback.
+        for v in views:
+            (v.reload_bypass_cache if bypass else v.reload)()
+        return True
+
+    window.connect("key-press-event", on_key_press)
+
+
 def main() -> int:
     logging.basicConfig(
         level=logging.INFO,
@@ -358,6 +389,7 @@ def main() -> int:
 
     persist_widths_on_drag(paneds)
     schedule_nightly_reload(views)
+    install_keyboard_shortcuts(window, views)
     GLib.unix_signal_add(GLib.PRIORITY_HIGH, signal.SIGTERM, Gtk.main_quit)
 
     log.info("webview_zone running: %d pane(s) on %r", len(views), cfg.output)
