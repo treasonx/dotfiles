@@ -36,10 +36,11 @@ ApplicationWindow {
         orientation: Qt.Horizontal
 
         Repeater {
-            model: bridge.urls
+            model: bridge.urlsModel
             delegate: WebEngineView {
                 profile: sharedProfile
-                url: modelData
+                url: model.url
+                zoomFactor: model.zoom
                 SplitView.fillWidth: true
                 SplitView.minimumWidth: 200
                 backgroundColor: "black"

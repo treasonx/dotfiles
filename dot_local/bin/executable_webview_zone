@@ -7,16 +7,17 @@ as a horizontal SplitView of WebEngineViews. Drag-persist widths and shared
 persistent Chromium profile.
 
 Design notes: docs/plans/2026-04-19-feat-webview-zone-dashboard-plan.md
+              docs/plans/2026-04-20-feat-webview-zone-settings-ui-plan.md
 QML UI:       ~/.local/share/webview-zone/main.qml
 
 Dependencies on Fedora 43:
-    python3-pyside6  layer-shell-qt  qt6-qtwebengine
+    python3-pyside6  layer-shell-qt  qt6-qtwebengine  python3-tomlkit
 """
 import logging
 import os
 import signal
+import subprocess
 import sys
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
@@ -36,9 +37,16 @@ from PySide6.QtWebEngineQuick import QtWebEngineQuick  # noqa: E402
 
 QtWebEngineQuick.initialize()
 
+import tomlkit  # noqa: E402
+import tomlkit.exceptions  # noqa: E402
+
 from PySide6.QtCore import (  # noqa: E402
+    QAbstractListModel,
     QByteArray,
+    QModelIndex,
     QObject,
+    Qt,
+    QTimer,
     QUrl,
     Property,
     Signal,
@@ -57,20 +65,19 @@ PROFILE = STATE / "profile"
 SPLIT_STATE = STATE / "split-state.dat"
 QML_FILE = Path.home() / ".local/share/webview-zone/main.qml"
 INSTANCE_KEY = "webview-zone.morrin.dev"
+SYSTEMD_UNIT = "webview-zone.service"
+
+# Clamps (live setters + load-time validation).
+MIN_HEIGHT = 80
+MAX_MARGIN = 64
+MIN_ZOOM = 0.25
+MAX_ZOOM = 5.0
 
 log = logging.getLogger("webview_zone")
 
 
 class ConfigError(Exception):
     """Raised for expected config problems (missing, malformed, invalid URL)."""
-
-
-@dataclass(frozen=True, slots=True)
-class Config:
-    output: str
-    zone_height: int
-    geometry: tuple[int, int]
-    urls: tuple[str, ...]
 
 
 def _validate_url(u: str) -> str:
@@ -85,26 +92,105 @@ def _validate_url(u: str) -> str:
     raise ConfigError(f"refusing non-https URL: {u!r}")
 
 
-def load_config() -> Config:
+def _clamp(value, lo, hi):
+    return max(lo, min(value, hi))
+
+
+@dataclass(slots=True)
+class UrlEntry:
+    url: str
+    zoom: float = 1.0
+
+
+@dataclass(slots=True)
+class RuntimeConfig:
+    """Single mutable snapshot of the on-disk config plus dirty / restart flags.
+
+    Per Enhancement Summary #8: there's no separate frozen Config — this one
+    dataclass owns the whole state and is the source of truth for QML bindings.
+    """
+    output: str
+    zone_height: int
+    geometry: tuple[int, int]
+    urls: list[UrlEntry]
+    margin_top: int = 0
+    margin_left: int = 0
+    margin_right: int = 0
+    dirty: bool = False
+    restart_required: bool = False
+
+
+def load_config() -> tuple[RuntimeConfig, tomlkit.TOMLDocument]:
+    """Parse ~/.config/webview-zone/config.toml into RuntimeConfig + tomlkit doc.
+
+    The tomlkit document is retained so saves can mutate it in place and
+    preserve comments / whitespace / key order (Enhancement #10).
+
+    Per-URL fields are clamped at load time (Enhancement #11): a tampered or
+    typoed config with ``zoom = 50`` is log-and-clamped rather than breaking.
+    """
     if not CONFIG.exists():
         raise ConfigError(f"config not found: {CONFIG}")
-    with CONFIG.open("rb") as f:
-        raw = tomllib.load(f)
     try:
-        urls = tuple(_validate_url(u) for u in raw["urls"])
-        if not urls:
-            raise ConfigError("urls list is empty")
-        geometry = tuple(int(x) for x in raw.get("geometry", [0, 0]))
-        if len(geometry) != 2:
-            raise ConfigError("geometry must be [width, height]")
-        return Config(
-            output=str(raw["output"]),
-            zone_height=int(raw["zone_height"]),
-            geometry=geometry,  # type: ignore[arg-type]
-            urls=urls,
-        )
+        doc = tomlkit.parse(CONFIG.read_text())
+    except tomlkit.exceptions.TOMLKitError as e:
+        raise ConfigError(f"malformed TOML: {e}") from e
+
+    try:
+        raw_urls = doc["urls"]
+    except KeyError:
+        raise ConfigError("missing required key: urls")
+
+    urls: list[UrlEntry] = []
+    for i, entry in enumerate(raw_urls):
+        if isinstance(entry, str):
+            urls.append(UrlEntry(url=_validate_url(entry)))
+        elif hasattr(entry, "get") and "url" in entry:
+            url = _validate_url(str(entry["url"]))
+            raw_zoom = float(entry.get("zoom", 1.0))
+            zoom = _clamp(raw_zoom, MIN_ZOOM, MAX_ZOOM)
+            if zoom != raw_zoom:
+                log.warning("urls[%d] zoom=%r clamped to %s", i, raw_zoom, zoom)
+            urls.append(UrlEntry(url=url, zoom=zoom))
+        else:
+            raise ConfigError(f"urls[{i}]: expected string or table, got {type(entry).__name__}")
+    if not urls:
+        raise ConfigError("urls list is empty")
+
+    try:
+        output = str(doc["output"])
+        raw_height = int(doc["zone_height"])
     except KeyError as e:
         raise ConfigError(f"missing required key: {e.args[0]}") from e
+
+    zone_height = max(raw_height, MIN_HEIGHT)
+    if zone_height != raw_height:
+        log.warning("zone_height=%d clamped to %d (MIN_HEIGHT)", raw_height, zone_height)
+
+    geometry_raw = doc.get("geometry", [0, 0])
+    geometry = tuple(int(x) for x in geometry_raw)
+    if len(geometry) != 2:
+        raise ConfigError("geometry must be [width, height]")
+
+    def _load_margin(key: str) -> int:
+        raw = int(doc.get(key, 0))
+        clamped = _clamp(raw, 0, MAX_MARGIN)
+        if clamped != raw:
+            log.warning("%s=%d clamped to %d", key, raw, clamped)
+        return clamped
+
+    return (
+        RuntimeConfig(
+            output=output,
+            zone_height=zone_height,
+            geometry=geometry,  # type: ignore[arg-type]
+            urls=urls,
+            margin_top=_load_margin("margin_top"),
+            margin_left=_load_margin("margin_left"),
+            margin_right=_load_margin("margin_right"),
+        ),
+        doc,
+    )
 
 
 def acquire_single_instance() -> QLocalServer | None:
@@ -126,31 +212,291 @@ def acquire_single_instance() -> QLocalServer | None:
     return server
 
 
-class Bridge(QObject):
-    """Glue object exposing config and state helpers to QML."""
+def _url_to_item(u: UrlEntry):
+    """Render a UrlEntry as a tomlkit node (bare string when no zoom, inline
+    table otherwise) for insert / append paths."""
+    if u.zoom == 1.0:
+        return u.url
+    t = tomlkit.inline_table()
+    t["url"] = u.url
+    t["zoom"] = u.zoom
+    return t
 
+
+class ConfigStore:
+    """Owns the tomlkit document and the RuntimeConfig snapshot.
+
+    Keeps ``Bridge`` a thin QML shim (Enhancement #7). All TOML I/O,
+    in-place mutation, and atomic write lives here.
+    """
+
+    def __init__(self, rt: RuntimeConfig, doc: tomlkit.TOMLDocument) -> None:
+        self._rt = rt
+        self._doc = doc
+
+    @property
+    def rt(self) -> RuntimeConfig:
+        return self._rt
+
+    def save(self) -> bool:
+        """Atomic + durable TOML write (Enhancement #15).
+
+        Flow: sync doc → write tmp → fsync(tmp) → os.replace → fsync(dir).
+        Closes the 'power-loss mid-write leaves truncated config' gap that
+        plain ``write_text + os.replace`` still had.
+        """
+        try:
+            self._sync_doc()
+            payload = tomlkit.dumps(self._doc).encode("utf-8")
+            tmp = CONFIG.with_suffix(".toml.tmp")
+            fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            try:
+                os.write(fd, payload)
+                os.fsync(fd)
+            finally:
+                os.close(fd)
+            os.replace(tmp, CONFIG)
+            dir_fd = os.open(str(CONFIG.parent), os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(dir_fd)
+            finally:
+                os.close(dir_fd)
+        except OSError as e:
+            log.warning("failed to save config: %s", e)
+            return False
+        self._rt.dirty = False
+        return True
+
+    def _sync_doc(self) -> None:
+        """Mutate the tomlkit document in place from RuntimeConfig.
+
+        Scalars are assigned; arrays-of-tables are edited per-entry so
+        surviving rows keep their leading comments / whitespace
+        (Enhancement #10).
+        """
+        rt = self._rt
+        self._doc["output"] = rt.output
+        self._doc["zone_height"] = rt.zone_height
+        self._doc["geometry"] = list(rt.geometry)
+        self._doc["margin_top"] = rt.margin_top
+        self._doc["margin_left"] = rt.margin_left
+        self._doc["margin_right"] = rt.margin_right
+        self._sync_urls()
+
+    def _sync_urls(self) -> None:
+        rt_urls = self._rt.urls
+        aot = self._doc.get("urls")
+        if aot is None:
+            arr = tomlkit.array()
+            for u in rt_urls:
+                arr.append(_url_to_item(u))
+            self._doc["urls"] = arr
+            return
+
+        current_len = len(aot)
+        new_len = len(rt_urls)
+        common = min(current_len, new_len)
+
+        for i in range(common):
+            target = rt_urls[i]
+            entry = aot[i]
+            if isinstance(entry, str):
+                # Legacy bare-string entry. Only rewrite if URL changed or a
+                # non-default zoom requires the inline-table form.
+                if entry != target.url or target.zoom != 1.0:
+                    aot[i] = _url_to_item(target)
+            else:
+                if entry.get("url") != target.url:
+                    entry["url"] = target.url
+                if target.zoom != 1.0:
+                    if entry.get("zoom") != target.zoom:
+                        entry["zoom"] = target.zoom
+                elif "zoom" in entry:
+                    del entry["zoom"]
+
+        for i in range(common, new_len):
+            aot.append(_url_to_item(rt_urls[i]))
+        for i in range(current_len - 1, new_len - 1, -1):
+            del aot[i]
+
+
+class UrlsModel(QAbstractListModel):
+    """Per-row live model for URL entries (Enhancement #2).
+
+    Sharing the underlying list with RuntimeConfig.urls lets ConfigStore.save()
+    serialise the same data QML is reading. Edits to a single row emit
+    per-row ``dataChanged`` so only the affected delegate reacts — no full
+    Repeater rebuild, no WebEngineView re-instantiation.
+    """
+
+    UrlRole = int(Qt.UserRole) + 1
+    ZoomRole = int(Qt.UserRole) + 2
+
+    def __init__(self, entries: list[UrlEntry]) -> None:
+        super().__init__()
+        self._entries = entries
+
+    def rowCount(self, parent=QModelIndex()) -> int:
+        if parent.isValid():
+            return 0
+        return len(self._entries)
+
+    def data(self, index, role=Qt.DisplayRole):
+        if not index.isValid() or not (0 <= index.row() < len(self._entries)):
+            return None
+        u = self._entries[index.row()]
+        if role == UrlsModel.UrlRole or role == int(Qt.DisplayRole):
+            return u.url
+        if role == UrlsModel.ZoomRole:
+            return u.zoom
+        return None
+
+    def roleNames(self):
+        return {
+            UrlsModel.UrlRole: QByteArray(b"url"),
+            UrlsModel.ZoomRole: QByteArray(b"zoom"),
+        }
+
+    def set_zoom(self, row: int, zoom: float) -> bool:
+        if not (0 <= row < len(self._entries)):
+            return False
+        zoom = _clamp(float(zoom), MIN_ZOOM, MAX_ZOOM)
+        if self._entries[row].zoom == zoom:
+            return False
+        self._entries[row].zoom = zoom
+        idx = self.index(row, 0)
+        self.dataChanged.emit(idx, idx, [UrlsModel.ZoomRole])
+        return True
+
+    def set_url(self, row: int, url: str) -> bool:
+        if not (0 <= row < len(self._entries)):
+            return False
+        try:
+            url = _validate_url(url)
+        except ConfigError as e:
+            log.info("rejecting URL edit on row %d: %s", row, e)
+            return False
+        if self._entries[row].url == url:
+            return False
+        self._entries[row].url = url
+        idx = self.index(row, 0)
+        self.dataChanged.emit(idx, idx, [UrlsModel.UrlRole])
+        return True
+
+    def add(self, url: str) -> bool:
+        try:
+            url = _validate_url(url)
+        except ConfigError as e:
+            log.info("rejecting URL add: %s", e)
+            return False
+        row = len(self._entries)
+        self.beginInsertRows(QModelIndex(), row, row)
+        self._entries.append(UrlEntry(url=url))
+        self.endInsertRows()
+        return True
+
+    def remove(self, row: int) -> bool:
+        if not (0 <= row < len(self._entries)):
+            return False
+        if len(self._entries) <= 1:
+            return False  # keep at least one pane
+        self.beginRemoveRows(QModelIndex(), row, row)
+        del self._entries[row]
+        self.endRemoveRows()
+        return True
+
+    def move(self, from_idx: int, to_idx: int) -> bool:
+        n = len(self._entries)
+        if from_idx == to_idx or not (0 <= from_idx < n and 0 <= to_idx < n):
+            return False
+        # Qt's destination row is "where the item will sit" for upward moves
+        # and "one past" for downward moves. The ordinary Python semantics
+        # (pop + insert) match if we translate the dest.
+        dest = to_idx if to_idx < from_idx else to_idx + 1
+        if not self.beginMoveRows(QModelIndex(), from_idx, from_idx, QModelIndex(), dest):
+            return False
+        item = self._entries.pop(from_idx)
+        self._entries.insert(to_idx, item)
+        self.endMoveRows()
+        return True
+
+
+class Bridge(QObject):
+    """Thin QML shim over ConfigStore + UrlsModel (Enhancement #7)."""
+
+    zoneHeightChanged = Signal()
+    marginsChanged = Signal()
+    outputChanged = Signal()
+    geometryChanged = Signal()
+    restartRequiredChanged = Signal()
     savedSplitStateChanged = Signal()
 
-    def __init__(self, cfg: Config, saved_state: bytes) -> None:
+    def __init__(self, store: ConfigStore, saved_state: bytes) -> None:
         super().__init__()
-        self._cfg = cfg
+        self._store = store
+        self._urls_model = UrlsModel(store.rt.urls)
         self._saved_state = QByteArray(saved_state)
+        # systemd supervisor detection (Enhancement #4). INVOCATION_ID is set
+        # only when the process is started by systemd. niri spawn-at-startup
+        # does NOT set it — clicking "Restart now" there would kill the
+        # dashboard with no respawn, so the QML gates the button on this flag.
+        self._supervisor = bool(os.environ.get("INVOCATION_ID"))
+        # Debounced trailing-edge save (Enhancement #14). Drag-release + form
+        # edits collapse into one disk write.
+        self._save_timer = QTimer(self)
+        self._save_timer.setInterval(500)
+        self._save_timer.setSingleShot(True)
+        self._save_timer.timeout.connect(self._do_save)
 
-    @Property(list, constant=True)
-    def urls(self) -> list[str]:
-        return list(self._cfg.urls)
+    # ------ read-only properties ------
 
-    @Property(int, constant=True)
-    def zoneHeight(self) -> int:
-        return self._cfg.zone_height
+    @Property(QObject, constant=True)
+    def urlsModel(self):
+        return self._urls_model
 
     @Property(str, constant=True)
     def profilePath(self) -> str:
         return str(PROFILE)
 
+    @Property(bool, constant=True)
+    def supervisorDetected(self) -> bool:
+        return self._supervisor
+
     @Property(QByteArray, notify=savedSplitStateChanged)
     def savedSplitState(self) -> QByteArray:
         return self._saved_state
+
+    # ------ notifying properties ------
+
+    @Property(int, notify=zoneHeightChanged)
+    def zoneHeight(self) -> int:
+        return self._store.rt.zone_height
+
+    @Property(int, notify=marginsChanged)
+    def marginTop(self) -> int:
+        return self._store.rt.margin_top
+
+    @Property(int, notify=marginsChanged)
+    def marginLeft(self) -> int:
+        return self._store.rt.margin_left
+
+    @Property(int, notify=marginsChanged)
+    def marginRight(self) -> int:
+        return self._store.rt.margin_right
+
+    @Property(bool, notify=restartRequiredChanged)
+    def restartRequired(self) -> bool:
+        return self._store.rt.restart_required
+
+    @Property(str, notify=outputChanged)
+    def output(self) -> str:
+        return self._store.rt.output
+
+    @Property(list, notify=geometryChanged)
+    def geometry(self) -> list[int]:
+        return list(self._store.rt.geometry)
+
+    # ------ slots: persistence & lifecycle ------
 
     @Slot(QByteArray)
     def persistSplitState(self, state: QByteArray) -> None:
@@ -158,6 +504,115 @@ class Bridge(QObject):
             SPLIT_STATE.write_bytes(bytes(state))
         except OSError as e:
             log.warning("failed to persist split state: %s", e)
+
+    @Slot(result=bool)
+    def saveConfig(self) -> bool:
+        self._save_timer.stop()
+        return self._do_save()
+
+    @Slot()
+    def flushPendingSave(self) -> None:
+        if self._save_timer.isActive():
+            self._save_timer.stop()
+            self._do_save()
+
+    @Slot()
+    def requestRestart(self) -> None:
+        self._save_timer.stop()
+        self._do_save()
+        if self._supervisor:
+            # Spawn systemctl *before* quitting. clean-exit would otherwise
+            # not trigger Restart=on-failure; an explicit `restart` reliably
+            # respawns us.
+            try:
+                subprocess.Popen(["systemctl", "--user", "restart", SYSTEMD_UNIT])
+            except OSError as e:
+                log.warning("failed to spawn systemctl restart: %s", e)
+        QGuiApplication.quit()
+
+    # ------ slots: live edits ------
+
+    @Slot(int)
+    def setZoneHeight(self, h: int) -> None:
+        h = max(MIN_HEIGHT, int(h))
+        if h == self._store.rt.zone_height:
+            return
+        self._store.rt.zone_height = h
+        self._store.rt.dirty = True
+        self.zoneHeightChanged.emit()
+        self._schedule_save()
+
+    @Slot(int, int, int)
+    def setMargins(self, top: int, left: int, right: int) -> None:
+        rt = self._store.rt
+        top = _clamp(int(top), 0, MAX_MARGIN)
+        left = _clamp(int(left), 0, MAX_MARGIN)
+        right = _clamp(int(right), 0, MAX_MARGIN)
+        if (top, left, right) == (rt.margin_top, rt.margin_left, rt.margin_right):
+            return
+        rt.margin_top, rt.margin_left, rt.margin_right = top, left, right
+        rt.dirty = True
+        self.marginsChanged.emit()
+        self._schedule_save()
+
+    @Slot(int, float)
+    def setUrlZoom(self, row: int, zoom: float) -> None:
+        if self._urls_model.set_zoom(row, zoom):
+            self._store.rt.dirty = True
+            self._schedule_save()
+
+    @Slot(int, str)
+    def setUrl(self, row: int, url: str) -> None:
+        if self._urls_model.set_url(row, url):
+            self._mark_restart_required()
+
+    @Slot(str)
+    def addUrl(self, url: str) -> None:
+        if self._urls_model.add(url):
+            self._mark_restart_required()
+
+    @Slot(int)
+    def removeUrl(self, row: int) -> None:
+        if self._urls_model.remove(row):
+            self._mark_restart_required()
+
+    @Slot(int, int)
+    def reorderUrl(self, from_idx: int, to_idx: int) -> None:
+        if self._urls_model.move(from_idx, to_idx):
+            self._mark_restart_required()
+
+    @Slot(str)
+    def setOutput(self, name: str) -> None:
+        name = str(name)
+        if not name or name == self._store.rt.output:
+            return
+        self._store.rt.output = name
+        self.outputChanged.emit()
+        self._mark_restart_required()
+
+    @Slot(int, int)
+    def setGeometry(self, w: int, h: int) -> None:
+        new_geom = (int(w), int(h))
+        if new_geom == self._store.rt.geometry:
+            return
+        self._store.rt.geometry = new_geom
+        self.geometryChanged.emit()
+        self._mark_restart_required()
+
+    # ------ internals ------
+
+    def _mark_restart_required(self) -> None:
+        self._store.rt.dirty = True
+        if not self._store.rt.restart_required:
+            self._store.rt.restart_required = True
+            self.restartRequiredChanged.emit()
+        self._schedule_save()
+
+    def _schedule_save(self) -> None:
+        self._save_timer.start()
+
+    def _do_save(self) -> bool:
+        return self._store.save()
 
 
 def main() -> int:
@@ -168,8 +623,8 @@ def main() -> int:
     JParser(description="Multi-URL glanceable dashboard (Qt/Chromium in wlr-layer-shell)").run()
 
     try:
-        cfg = load_config()
-    except (FileNotFoundError, tomllib.TOMLDecodeError, ConfigError) as e:
+        rt, doc = load_config()
+    except (FileNotFoundError, ConfigError) as e:
         log.error("config: %s", e)
         return 1
 
@@ -188,25 +643,37 @@ def main() -> int:
         log.info("another instance already holds %s; exiting", INSTANCE_KEY)
         return 0
 
-    # Clean shutdown on SIGTERM (niri/systemd stop, logout, etc.)
-    signal.signal(signal.SIGTERM, lambda *_: app.quit())
+    try:
+        # Clean shutdown on SIGTERM (niri/systemd stop, logout, etc.)
+        signal.signal(signal.SIGTERM, lambda *_: app.quit())
 
-    bridge = Bridge(cfg, saved_state)
+        store = ConfigStore(rt, doc)
+        bridge = Bridge(store, saved_state)
 
-    if not QML_FILE.exists():
-        log.error("QML file not found: %s", QML_FILE)
-        return 1
+        if not QML_FILE.exists():
+            log.error("QML file not found: %s", QML_FILE)
+            return 1
 
-    engine = QQmlApplicationEngine()
-    engine.rootContext().setContextProperty("bridge", bridge)
-    engine.load(QUrl.fromLocalFile(str(QML_FILE)))
+        engine = QQmlApplicationEngine()
+        engine.rootContext().setContextProperty("bridge", bridge)
+        engine.load(QUrl.fromLocalFile(str(QML_FILE)))
 
-    if not engine.rootObjects():
-        log.error("failed to load QML")
-        return 1
+        if not engine.rootObjects():
+            log.error("failed to load QML")
+            return 1
 
-    log.info("webview_zone running: %d pane(s) on %r", len(cfg.urls), cfg.output)
-    return app.exec()
+        # Flush any debounced save before exit so a fast quit doesn't drop a
+        # pending 500 ms-windowed write.
+        app.aboutToQuit.connect(bridge.flushPendingSave)
+
+        log.info("webview_zone running: %d pane(s) on %r", len(rt.urls), rt.output)
+        return app.exec()
+    finally:
+        # Explicit lock teardown so a fast relaunch (systemctl restart) can't
+        # race the dying socket past the next process's waitForConnected().
+        if lock is not None:
+            lock.close()
+            QLocalServer.removeServer(INSTANCE_KEY)
 
 
 if __name__ == "__main__":

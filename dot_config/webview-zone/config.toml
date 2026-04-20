@@ -13,6 +13,17 @@ output      = "HDMI-A-1"
 zone_height = 720
 geometry    = [3840, 2160]   # fallback match if EDID model doesn't include "HDMI-A-1"
 
+# Optional floating-panel margins (pixels). 0 = flush with output edges.
+# Tiled windows lose margin_top pixels of vertical space when > 0; margin
+# space is drawn as wallpaper. Configure rounded shadow via the niri
+# layer-rule in dot_config/niri/config.kdl.tmpl, not here.
+margin_top   = 0
+margin_left  = 0
+margin_right = 0
+
+# URLs may be bare strings (no zoom) or inline tables with a per-URL
+# zoom factor (0.25–5.0). The settings GUI migrates bare strings to the
+# inline-table form only when you give a row a non-default zoom.
 urls = [
     "https://example.com",
     "https://example.com",

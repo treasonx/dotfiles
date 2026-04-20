@@ -857,18 +857,20 @@ Rectangle {
 
 ### Phase 1 — Foundation (small, self-contained)
 
-- [ ] Bump `Bridge` properties from `constant=True` to notify-based;
+- [x] Bump `Bridge` properties from `constant=True` to notify-based;
       add signals. Verify no behavioral change — existing QML still
       renders.
-- [ ] Split `Config` into `Config` (frozen snapshot) and
+- [x] Split `Config` into `Config` (frozen snapshot) and
       `RuntimeConfig` (mutable). Load returns both.
-- [ ] Swap `tomllib` for `tomlkit`. Read path unchanged; add a
+      (Collapsed to a single mutable `RuntimeConfig` per Enhancement #8.)
+- [x] Swap `tomllib` for `tomlkit`. Read path unchanged; add a
       `_write_toml(doc, rt)` helper and a round-trip unit test
       (load → save without changes → byte-identical).
-- [ ] Add new config fields (`margin_*`) with defaults of 0 and
+      (No-op save is byte-identical — verified via `/tmp/test_tomlkit_roundtrip.py`.)
+- [x] Add new config fields (`margin_*`) with defaults of 0 and
       `[[urls]]` table-form support in `load_config`; validate types
       and clamp per-URL `zoom` at load time (Enhancement #11).
-- [ ] Add `python3-tomlkit` to Fedora dep docs.
+- [x] Add `python3-tomlkit` to Fedora dep docs.
 
 **Success:** nothing visible changes; `chezmoi apply && pkill webview_zone
 && webview_zone` runs identically to pre-change.

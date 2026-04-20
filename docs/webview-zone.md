@@ -399,10 +399,13 @@ Installed Fedora packages:
 python3-pyside6           # Qt6 Python bindings
 layer-shell-qt            # wlr-layer-shell protocol for Qt6
 qt6-qtwebengine           # Chromium-based web view
+python3-tomlkit           # TOML round-trip parser (comment-preserving)
 ```
 
-Python standard library only beyond that (`tomllib`, `json`, `pathlib`,
-`signal`, `logging`, `dataclasses`, `urllib`).
+Python standard library only beyond that (`json`, `pathlib`, `signal`,
+`logging`, `dataclasses`, `urllib`, `subprocess`). `tomlkit` replaces
+`tomllib` so the Settings-GUI save path can mutate the config in place
+without dropping the user-maintained comment header.
 
 ## Future Ideas
 
