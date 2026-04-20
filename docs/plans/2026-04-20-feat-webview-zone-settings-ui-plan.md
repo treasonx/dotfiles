@@ -879,8 +879,14 @@ Rectangle {
 
 - [x] Wire `LayerShell.Window.margins.*` to Bridge; verify live
       updates by tweaking values at runtime.
-- [x] Add the bottom-edge `MouseArea` and `setZoneHeight` slot with
-      throttling + `exclusionZone` commit on release (Enhancement #13).
+- [~] ~~Add the bottom-edge `MouseArea`~~ **Reverted 2026-04-20** —
+      `onPressed` never fires on the overlaid `MouseArea`; only
+      `onReleased` + hover do. `_pendingHeight`/`_startHeight` stay
+      at zero, and release collapses the zone to `MIN_HEIGHT`. Bridge
+      infrastructure (`setZoneHeight`, clamps, debounced save) is in
+      place; revisit with a `DragHandler` (pointer handlers use a
+      different event delivery path than `MouseArea`). Memory:
+      `project_webview_zone_resize_blocked.md`.
 - [x] Clamp values in setters (`MIN_HEIGHT`, `MAX_*`, `MIN_MARGIN = 0`).
 - [x] Add the `layer-rule { shadow {} geometry-corner-radius … }`
       block to `dot_config/niri/config.kdl.tmpl` (desktop-gated);

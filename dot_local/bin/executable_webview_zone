@@ -15,6 +15,7 @@ Dependencies on Fedora 43:
 """
 import logging
 import os
+import shlex
 import signal
 import subprocess
 import sys
@@ -55,6 +56,7 @@ from PySide6.QtCore import (  # noqa: E402
 from PySide6.QtGui import QGuiApplication  # noqa: E402
 from PySide6.QtNetwork import QLocalServer, QLocalSocket  # noqa: E402
 from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
+from PySide6.QtWebEngineCore import QWebEngineProfile  # noqa: E402
 
 from j_lib import JParser  # noqa: E402
 
@@ -458,6 +460,17 @@ class Bridge(QObject):
     def profilePath(self) -> str:
         return str(PROFILE)
 
+    @Property(str, constant=True)
+    def userAgent(self) -> str:
+        # Strip the `QtWebEngine/X.Y.Z ` token from the default UA so
+        # Google OAuth doesn't flag us as an "embedded browser" and
+        # invalidate the session on every launch. Without this, logfire
+        # (Google SSO) re-prompts for sign-in after every restart even
+        # though cookies and storage are persisted correctly.
+        import re
+        default = QWebEngineProfile.defaultProfile().httpUserAgent()
+        return re.sub(r"\s*QtWebEngine/\S+\s*", " ", default).strip()
+
     @Property(bool, constant=True)
     def supervisorDetected(self) -> bool:
         return self._supervisor
@@ -528,13 +541,38 @@ class Bridge(QObject):
                 subprocess.Popen(["systemctl", "--user", "restart", SYSTEMD_UNIT])
             except OSError as e:
                 log.warning("failed to spawn systemctl restart: %s", e)
+        else:
+            # No supervisor → self-relaunch. A short shell `sleep` gives the
+            # current process time to tear down the single-instance QLocalServer
+            # lock before the new instance probes it. `exec` replaces the shell
+            # so we don't leave a zombie. `start_new_session` detaches from our
+            # controlling terminal so the new process survives parent exit.
+            try:
+                bin_path = shlex.quote(sys.argv[0])
+                subprocess.Popen(
+                    ["sh", "-c", f"sleep 0.5; exec {bin_path}"],
+                    start_new_session=True,
+                    stdin=subprocess.DEVNULL,
+                )
+            except OSError as e:
+                log.warning("failed to spawn self-relaunch: %s", e)
         QGuiApplication.quit()
 
     # ------ slots: live edits ------
 
+    @Slot(str)
+    def debugLog(self, msg: str) -> None:
+        """QML-side logging hook; kept so future drag-resize debugging has
+        a reliable stderr path when `console.log` isn't appearing."""
+        log.info("QML: %s", msg)
+
     @Slot(int)
     def setZoneHeight(self, h: int) -> None:
-        h = max(MIN_HEIGHT, int(h))
+        geom_h = self._store.rt.geometry[1]
+        # Clamp to [MIN_HEIGHT, 0.8 × output_height]. 0.8 cap is a guardrail
+        # so a settings-panel slider can't consume the entire output.
+        max_h = int(0.8 * geom_h) if geom_h > 0 else 10_000
+        h = _clamp(int(h), MIN_HEIGHT, max_h)
         if h == self._store.rt.zone_height:
             return
         self._store.rt.zone_height = h
@@ -578,8 +616,12 @@ class Bridge(QObject):
 
     @Slot(int, int)
     def reorderUrl(self, from_idx: int, to_idx: int) -> None:
+        # Reorder is live per the plan's matrix: the Repeater sees
+        # rowsMoved, panes re-instantiate and lose in-memory state,
+        # but cookies/profile persist. No restart needed.
         if self._urls_model.move(from_idx, to_idx):
-            self._mark_restart_required()
+            self._store.rt.dirty = True
+            self._schedule_save()
 
     @Slot(str)
     def setOutput(self, name: str) -> None:
