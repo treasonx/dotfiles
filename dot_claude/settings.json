@@ -1,0 +1,110 @@
+{
+  "alwaysThinkingEnabled": true,
+  "enabledPlugins": {
+    "coderabbit@claude-plugins-official": true,
+    "compound-engineering@every-marketplace": true,
+    "rust-analyzer-lsp@claude-plugins-official": true
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'body=$(cat); (curl -sf --connect-timeout 1 --max-time 2 -X POST http://localhost:7777/state -H \"Content-Type: application/json\" -d \"$body\" || true) &'",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'body=$(cat); (curl -sf --connect-timeout 1 --max-time 2 -X POST http://localhost:7777/state -H \"Content-Type: application/json\" -d \"$body\" || true) &'",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'body=$(cat); (curl -sf --connect-timeout 1 --max-time 2 -X POST http://localhost:7777/state -H \"Content-Type: application/json\" -d \"$body\" || true) &'",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'body=$(cat); (curl -sf --connect-timeout 1 --max-time 2 -X POST http://localhost:7777/state -H \"Content-Type: application/json\" -d \"$body\" || true) &'",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'body=$(cat); (curl -sf --connect-timeout 1 --max-time 2 -X POST http://localhost:7777/state -H \"Content-Type: application/json\" -d \"$body\" || true) &'",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'body=$(cat); (curl -sf --connect-timeout 1 --max-time 2 -X POST http://localhost:7777/state -H \"Content-Type: application/json\" -d \"$body\" || true) &'",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'body=$(cat); (curl -sf --connect-timeout 1 --max-time 2 -X POST http://localhost:7777/state -H \"Content-Type: application/json\" -d \"$body\" || true) &'",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'body=$(cat); (curl -sf --connect-timeout 1 --max-time 2 -X POST http://localhost:7777/state -H \"Content-Type: application/json\" -d \"$body\" || true) &'",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "/home/james/.claude/scape/bridge.sh"
+  }
+}
