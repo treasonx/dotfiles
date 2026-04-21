@@ -1,0 +1,73 @@
+// Default niri window-open + Catppuccin-dark burn close.
+//
+//   Open : niri's built-in spring animation (quick scale-in). No override.
+//   Close: Catppuccin Mocha dark burn (same as crt-burn.kdl / keyhole-burn.kdl).
+//
+// Included by dot_config/niri/config.kdl.tmpl via {{`{{ includeTemplate }}`}}.
+animations {
+    workspace-switch {
+        duration-ms 300
+        curve "ease-out-cubic"
+    }
+
+    window-close {
+        duration-ms 1000
+        curve "linear"
+        custom-shader r"
+            float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+            }
+            float noise(vec2 p) {
+                vec2 i = floor(p);
+                vec2 f = fract(p);
+                f = f * f * (3.0 - 2.0 * f);
+                return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                           mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+            }
+            vec4 burn_close(vec3 coords_geo, vec3 size_geo) {
+                if (coords_geo.x < 0.0 || coords_geo.x > 1.0 || coords_geo.y < 0.0 || coords_geo.y > 1.0) {
+                    return vec4(0.0);
+                }
+                float speed = 1.0 + niri_random_seed;
+                float progress = min(niri_clamped_progress * speed, 1.0);
+                vec2 uv = coords_geo.xy;
+                vec3 coords_tex = niri_geo_to_tex * vec3(uv, 1.0);
+                vec4 color = texture2D(niri_tex, coords_tex.st);
+
+                float pixel_grid = 80.0;
+                vec2 pixel_uv = floor(uv * pixel_grid) / pixel_grid;
+
+                float edge_dist = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+                float n = noise(pixel_uv * 12.0 + niri_random_seed * 100.0) * 0.35;
+                float burn_line = edge_dist + n;
+                float threshold = progress * 0.85;
+
+                float band_width = 0.18;
+                float band = (burn_line - threshold) / band_width;
+
+                if (band < 0.0) {
+                    return vec4(0.0);
+                }
+                if (band > 1.0) {
+                    return color;
+                }
+
+                vec3 c_tip  = vec3(0.067, 0.067, 0.106);
+                vec3 c_hot  = vec3(0.094, 0.094, 0.145);
+                vec3 c_mid  = vec3(0.118, 0.118, 0.180);
+                vec3 c_cool = vec3(0.192, 0.196, 0.267);
+
+                vec3 ember = c_tip;
+                ember = mix(ember, c_hot,  step(0.25, band));
+                ember = mix(ember, c_mid,  step(0.50, band));
+                ember = mix(ember, c_cool, step(0.75, band));
+
+                float blend = step(0.75, band) * 0.4;
+                return vec4(mix(ember, color.rgb, blend), color.a);
+            }
+            vec4 close_color(vec3 coords_geo, vec3 size_geo) {
+                return burn_close(coords_geo, size_geo);
+            }
+        "
+    }
+}

@@ -146,13 +146,14 @@ environment {
 screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
 
 // === Animations ===
-// Window open = CRT monitor turn-on (horizontal trace unfolds vertically with
-// scanlines and phosphor glow). Window close = Catppuccin Mocha dark sweep.
+// Window open = niri default (quick spring scale-in).
+// Window close = Catppuccin Mocha dark sweep.
 // Templates live in .chezmoitemplates/nirimation/ — swap include for alts:
-//   crt-burn.kdl      — current (CRT open + dark burn close)
+//   burn-close.kdl    — current (default open + dark burn close)
+//   crt-burn.kdl      — CRT monitor turn-on open + dark burn close
 //   keyhole-burn.kdl  — SMW keyhole open + dark burn close
 //   burn.kdl          — original warm-ember burn on both ends
-{{ includeTemplate "nirimation/crt-burn.kdl" -}}
+{{ includeTemplate "nirimation/burn-close.kdl" -}}
 
 // === Autostart ===
 // Run under niri-session so systemd user units + xdg-desktop-autostart work.
