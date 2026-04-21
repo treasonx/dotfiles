@@ -62,6 +62,8 @@ SCRIPTS = [
     "playlist:Create M3U playlists using beets",
     "rsync_upload:Upload files via rsync with bandwidth control",
     "screenrec:Toggle screen recording (region/output, wl-screenrec)",
+    "sddm_rollback:Revert display manager from SDDM back to GDM",
+    "sync_sddm_wallpaper:Copy current Noctalia wallpaper to SDDM greeter",
     "transcode_video:Transcode videos to H.265 1080p MP4 via HandBrake",
     "v:Open file in nvim by fuzzy name match",
     "weather:Display weather via rustormy",

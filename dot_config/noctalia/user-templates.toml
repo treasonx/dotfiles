@@ -1,0 +1,11 @@
+[config]
+
+[templates]
+
+# Render SDDM theme.conf from Noctalia's current palette on every color scheme change.
+# post_hook copies the current wallpaper to /var/lib/sddm-noctalia/background.png so the
+# greeter (running as system user `sddm`) can read it despite $HOME being mode 710.
+[templates.sddm_theme]
+input_path = "~/.config/noctalia/templates/noctalia-sddm-theme.conf"
+output_path = "/var/lib/sddm-noctalia/theme.conf"
+post_hook = "~/.local/bin/sync_sddm_wallpaper"

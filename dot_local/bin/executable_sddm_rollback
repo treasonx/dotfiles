@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""Roll back from SDDM to GDM as the display manager.
+
+Use this if the SDDM greeter fails to appear on boot (black screen, login
+unreachable). Recovery path: Ctrl+Alt+F3 → TTY login as james → run
+`sddm_rollback` → reboot.
+
+Switches systemd's display-manager.service back to gdm and prompts for a
+reboot. Does NOT restart the DM live — that would kill any active session.
+"""
+
+from __future__ import annotations
+
+import subprocess
+import sys
+from pathlib import Path
+
+from j_lib import JParser
+
+DM_LINK = Path("/etc/systemd/system/display-manager.service")
+
+
+def main() -> int:
+    parser = JParser(description="Switch display manager back from SDDM to GDM")
+    parser.add_argument(
+        "--reboot",
+        action="store_true",
+        help="Reboot immediately after the switch (default: prompt)",
+    )
+    args = parser.run()
+
+    current = DM_LINK.resolve() if DM_LINK.is_symlink() else None
+    if current and current.name == "gdm.service":
+        print("GDM is already the active display manager — nothing to do.", file=sys.stderr)
+        return 0
+
+    print("Disabling sddm, enabling gdm …", file=sys.stderr)
+    subprocess.run(["sudo", "systemctl", "disable", "sddm.service"], check=False)
+    subprocess.run(["sudo", "systemctl", "enable", "gdm.service"], check=True)
+
+    new_target = (
+        DM_LINK.resolve().name if DM_LINK.is_symlink() else "unknown"
+    )
+    print(f"display-manager.service now points to: {new_target}", file=sys.stderr)
+
+    should_reboot = args.reboot
+    if not should_reboot:
+        ans = input("Reboot now to apply? [y/N] ").strip().lower()
+        should_reboot = ans in ("y", "yes")
+
+    if should_reboot:
+        subprocess.run(["sudo", "systemctl", "reboot"], check=False)
+    else:
+        print("Reboot later to land on GDM.", file=sys.stderr)
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

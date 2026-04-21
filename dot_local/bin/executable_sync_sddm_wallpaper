@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+"""Copy the current Noctalia wallpaper to the SDDM greeter's shared dir.
+
+Reads the current wallpaper from ~/.cache/noctalia/wallpapers.json (first monitor)
+and copies it to /var/lib/sddm-noctalia/background.png so the SDDM greeter
+(running as system user `sddm`) can display it — sddm can't read files in
+~/ directly because the home dir is mode 710.
+
+Called from two places:
+  - Noctalia user-template post_hook (no args) — fires on palette change.
+  - Noctalia hooks.wallpaperChange — may pass new wallpaper path as first arg.
+"""
+
+from __future__ import annotations
+
+import json
+import shutil
+import sys
+from pathlib import Path
+
+from j_lib import JParser
+
+DEST = Path("/var/lib/sddm-noctalia/background.png")
+WALLPAPERS_JSON = Path.home() / ".cache" / "noctalia" / "wallpapers.json"
+
+
+def find_current_wallpaper() -> Path | None:
+    if not WALLPAPERS_JSON.exists():
+        return None
+    try:
+        data = json.loads(WALLPAPERS_JSON.read_text())
+    except json.JSONDecodeError as exc:
+        print(f"warn: could not parse {WALLPAPERS_JSON}: {exc}", file=sys.stderr)
+        return None
+
+    # Prefer any entry in `wallpapers.<MONITOR>.dark` / `.light`.
+    wallpapers = data.get("wallpapers") or {}
+    for monitor_cfg in wallpapers.values():
+        for variant in ("dark", "light"):
+            p = monitor_cfg.get(variant)
+            if p:
+                return Path(p)
+
+    # Fall back to the shipped default.
+    default = data.get("defaultWallpaper")
+    return Path(default) if default else None
+
+
+def main() -> int:
+    parser = JParser(description="Copy current Noctalia wallpaper to SDDM greeter")
+    parser.add_argument(
+        "wallpaper",
+        type=Path,
+        nargs="?",
+        help="Optional explicit wallpaper path (noctalia wallpaperChange hook passes this)",
+    )
+    args = parser.run()
+
+    src: Path | None = args.wallpaper or find_current_wallpaper()
+    if not src or not src.is_file():
+        print(f"warn: no wallpaper source found (tried {src})", file=sys.stderr)
+        return 0  # non-fatal for the template post-hook path
+
+    if not DEST.parent.is_dir():
+        print(
+            f"error: {DEST.parent} does not exist — run the SDDM installer first "
+            "(chezmoi apply, or see run_once_install-sddm-noctalia.sh)",
+            file=sys.stderr,
+        )
+        return 1
+
+    if DEST.exists() and src.stat().st_mtime <= DEST.stat().st_mtime and _same_size(src, DEST):
+        return 0  # idempotent short-circuit
+
+    shutil.copy2(src, DEST)
+    print(f"synced {src} -> {DEST}", file=sys.stderr)
+    return 0
+
+
+def _same_size(a: Path, b: Path) -> bool:
+    return a.stat().st_size == b.stat().st_size
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

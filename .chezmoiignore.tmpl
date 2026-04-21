@@ -31,3 +31,8 @@
 .local/share/webview-zone
 .config/systemd/user/webview-zone.service
 {{- end }}
+
+# SDDM greeter theme sources — installed to /usr/share and /etc by
+# run_once_install-sddm-noctalia.sh, never deployed to $HOME.
+sddm-theme-noctalia
+etc

@@ -409,14 +409,14 @@
     "hooks": {
         "colorGeneration": "",
         "darkModeChange": "",
-        "enabled": false,
+        "enabled": true,
         "performanceModeDisabled": "",
         "performanceModeEnabled": "",
         "screenLock": "",
         "screenUnlock": "",
         "session": "",
         "startup": "",
-        "wallpaperChange": ""
+        "wallpaperChange": "{{ .chezmoi.homeDir }}/.local/bin/sync_sddm_wallpaper \"$1\""
     },
     "idle": {
         "customCommands": "[]",
@@ -614,8 +614,9 @@
     },
     "templates": {
         "activeTemplates": [
+            "sddm_theme"
         ],
-        "enableUserTheming": false
+        "enableUserTheming": true
     },
     "ui": {
         "boxBorderEnabled": false,
