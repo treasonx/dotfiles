@@ -151,6 +151,7 @@ ApplicationWindow {
         MenuItem { text: qsTr("Settings…"); onTriggered: settingsPanel.open() }
         MenuItem { text: qsTr("Reload focused pane"); onTriggered: reloadFocused(false) }
         MenuItem { text: qsTr("Reload all"); onTriggered: reloadAll() }
+        MenuItem { text: qsTr("Clear cache && reload pane"); onTriggered: clearCacheAndReload() }
         MenuSeparator {}
         MenuItem { text: qsTr("Restart webview-zone"); onTriggered: bridge.requestRestart() }
     }
@@ -189,6 +190,15 @@ ApplicationWindow {
             var w = split.itemAt(k)
             if (w) bypassCache ? w.reloadAndBypassCache() : w.reload()
         }
+    }
+
+    // Nuclear reload: wipe the shared profile's HTTP cache on disk, then
+    // reload the focused pane without reading any leftover cache. Use when
+    // a site is wedged on stale/corrupt cached assets. Cookies and
+    // localStorage are untouched — only HTTP cache is cleared.
+    function clearCacheAndReload() {
+        sharedProfile.clearHttpCache()
+        reloadFocused(true)
     }
 
     Shortcut {
