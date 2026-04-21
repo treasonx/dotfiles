@@ -9,3 +9,40 @@
 input_path = "~/.config/noctalia/templates/noctalia-sddm-theme.conf"
 output_path = "/var/lib/sddm-noctalia/theme.conf"
 post_hook = "~/.local/bin/sync_sddm_wallpaper"
+
+# --- TUI apps -------------------------------------------------------------
+# Each template below is activated by adding its name to the
+# settings.json > templates.activeTemplates list (handled in settings.json.tmpl).
+# Design: every app has a Catppuccin Mocha fallback so nothing breaks if the
+# rendered output file is missing.
+
+# zellij — dropped as a named theme under themes/; config.kdl references it.
+[templates.zellij]
+input_path = "~/.config/noctalia/templates/zellij.kdl"
+output_path = "~/.config/zellij/themes/noctalia.kdl"
+
+# lazygit — rendered as a theme overlay read via LG_CONFIG_FILE by
+# ~/.local/bin/lazygit (shim layers it over the Catppuccin defaults).
+[templates.lazygit_theme]
+input_path = "~/.config/noctalia/templates/lazygit-theme.yml"
+output_path = "~/.config/lazygit/themes/noctalia.yml"
+
+# lazydocker — rendered to a side file, then spliced into config.yml between
+# sentinel markers by the post_hook (lazydocker has no multi-config support).
+[templates.lazydocker_theme]
+input_path = "~/.config/noctalia/templates/lazydocker-theme.yml"
+output_path = "~/.config/lazydocker/noctalia-theme-fragment.yml"
+post_hook = "~/.local/bin/sync_lazydocker_theme"
+
+# bat — custom tmTheme; must rebuild bat's theme cache after writing.
+# The ~/.local/bin/bat shim picks the theme based on file presence.
+[templates.bat_theme]
+input_path = "~/.config/noctalia/templates/bat.tmTheme"
+output_path = "~/.config/bat/themes/Noctalia.tmTheme"
+post_hook = "bat cache --build"
+
+# nvim — emits a Lua palette table; consumed by lua/plugins/noctalia-colorscheme.lua.
+# No reload hook: nvim picks it up on next launch, or :NoctaliaReload in-session.
+[templates.nvim_palette]
+input_path = "~/.config/noctalia/templates/nvim-palette.lua"
+output_path = "~/.config/nvim/lua/noctalia_palette.lua"

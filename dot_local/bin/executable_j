@@ -63,6 +63,7 @@ SCRIPTS = [
     "rsync_upload:Upload files via rsync with bandwidth control",
     "screenrec:Toggle screen recording (region/output, wl-screenrec)",
     "sddm_rollback:Revert display manager from SDDM back to GDM",
+    "sync_lazydocker_theme:Splice Noctalia theme fragment into lazydocker config.yml",
     "sync_sddm_wallpaper:Copy current Noctalia wallpaper to SDDM greeter",
     "transcode_video:Transcode videos to H.265 1080p MP4 via HandBrake",
     "v:Open file in nvim by fuzzy name match",
@@ -77,6 +78,8 @@ SCRIPTS = [
 #   clipboard_history, list_recent_files, list_wallpapers, perplexity_chat, wezterm_panes
 # Git aliases — invoked as `git wt` / `git wtr`:
 #   git-wt, git-wtr
+# PATH shims — transparently replace real binaries, invoked by typing the normal command:
+#   bat, lazygit (Noctalia theme-aware launchers; fall back to Catppuccin)
 
 
 def fzf_select() -> str | None:

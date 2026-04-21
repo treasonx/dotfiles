@@ -14,7 +14,11 @@ alias l='eza --icons'
 alias tree='eza --tree --icons'
 
 # File viewing (bat — syntax-highlighted cat replacement)
-alias cat='bat --paging=never'
+# bat-noctalia is a shim that picks Noctalia's generated theme when present,
+# Catppuccin Mocha otherwise. Aliasing `bat` onto it so tools & muscle-memory
+# keep working; linuxbrew's `bat` stays reachable via `command bat`.
+alias bat='bat-noctalia'
+alias cat='bat-noctalia --paging=never'
 
 # Modern coreutils replacements (cargo/dnf installed)
 alias du='dust'          # disk usage with bar charts

@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""Launch lazygit with Noctalia theme overlay when available.
+
+lazygit supports comma-separated config files via LG_CONFIG_FILE; later files
+override earlier keys. This shim layers Noctalia's generated theme on top of
+the Catppuccin defaults in ~/.config/lazygit/config.yml, but only when the
+override file exists — otherwise plain lazygit launches with its usual config
+(Catppuccin fallback).
+
+The shim lives at ~/.local/bin/lazygit (on PATH) and execs the real binary
+found elsewhere on PATH. If the real lazygit ever lands in ~/.local/bin/, the
+shim will infinite-loop — guarded against by filtering self out of PATH.
+"""
+
+from __future__ import annotations
+
+import os
+import shutil
+import sys
+from pathlib import Path
+
+from j_lib import JParser
+
+OVERRIDE = Path.home() / ".config" / "lazygit" / "themes" / "noctalia.yml"
+BASE = Path.home() / ".config" / "lazygit" / "config.yml"
+
+
+def find_real_lazygit() -> str | None:
+    """Find lazygit on PATH, excluding our own shim."""
+    self_path = Path(__file__).resolve()
+    for d in os.environ.get("PATH", "").split(os.pathsep):
+        candidate = Path(d) / "lazygit"
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            if candidate.resolve() != self_path:
+                return str(candidate)
+    return None
+
+
+def main() -> int:
+    if "--_j_meta" in sys.argv or "-h" in sys.argv or "--help" in sys.argv:
+        # Let the help path through to real lazygit; --_j_meta is for j picker.
+        if "--_j_meta" in sys.argv:
+            JParser(description="Launch lazygit with Noctalia theme overlay").run()
+            return 0
+
+    real = find_real_lazygit()
+    if not real:
+        print("error: real lazygit not found on PATH", file=sys.stderr)
+        return 127
+
+    env = os.environ.copy()
+    if OVERRIDE.is_file() and BASE.is_file():
+        env["LG_CONFIG_FILE"] = f"{BASE},{OVERRIDE}"
+    # else: plain launch, lazygit finds its own default config (Catppuccin)
+
+    os.execvpe(real, [real, *sys.argv[1:]], env)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

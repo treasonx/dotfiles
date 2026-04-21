@@ -332,7 +332,11 @@ load_plugins {
 // Choose the theme that is specified in the themes section.
 // Default: default
 //
-theme "catppuccin-mocha"
+// Noctalia-generated theme file lives at ~/.config/zellij/themes/noctalia.kdl
+// (rendered by Noctalia user-template `zellij`). If that file is missing, swap
+// this line back to `theme "catppuccin-mocha"` — zellij ships catppuccin-mocha
+// as a builtin, so it's a one-line recovery.
+theme "noctalia"
 
 // The name of the default layout to load on startup
 // Default: "default"

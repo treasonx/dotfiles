@@ -2,6 +2,10 @@ gui:
   scrollHeight: 2
   language: "auto"
   border: "rounded"
+  # >>> noctalia theme >>>
+  # Block rewritten by ~/.local/bin/sync_lazydocker_theme on every Noctalia
+  # palette change. Defaults here are Catppuccin Mocha — if the sync script
+  # is ever removed, these values stay in place.
   theme:
     activeBorderColor:
       - '#89b4fa'
@@ -37,6 +41,7 @@ gui:
       - '#f9e2af'
     successColor:
       - '#a6e3a1'
+  # <<< noctalia theme <<<
   returnImmediately: false
   wrapMainPanel: true
   sidePanelWidth: 0.333

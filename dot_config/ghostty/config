@@ -11,8 +11,10 @@
 font-family = JetBrains Mono
 font-size = 12
 
-# Color Scheme - Catppuccin Mocha
-theme = catppuccin-mocha
+# Color Scheme — Noctalia palette rendered by Noctalia built-in integration
+# to ~/.config/ghostty/themes/noctalia. Falls back to the bundled
+# catppuccin-mocha theme if the file is missing (one-line recovery).
+theme = noctalia
 
 # Background Image
 background-image = /home/james/.config/ghostty/a_drawing_of_a_bear_and_a_campfire.png

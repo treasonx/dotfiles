@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""Launch bat with Noctalia theme when available, Catppuccin otherwise.
+
+bat does not fall back gracefully on `--theme` if the named theme is missing —
+it errors out listing available themes. This shim picks the theme based on
+whether ~/.config/bat/themes/Noctalia.tmTheme exists (plus a working cache),
+so uninstalling Noctalia never breaks `bat`.
+
+Named `bat-noctalia` (not `bat`) to avoid shadowing linuxbrew's bat on PATH.
+Invoked via `alias bat='bat-noctalia'` in dot_config/zsh/aliases. A caller's
+explicit --theme wins because it appears later on the command line.
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+import subprocess
+from pathlib import Path
+
+from j_lib import JParser
+
+NOCTALIA_THEME_FILE = Path.home() / ".config" / "bat" / "themes" / "Noctalia.tmTheme"
+NOCTALIA_NAME = "Noctalia"
+FALLBACK_NAME = "catppuccin-mocha"
+
+
+def find_real_bat() -> str | None:
+    self_path = Path(__file__).resolve()
+    for d in os.environ.get("PATH", "").split(os.pathsep):
+        candidate = Path(d) / "bat"
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            if candidate.resolve() != self_path:
+                return str(candidate)
+    return None
+
+
+def theme_in_cache(real_bat: str, name: str) -> bool:
+    try:
+        result = subprocess.run(
+            [real_bat, "--list-themes"],
+            capture_output=True, text=True, timeout=3,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+    return name in result.stdout
+
+
+def main() -> int:
+    if "--_j_meta" in sys.argv:
+        JParser(description="Launch bat with Noctalia theme overlay").run()
+        return 0
+
+    real = find_real_bat()
+    if not real:
+        print("error: real bat not found on PATH", file=sys.stderr)
+        return 127
+
+    # If the user already passed --theme, respect it.
+    caller_set_theme = any(
+        a == "--theme" or a.startswith("--theme=") for a in sys.argv[1:]
+    )
+
+    extra: list[str] = []
+    if not caller_set_theme:
+        if NOCTALIA_THEME_FILE.is_file() and theme_in_cache(real, NOCTALIA_NAME):
+            extra = ["--theme", NOCTALIA_NAME]
+        else:
+            extra = ["--theme", FALLBACK_NAME]
+
+    os.execvp(real, [real, *extra, *sys.argv[1:]])
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+"""Splice the Noctalia-generated lazydocker theme fragment into config.yml.
+
+lazydocker has no multi-file config support, so the Noctalia template renders
+a YAML fragment to ~/.config/lazydocker/noctalia-theme-fragment.yml and this
+script stamps it into the main config.yml between sentinel marker lines:
+
+  # >>> noctalia theme >>>
+  ...rendered theme block...
+  # <<< noctalia theme <<<
+
+Called as the `post_hook` of the [templates.lazydocker_theme] Noctalia
+user-template (fires on every color-scheme change).
+
+Fallback: if the fragment file is missing, this is a no-op — the existing
+(Catppuccin Mocha) block between the sentinels is left intact.
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+from j_lib import JParser
+
+CONFIG = Path.home() / ".config" / "lazydocker" / "config.yml"
+FRAGMENT = Path.home() / ".config" / "lazydocker" / "noctalia-theme-fragment.yml"
+BEGIN = "  # >>> noctalia theme >>>"
+END = "  # <<< noctalia theme <<<"
+
+
+def main() -> int:
+    JParser(description="Splice Noctalia lazydocker theme into config.yml").run()
+
+    if not FRAGMENT.is_file():
+        # Expected on first run before Noctalia renders the fragment.
+        # Silent no-op keeps the Catppuccin block in config.yml intact.
+        return 0
+    if not CONFIG.is_file():
+        print(f"error: {CONFIG} missing", file=sys.stderr)
+        return 1
+
+    original = CONFIG.read_text().splitlines(keepends=True)
+    begin_idx = end_idx = None
+    for i, line in enumerate(original):
+        if line.rstrip() == BEGIN:
+            begin_idx = i
+        elif line.rstrip() == END:
+            end_idx = i
+            break
+
+    if begin_idx is None or end_idx is None or end_idx <= begin_idx:
+        print(
+            f"error: sentinel markers not found in {CONFIG}. Expected lines:\n"
+            f"  {BEGIN}\n  ...theme block...\n  {END}\n"
+            "Add them manually (in chezmoi source) around the gui.theme block.",
+            file=sys.stderr,
+        )
+        return 1
+
+    fragment = FRAGMENT.read_text()
+    if not fragment.endswith("\n"):
+        fragment += "\n"
+
+    # Replace everything between the marker lines (exclusive) with the fragment.
+    new = (
+        "".join(original[: begin_idx + 1])
+        + fragment
+        + "".join(original[end_idx:])
+    )
+
+    if new == "".join(original):
+        return 0  # idempotent short-circuit
+
+    CONFIG.write_text(new)
+    print(f"spliced Noctalia theme into {CONFIG}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
