@@ -1,15 +1,15 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15 as Controls
-import QtQuick.Layouts 1.15
-import QtQuick.Window 2.15
-import Qt5Compat.GraphicalEffects 1.0
+import QtQuick
+import QtQuick.Controls as Controls
+import QtQuick.Layouts
+import QtQuick.Window
+import Qt5Compat.GraphicalEffects
 
 import SddmComponents 2.0
 
 Rectangle {
     id: root
-    width: Screen.width || 1920
-    height: Screen.height || 1080
+    width: Screen.width
+    height: Screen.height
 
     // -------------------------------------------------------------------------
     // Responsive Scaling
@@ -19,6 +19,12 @@ Rectangle {
     
     // -------------------------------------------------------------------------
     // Theme Constants (Rose Pine) & Style Tokens
+    //
+    // Hex fallbacks below match theme.conf.default. The Noctalia shell
+    // overwrites theme.conf at runtime with live palette values, so the
+    // fallbacks here only fire on the very first greeter boot before the
+    // shell has written anything. Keeping them in sync with
+    // theme.conf.default by hand; if you change one, change the other.
     // -------------------------------------------------------------------------
     readonly property color mPrimary: config.mPrimary || "#c7a1d8"
     readonly property color mOnPrimary: config.mOnPrimary || "#1a151f"
@@ -40,14 +46,19 @@ Rectangle {
     // Configurable Background
     readonly property string backgroundPath: config.background || "Assets/background.png"
 
-    // Fonts
-    property font fontMain: Qt.font({
-        family: "Noto Sans",
-        pixelSize: 14 * scaleFactor
-    })
-    
     LayoutMirroring.enabled: Qt.locale().textDirection == Qt.RightToLeft
     LayoutMirroring.childrenInherit: true
+
+    // Drives the clock / date re-render. QML bindings for `new Date()` don't
+    // re-evaluate on their own (nothing in the dependency graph changes), so
+    // without this Timer the clock freezes at the instant SDDM started.
+    property var now: new Date()
+    Timer {
+        interval: 1000
+        running: true
+        repeat: true
+        onTriggered: root.now = new Date()
+    }
 
     // Solid dim overlay opacity — 0 = no dim, 1 = fully black. Default 0 means
     // raw wallpaper with no post-processing (cards have their own mSurface
@@ -275,17 +286,17 @@ Rectangle {
                 }
                 
                 Text {
-                    text: Qt.formatDate(new Date(), "dddd, MMMM d")
+                    text: Qt.formatDate(root.now, "dddd, MMMM d")
                     font.pixelSize: root.fontSizeXL
                     color: root.mOnSurfaceVariant
                 }
             }
-            
+
             Item { Layout.fillWidth: true } // Spacer
-            
+
             // Clock
             Text {
-                text: Qt.formatTime(new Date(), "hh:mm")
+                text: Qt.formatTime(root.now, "hh:mm")
                 font.pixelSize: root.fontSizeClock
                 font.bold: true
                 color: root.mOnSurface
@@ -309,7 +320,23 @@ Rectangle {
         color: root.mSurface
         border.color: Qt.rgba(root.mOutline.r, root.mOutline.g, root.mOutline.b, 0.2)
         border.width: 1 * scaleFactor
-        
+
+        // CapsLock warning — the most common silent cause of "password
+        // rejected" after a fresh boot. Overlay in the top-right so it
+        // doesn't reflow the password row.
+        Text {
+            visible: keyboard.capsLock
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.topMargin: 8 * scaleFactor
+            anchors.rightMargin: 16 * scaleFactor
+            text: "⇪ " + textConstants.capslockWarning
+            color: root.mError
+            font.pixelSize: root.fontSizeM
+            font.bold: true
+            z: 1
+        }
+
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 20 * scaleFactor
@@ -340,21 +367,19 @@ Rectangle {
                         font.pixelSize: 14 * scaleFactor
                         
                         focus: true
-                        
-                        onAccepted: sddm.login(userModel.lastUser, passwordBox.text, sessionModel.lastIndex)
-                        Keys.onPressed: {
-                            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                sddm.login(userModel.lastUser, passwordBox.text, sessionModel.lastIndex)
-                                event.accepted = true
-                            }
-                        }
+
+                        onAccepted: sddm.login(avatarRect.displayUser, passwordBox.text, sessionList.currentIndex)
+
+                        // Clear any stale auth-failure banner as soon as the
+                        // user starts typing again.
+                        onTextChanged: errorMessage.text = ""
                     }
-                    
+
                     Text {
                         anchors.fill: parent
                         anchors.margins: 15 * scaleFactor
                         verticalAlignment: Text.AlignVCenter
-                        text: "Password..."
+                        text: textConstants.promptPassword
                         color: Qt.rgba(root.mOnSurfaceVariant.r, root.mOnSurfaceVariant.g, root.mOnSurfaceVariant.b, 0.5)
                         font.pixelSize: 14 * scaleFactor
                         visible: !passwordBox.text && !passwordBox.activeFocus
@@ -380,7 +405,7 @@ Rectangle {
                         verticalAlignment: Text.AlignVCenter
                     }
                     
-                    onClicked: sddm.login(userModel.lastUser, passwordBox.text, sessionModel.lastIndex)
+                    onClicked: sddm.login(avatarRect.displayUser, passwordBox.text, sessionList.currentIndex)
                 }
             }
             
@@ -451,24 +476,32 @@ Rectangle {
                 
                 Item { Layout.fillWidth: true } // Spacer
                 
-                // Power Buttons
+                // Power Buttons. `enabled` is gated on the matching capability
+                // flag exposed by the sddm proxy — on systems where logind
+                // denies the action (restricted VMs, enterprise polkit rules)
+                // the button renders dimmed rather than silently no-op'ing.
                 Repeater {
                     model: [
-                        { text: "Suspend", type: "suspend" },
-                        { text: "Reboot", type: "reboot" },
-                        { text: "Shutdown", type: "shutdown" }
+                        { text: "Suspend",  type: "suspend",  cap: "canSuspend"  },
+                        { text: "Reboot",   type: "reboot",   cap: "canReboot"   },
+                        { text: "Shutdown", type: "shutdown", cap: "canPowerOff" }
                     ]
-                    
+
                     delegate: Controls.Button {
                         text: modelData.text
                         Layout.preferredHeight: 36 * scaleFactor
                         Layout.preferredWidth: 100 * scaleFactor
-                        
+
+                        enabled: modelData.cap === "canSuspend"  ? sddm.canSuspend
+                               : modelData.cap === "canReboot"   ? sddm.canReboot
+                                                                 : sddm.canPowerOff
+                        opacity: enabled ? 1.0 : 0.4
+
                         background: Rectangle {
                             color: parent.down ? Qt.darker(root.mSurfaceVariant, 1.2) : root.mSurfaceVariant
                             radius: 8 * scaleFactor
                         }
-                        
+
                         contentItem: Text {
                             text: parent.text
                             font.pixelSize: root.fontSizeM
@@ -476,7 +509,7 @@ Rectangle {
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
-                        
+
                         onClicked: {
                             if (modelData.type === "suspend") {
                                 sddm.suspend()
@@ -519,7 +552,20 @@ Rectangle {
         target: sddm
         function onLoginFailed() {
             passwordBox.text = ""
-            errorMessage.text = "Authentication failed"
+            errorMessage.text = textConstants.loginFailed
+        }
+        function onLoginSucceeded() {
+            // Clear the plaintext password out of the QString heap before
+            // the greeter tears down — hygiene, not a security boundary.
+            passwordBox.text = ""
+            errorMessage.text = ""
+        }
+        function onInformationMessage(message) {
+            // PAM relays non-failure notices through here — "password
+            // expires in N days", "account locked", "change required",
+            // etc. Surfacing them matters; silently dropping leaves the
+            // user confused about a refused or partially-succeeded login.
+            errorMessage.text = message
         }
     }
 }

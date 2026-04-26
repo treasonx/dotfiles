@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# SDDM's Wayland compositor command. Resolves the DRM card with a connected
+# display at boot, then execs weston against it. Installed to
+# /usr/local/libexec/sddm-weston by ~/dotfiles/fix_sddm.
+#
+# Why a wrapper instead of CompositorCommand=weston --drm-device=cardN:
+#   /dev/dri/cardN numbering is not stable across reboots — it shifts with
+#   kernel module load order and hardware changes. Hardcoding cardN in the
+#   SDDM conf caused a black screen on this laptop when weston picked the
+#   unconnected dGPU. We resolve the card fresh every boot instead.
+#
+# Selection heuristic (matches Weston's own behaviour but earlier in the
+# pipeline, so we can log it): first card whose non-Writeback connector
+# reports "connected" in /sys/class/drm. Falls through to weston's default
+# (boot_vga / seat0) if nothing is connected — better than refusing to start.
+
+set -u
+
+pick_card() {
+    local status connector
+    for status in /sys/class/drm/card*-*/status; do
+        [ -r "$status" ] || continue
+        [ "$(cat "$status" 2>/dev/null)" = "connected" ] || continue
+        connector=$(basename "$(dirname "$status")")
+        case "$connector" in *Writeback*) continue ;; esac
+        printf '%s\n' "${connector%%-*}"
+        return 0
+    done
+    return 1
+}
+
+if card=$(pick_card); then
+    printf 'sddm-weston: picked /dev/dri/%s\n' "$card" >&2
+    exec weston --shell=kiosk --xwayland --drm-device="$card" "$@"
+fi
+
+printf 'sddm-weston: no connected DRM output — falling back to weston default\n' >&2
+exec weston --shell=kiosk --xwayland "$@"
