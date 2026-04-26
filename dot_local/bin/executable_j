@@ -68,6 +68,7 @@ SCRIPTS = [
     "transcode_video:Transcode videos to H.265 1080p MP4 via HandBrake",
     "v:Open file in nvim by fuzzy name match",
     "weather:Display weather via rustormy",
+    "zellij_clean:Delete exited zellij sessions in bulk",
 ]
 
 # Scripts NOT in the j picker (still work standalone):

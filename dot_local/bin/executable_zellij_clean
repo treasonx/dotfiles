@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+"""Bulk-clean exited zellij sessions.
+
+Wraps `zellij delete-all-sessions -y` with a preview of what will be
+removed. `zellij ls` tags dead sessions with "EXITED - attach to
+resurrect"; `delete-all-sessions` (without -f) only touches those, so
+running sessions are always left alone.
+"""
+
+import re
+import subprocess
+import sys
+
+from j_lib import JParser
+
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def list_sessions() -> tuple[list[str], list[str]]:
+    """Return (exited_names, running_names) by parsing `zellij ls`.
+
+    Output lines look like:
+      name [Created Xs ago] (EXITED - attach to resurrect)
+      name [Created Xs ago]
+    ANSI color codes are stripped first.
+    """
+    result = subprocess.run(
+        ["zellij", "ls"],
+        capture_output=True,
+        text=True,
+    )
+    # zellij exits non-zero when there are no sessions — that's fine.
+    if result.returncode != 0 and "No" in result.stderr:
+        return [], []
+
+    exited, running = [], []
+    for raw in result.stdout.splitlines():
+        line = ANSI_RE.sub("", raw).strip()
+        if not line:
+            continue
+        name = line.split(None, 1)[0]
+        if "EXITED" in line:
+            exited.append(name)
+        else:
+            running.append(name)
+    return exited, running
+
+
+def main() -> int:
+    parser = JParser(description="Delete exited zellij sessions in bulk")
+    parser.add_argument(
+        "--dry-run",
+        "-n",
+        action="store_true",
+        help="Show what would be deleted without deleting",
+    )
+    args = parser.run()
+
+    exited, running = list_sessions()
+
+    if not exited and not running:
+        print("No zellij sessions found.")
+        return 0
+
+    if exited:
+        print(f"Exited sessions ({len(exited)}):")
+        for name in exited:
+            print(f"  - {name}")
+    else:
+        print("No exited sessions.")
+
+    if running:
+        print(f"\nRunning sessions ({len(running)}) — will be left alone:")
+        for name in running:
+            print(f"  - {name}")
+
+    if not exited:
+        print("\nNothing to clean.")
+        return 0
+
+    if args.dry_run:
+        print(f"\nDry run — would delete {len(exited)} exited session(s).")
+        return 0
+
+    # Without -f, zellij delete-all-sessions only removes EXITED sessions.
+    cmd = ["zellij", "delete-all-sessions", "-y"]
+    print(f"\nRunning: {' '.join(cmd)}")
+    result = subprocess.run(cmd)
+    if result.returncode != 0:
+        print("zellij delete-all-sessions failed.", file=sys.stderr)
+        return result.returncode
+
+    print(f"Cleaned {len(exited)} exited session(s).")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

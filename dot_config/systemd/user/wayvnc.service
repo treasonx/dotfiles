@@ -1,0 +1,18 @@
+[Unit]
+Description=wayvnc VNC server for niri (localhost only, SSH-tunnelled)
+PartOf=graphical-session.target
+After=graphical-session.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/start_wayvnc
+# Respawn on-failure only: a clean shutdown means the operator stopped it.
+# niri restart drops the wayland connection and wayvnc exits non-zero,
+# so this also handles compositor churn.
+Restart=on-failure
+RestartSec=3s
+
+[Install]
+WantedBy=graphical-session.target

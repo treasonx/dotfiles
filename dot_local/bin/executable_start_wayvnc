@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+"""Start wayvnc attached to the running niri compositor.
+
+niri exposes two sockets in XDG_RUNTIME_DIR: the standard wayland-<N>
+protocol socket (what wayland clients speak), and niri.wayland-<N>.<pid>.sock
+(niri's private IPC used by `niri msg`). wayvnc needs the former — pointing
+it at the IPC socket hangs forever in the wl_display handshake.
+
+This wrapper picks the standard socket and execs wayvnc bound to 127.0.0.1
+only — remote access is expected through an SSH tunnel, not the network.
+"""
+
+import os
+import sys
+from pathlib import Path
+
+from j_lib import JParser
+
+parser = JParser(description="Start wayvnc bound to 127.0.0.1 for SSH tunneling")
+parser.add_argument(
+    "--port", "-p", default="5900", help="TCP port to listen on (default: 5900)"
+)
+parser.add_argument(
+    "--bind", "-b", default="127.0.0.1", help="Address to bind (default: 127.0.0.1)"
+)
+parser.add_argument(
+    "--log-level", "-L", default="info",
+    choices=["quiet", "error", "warning", "info", "debug", "trace"],
+    help="wayvnc log level (default: info)",
+)
+args = parser.run()
+
+runtime_dir = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}")
+
+# Standard wayland sockets are unix sockets named wayland-<N> with a matching
+# wayland-<N>.lock file. Skip niri.wayland-*.sock (niri's IPC, not wayland).
+sockets = sorted(
+    p for p in runtime_dir.glob("wayland-*")
+    if p.is_socket() and not p.name.endswith(".lock")
+)
+if not sockets:
+    sys.exit(f"No wayland socket found in {runtime_dir}")
+
+os.environ["XDG_RUNTIME_DIR"] = str(runtime_dir)
+os.environ["WAYLAND_DISPLAY"] = sockets[0].name
+
+os.execvp(
+    "wayvnc",
+    ["wayvnc", "-L", args.log_level, args.bind, args.port],
+)
