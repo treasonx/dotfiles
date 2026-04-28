@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-Toggle screen recording via wl-screenrec.
+Toggle screen recording via gpu-screen-recorder.
 
-Uses the wlr-screencopy protocol (not xdg-desktop-portal), so it sidesteps
-the PipeWire DMA-BUF negotiation issues that break Kooha on niri.
+Hardware-accelerated capture (VAAPI on the AMD 7900). gpu-screen-recorder
+talks to KMS directly when needed and doesn't depend on xdg-desktop-portal,
+sidestepping PipeWire DMA-BUF negotiation issues on niri.
 
-Second invocation stops the active recording, flushes the MP4, copies the
-resulting path to the Wayland clipboard, and fires a desktop notification.
+Second invocation sends SIGINT, which gpu-screen-recorder handles by
+flushing the muxer cleanly. The resulting path is copied to the Wayland
+clipboard and a desktop notification fires.
 
 Recordings land in ~/Videos/Screenrecs/.
 """
@@ -59,8 +61,12 @@ def focused_output() -> str:
 
 
 def pick_region() -> str:
-    # slurp prints "x,y WxH" which wl-screenrec consumes directly via -g.
-    result = subprocess.run(["slurp"], capture_output=True, text=True)
+    # gpu-screen-recorder expects WxH+X+Y; slurp's default is "X,Y WxH",
+    # so override the format string.
+    result = subprocess.run(
+        ["slurp", "-f", "%wx%h+%x+%y"],
+        capture_output=True, text=True,
+    )
     if result.returncode != 0:
         raise SystemExit("Region selection cancelled")
     return result.stdout.strip()
@@ -74,36 +80,43 @@ def start(mode: str, audio: bool) -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     filename = OUTPUT_DIR / dt.datetime.now().strftime("Screenrec %Y-%m-%d %H-%M-%S.mp4")
 
-    # low-power mode isn't implemented on the Phoenix iGPU; skip the failing probe.
-    cmd = ["wl-screenrec", "-f", str(filename), "--low-power", "off"]
+    cmd = ["gpu-screen-recorder", "-o", str(filename), "-f", "60", "-cursor", "yes"]
     if mode == "region":
-        cmd += ["-g", pick_region()]
+        cmd += ["-w", "region", "-region", pick_region()]
         label = "region"
     elif mode == "output":
         out = focused_output()
-        cmd += ["-o", out]
+        cmd += ["-w", out]
         label = f"output {out}"
     else:
         raise SystemExit(f"Unknown mode: {mode}")
 
     if audio:
-        cmd += ["--audio"]
+        cmd += ["-a", "default_output"]
         label += " + audio"
 
-    # Start detached so the recording survives this script exiting.
-    # setsid + start_new_session so SIGINT to the parent shell doesn't hit it.
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
+    # Stderr -> log file so we can diagnose failures without losing the message
+    # to journald's per-scope buffering. Truncated each start.
+    log_path = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "screenrec.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_fh = open(log_path, "w")
+
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=log_fh,
+            stderr=log_fh,
+            start_new_session=True,
+        )
+    except FileNotFoundError as exc:
+        notify("Recording failed to start", f"{exc.filename} not found on PATH", "critical")
+        raise
 
     # Brief sanity check — if it dies immediately, report failure.
-    time.sleep(0.3)
+    time.sleep(0.5)
     if proc.poll() is not None:
         notify("Recording failed to start",
-               f"wl-screenrec exited {proc.returncode}. Check `journalctl --user`.",
+               f"gpu-screen-recorder exited {proc.returncode}. See {log_path}.",
                "critical")
         raise SystemExit(proc.returncode or 1)
 
