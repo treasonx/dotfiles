@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# One-off: disable AMD Display Core Panel Self Refresh via kernel cmdline.
+#
+# Adds `amdgpu.dcdebugmask=0x10` to GRUB_CMDLINE_LINUX (bit 4 = DC_DISABLE_PSR)
+# and regenerates the grub config. Does NOT reboot — reboot manually after.
+#
+# Background: admin/james_ark_problems.md. With PSR off, the GPU streams frames
+# continuously instead of letting the monitor self-refresh, so the HDMI link
+# stays trained and wake/boot doesn't fail link-training on the Ark.
+#
+# Idempotent: safe to re-run; no-ops if the flag is already present.
+#
+# Usage:
+#   sudo bash ~/.local/share/chezmoi/admin/disable_amd_psr
+#
+# Rollback:
+#   sudo cp /etc/default/grub.bak-amdpsr /etc/default/grub
+#   sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+#   sudo systemctl reboot
+# ---------------------------------------------------------------------------
+
+set -euo pipefail
+
+GRUB_DEFAULTS=/etc/default/grub
+GRUB_CFG=/boot/grub2/grub.cfg
+FLAG='amdgpu.dcdebugmask=0x10'
+BACKUP="${GRUB_DEFAULTS}.bak-amdpsr"
+
+log()  { printf '\e[1;34m==> %s\e[0m\n' "$*"; }
+warn() { printf '\e[1;33m!!  %s\e[0m\n' "$*" >&2; }
+err()  { printf '\e[1;31mxx  %s\e[0m\n' "$*" >&2; exit 1; }
+
+[[ $EUID -eq 0 ]] || err "Must run as root. Try: sudo bash $0"
+[[ -f "$GRUB_DEFAULTS" ]] || err "Missing $GRUB_DEFAULTS"
+[[ -f "$GRUB_CFG"      ]] || err "Missing $GRUB_CFG (UEFI? path differs on EFI boots)"
+
+# 1. Idempotency check — if already there, skip the edit.
+if grep -qE "^GRUB_CMDLINE_LINUX=.*${FLAG//./\\.}" "$GRUB_DEFAULTS"; then
+    log "GRUB_CMDLINE_LINUX already contains ${FLAG} — no edit needed."
+else
+    # 2. Back up the original (only on first run; don't clobber an earlier backup).
+    if [[ ! -f "$BACKUP" ]]; then
+        cp -a "$GRUB_DEFAULTS" "$BACKUP"
+        log "Backed up to $BACKUP"
+    else
+        log "Backup already exists at $BACKUP — leaving it alone."
+    fi
+
+    # 3. Append the flag inside the existing GRUB_CMDLINE_LINUX="..." quotes.
+    #    Inserts a leading space so it joins cleanly with whatever's already there.
+    log "Appending ${FLAG} to GRUB_CMDLINE_LINUX"
+    sed -i -E "/^GRUB_CMDLINE_LINUX=\"/ s/\"\s*\$/ ${FLAG}\"/" "$GRUB_DEFAULTS"
+
+    # 4. Verify the edit took.
+    if ! grep -qE "^GRUB_CMDLINE_LINUX=.*${FLAG//./\\.}" "$GRUB_DEFAULTS"; then
+        err "Edit failed — GRUB_CMDLINE_LINUX line not in expected format. Inspect $GRUB_DEFAULTS manually."
+    fi
+fi
+
+# 5. Show the resulting cmdline line so the user can eyeball it.
+log "Current GRUB_CMDLINE_LINUX:"
+grep '^GRUB_CMDLINE_LINUX' "$GRUB_DEFAULTS" | sed 's/^/    /'
+
+# 6. Regenerate the bootloader config. On Fedora this path works for both
+#    BIOS and UEFI (the EFI build uses a stub at /boot/efi/.../grub.cfg that
+#    chains to /boot/grub2/grub.cfg).
+log "Regenerating $GRUB_CFG"
+grub2-mkconfig -o "$GRUB_CFG" >/dev/null
+
+cat <<DONE
+
+$(printf '\e[1;32m✔\e[0m') Done. Reboot to apply.
+
+After reboot, verify with:
+  cat /sys/module/amdgpu/parameters/dcdebugmask    # expect: 16
+  grep -o 'amdgpu\.[^ ]*' /proc/cmdline             # expect: amdgpu.dcdebugmask=0x10
+
+DONE

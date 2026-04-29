@@ -6,10 +6,18 @@
 # To force this run_once script to re-execute, bump the version tag below —
 # chezmoi hashes the rendered script and skips it if unchanged.
 #
+# v4 2026-04-26  skip on desktop (amdgpu/weston crash on cold boot, see
+#                 admin/james_desktop.md). Desktop stays on GDM.
 # v3 2026-04-22  delegate to fix_sddm; new dynamic-GPU wrapper installed
 # v2 2026-04-21  relax greeter validation (exit code → log content heuristic)
 # v1 2026-04-21  initial install
 # -----------------------------------------------------------------------------
 
 set -euo pipefail
+
+{{- if ne .machine "laptop" }}
+echo "Skipping SDDM/Noctalia install on machine={{ .machine }} (see admin/james_desktop.md)."
+exit 0
+{{- end }}
+
 exec bash "{{ .chezmoi.sourceDir }}/fix_sddm"
