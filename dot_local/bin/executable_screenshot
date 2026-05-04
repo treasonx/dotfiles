@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+"""Region screenshot with grim+slurp, edit in swappy.
+
+Niri binds Mod+Shift+S to `screenshot --swappy`. The flag is preserved
+for parity with the old hyprland invocation; this is the only mode the
+script supports. swappy itself handles the save dialog.
+"""
+
+import subprocess
+import sys
+import tempfile
+
+from j_lib import JParser
+
+
+def main() -> int:
+    parser = JParser(description="Region screenshot with swappy editor")
+    parser.add_argument(
+        "--swappy",
+        action="store_true",
+        help="Compatibility flag (no-op; swappy is always used)",
+    )
+    parser.run()
+
+    region = subprocess.run(["slurp"], capture_output=True, text=True, check=False)
+    if region.returncode != 0 or not region.stdout.strip():
+        return 0
+
+    with tempfile.NamedTemporaryFile(suffix=".png") as tmp:
+        subprocess.run(["grim", "-g", region.stdout.strip(), tmp.name], check=True)
+        subprocess.run(
+            [
+                "notify-send",
+                "-h",
+                "string:x-canonical-private-synchronous:shot-notify",
+                "-u",
+                "low",
+                "Screenshot",
+                "Region captured — opening swappy",
+            ],
+            check=False,
+        )
+        subprocess.run(["swappy", "-f", tmp.name], check=False)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

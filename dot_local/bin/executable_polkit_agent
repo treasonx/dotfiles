@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+"""Find and exec the system's polkit authentication agent.
+
+Tries known agent paths in order; execs the first one found. Niri spawns
+this at startup so GUI apps can prompt for sudo / privilege escalation.
+"""
+
+import os
+import sys
+
+from j_lib import JParser
+
+POLKIT_PATHS = [
+    "/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1",
+    "/usr/lib/polkit-kde-authentication-agent-1",
+    "/usr/lib/polkit-gnome-authentication-agent-1",
+    "/usr/libexec/polkit-gnome-authentication-agent-1",
+    "/usr/lib/x86_64-linux-gnu/libexec/polkit-kde-authentication-agent-1",
+    "/usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1",
+]
+
+parser = JParser(description="Launch the system polkit authentication agent")
+parser.run()
+
+for path in POLKIT_PATHS:
+    if os.path.exists(path):
+        os.execv(path, [path])
+
+print("No polkit authentication agent found", file=sys.stderr)
+sys.exit(1)

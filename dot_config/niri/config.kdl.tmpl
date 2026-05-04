@@ -1,4 +1,4 @@
-// niri config — parallel to dot_config/hypr/hyprland.conf.tmpl
+// niri compositor config
 // https://yalter.github.io/niri/Configuration:-Introduction
 
 input {
@@ -58,7 +58,7 @@ output "DP-3" {
 
 layout {
     gaps 12
-    center-focused-column "on-overflow"
+    center-focused-column "never"
 
     preset-column-widths {
         proportion 0.5
@@ -167,8 +167,8 @@ screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
 spawn-at-startup "dbus-update-activation-environment" "--systemd" "WAYLAND_DISPLAY" "XDG_CURRENT_DESKTOP"
 spawn-at-startup "systemctl" "--user" "import-environment" "WAYLAND_DISPLAY" "XDG_CURRENT_DESKTOP"
 
-// Polkit agent (from hyprland stack — it's just a polkit-gnome launcher)
-spawn-at-startup "/home/james/.config/hypr/scripts/Polkit.sh"
+// Polkit agent — launches polkit-gnome (or kde) so GUI apps can prompt for sudo.
+spawn-at-startup "polkit_agent"
 
 // Noctalia shell (bar, notifications, lock screen, wallpaper, control center,
 // session menu). Runs via the noctalia-qs Quickshell fork; config lives at
@@ -225,13 +225,13 @@ layer-rule {
 
 // === Window rules ===
 
-// Global: rounded corners + subtle inactive opacity to match hyprland look
+// Global: rounded corners + clip surface contents to the rounded geometry.
 window-rule {
     geometry-corner-radius 15
     clip-to-geometry true
 }
 
-// Float rules (ported 1:1 from hyprland windowrulev2 float entries)
+// Float rules — apps that should always open as floating windows.
 window-rule { match app-id=r#"(?i)thunar"# title="File Operation Progress"; open-floating true; }
 window-rule { match app-id=r#"(?i)thunar"# title="Confirm to replace files"; open-floating true; }
 window-rule { match app-id=r#"xdg-desktop-portal-gtk"#; open-floating true; }
@@ -321,11 +321,11 @@ binds {
     //od+Shift+S     { screenshot; }
     Ctrl+Print      { screenshot-screen; }
     Alt+Print       { screenshot-window; }
-    Mod+Shift+S   { spawn "/home/james/.config/hypr/scripts/ScreenShot.sh" "--swappy"; }
+    Mod+Shift+S   { spawn "screenshot" "--swappy"; }
 
     // Window management
     Mod+Q repeat=false { close-window; }
-    Mod+Shift+Q        { spawn "/home/james/.config/hypr/scripts/KillActiveProcess.sh"; }
+    Mod+Shift+Q        { spawn "kill_active_process"; }
     Mod+F              { toggle-window-floating; }
     // Mod+Shift+F     { fullscreen-window; }
     Mod+Shift+F        { maximize-column; }
@@ -401,7 +401,7 @@ binds {
     // Overview
     Mod+O repeat=false { toggle-overview; }
 
-    // Audio (mirrors hyprland binds)
+    // Audio
     XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 0.01+"; }
     XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.01-"; }
     XF86AudioMute        allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"; }

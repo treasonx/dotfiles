@@ -72,10 +72,12 @@ SCRIPTS = [
 ]
 
 # Scripts NOT in the j picker (still work standalone):
-# Hyprland — launched by exec-once, keybinds, or portals:
-#   cycle_windows, doorbell_popup, fix_layout, hypr_zoom, hypr_zoomd,
+# Niri — launched by spawn-at-startup, keybinds, or portals:
+#   doorbell_popup, kill_active_process, polkit_agent, screenshot
+# Hyprland leftovers (pending removal):
+#   cycle_windows, fix_layout, hypr_zoom, hypr_zoomd,
 #   save_layout, screenshare_picker, start_ags, startup_layout
-# AGS internals — called programmatically by the shell:
+# AGS internals — called programmatically by the shell (pending removal):
 #   clipboard_history, list_recent_files, list_wallpapers, perplexity_chat, wezterm_panes
 # Git aliases — invoked as `git wt` / `git wtr`:
 #   git-wt, git-wtr
