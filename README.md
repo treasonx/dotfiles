@@ -27,7 +27,7 @@ chezmoi cd                 # cd into the source repo
 - **Shell:** zsh, aliases, oh-my-zsh
 - **Editors:** neovim
 - **Terminals:** ghostty, wezterm, kitty
-- **Hyprland:** compositor, waybar, rofi, swaync, wlogout, wallust, hyprlock, hypridle
+- **Compositor + shell:** niri (compositor), Noctalia (bar, launcher, notifications, lock, wallpaper)
 - **Dev tools:** git, lazygit, lazydocker, zellij, btop
 - **AI:** Claude Code (CLAUDE.md), Claude Desktop (MCP config)
 - **System info:** fastfetch
@@ -35,8 +35,7 @@ chezmoi cd                 # cd into the source repo
 ## Machine-Specific Config
 
 Templates handle desktop vs laptop differences:
-- **monitors.conf** — multi-monitor NVIDIA (desktop) vs single/external (laptop)
-- **hyprland.conf** — NVIDIA env vars, workspace-to-monitor bindings
+- **niri/config.kdl** — outputs, touchpad, NVIDIA env vars on desktop
 - Machine type is set during `chezmoi init` and stored in `~/.config/chezmoi/chezmoi.toml`
 
 ## Secrets

@@ -1,145 +1,109 @@
 # Keybinding Cheatsheet
 
-`Super` = the Windows/Meta key. All Hyprland bindings use it as the primary modifier.
+`Super` (also called `Mod`) = the Windows/Meta key. All niri bindings use it as the primary modifier.
+
+niri is a **scrollable-tiling** compositor: windows live in *columns* on horizontal *workspaces* that you scroll left/right through. Workspaces stack vertically — `Super+Up`/`Down` moves between them.
 
 ## Session
 
 | Keys | Action | Mnemonic |
 |------|--------|----------|
-| `Ctrl+Alt+Delete` | Exit Hyprland | Same as the classic "reboot" combo — nuclear option |
-| `Ctrl+Alt+L` | Lock screen | **L**ock |
-| `Ctrl+Alt+P` | Power/logout menu (wlogout) | **P**ower |
+| `Ctrl+Alt+Delete` | Exit niri | Same as the classic "reboot" combo — nuclear option |
+| `Super+Shift+E` | Exit niri | **E**xit |
+| `Super+L` | Open Noctalia session menu (lock, suspend, logout) | **L**ock / leave |
+| `Super+Shift+P` | Power off monitors (DPMS) | **P**ower off |
 
 ## Window Management
 
 | Keys | Action | Mnemonic |
 |------|--------|----------|
 | `Super+Q` | Close focused window | **Q**uit |
-| `Super+Shift+Q` | Force kill focused window | Shift = stronger **Q**uit |
-| `Super+F` | Toggle float and center | **F**loat |
+| `Super+Shift+Q` | SIGTERM the focused window's process | Shift = stronger **Q**uit |
+| `Super+F` | Toggle window floating | **F**loat |
+| `Super+Shift+F` | Maximize column | **F**ill |
+| `Super+C` | Recenter floating windows after a monitor change | **C**enter |
+| `Super+Tab` / `Super+Shift+Tab` | Recent-windows switcher (Alt+Tab style) | Tab through recents |
 
 ## Applications
 
 | Keys | Action | Mnemonic |
 |------|--------|----------|
-| `Super+Return` | Open terminal (Ghostty) | Return/Enter = "go" — opens your home base |
+| `Super+Return` | Open terminal (Ghostty) | Return = "go" |
 | `Super+T` | Open file manager (Thunar) | **T**hunar |
 | `Super+Space` | App launcher (Vicinae) | Space = the "do anything" key |
-| `Super+Alt+C` | Calculator (rofi) | **C**alculate |
 
-## Features & Panels
+## Noctalia Overlays
 
 | Keys | Action | Mnemonic |
 |------|--------|----------|
-| `Super+H` | Show keybinding hints | **H**elp / **H**ints |
-| `Super+Alt+R` | Refresh widgets (waybar, swaync, ags) | **R**efresh |
-| `Super+Alt+E` | Emoji picker | **E**moji |
-| `Super+Alt+V` | Clipboard history | Paste = Ctrl+**V**, so Alt+**V** = clipboard manager |
-| `Super+Shift+N` | Toggle notification center | **N**otifications |
-| `Super+E` | Quick config editor menu | **E**dit |
 | `Super+W` | Wallpaper picker | **W**allpaper |
-| `Super+B` | Toggle waybar visibility | **B**ar |
-| `Super+L` | Turn off displays (DPMS) | **L**ights out |
+| `Super+B` | Control center (audio, brightness, etc.) | **B**ar / control |
+| `Super+/` | Notification history | Slash = "search" through notifications |
 
-## Layout (Dwindle/Master)
-
-| Keys | Action | Mnemonic |
-|------|--------|----------|
-| `Super+Alt+L` | Switch layout (dwindle/master) | **L**ayout |
-| `Super+Ctrl+D` | Remove from master stack | **D**emote from master |
-| `Super+I` | Add to master stack | **I**nsert into master |
-| `Super+J` | Focus next window | **J** = down in vim |
-| `Super+K` | Focus previous window | **K** = up in vim |
-| `Super+M` | Set split ratio to 0.3 | **M**aster ratio (shrink master) |
-| `Super+P` | Toggle pseudo-tiling | **P**seudo |
-| `Super+Ctrl+Return` | Swap focused with master | Return to master / send to master |
-
-## hy3: Groups and Splits (Ghostty-style)
-
-These mirror Ghostty's split/tab bindings — same concept, different modifier.
+## Columns (horizontal scrolling within a workspace)
 
 | Keys | Action | Mnemonic |
 |------|--------|----------|
-| `Super+Shift+T` | Group as tabs | **T**ab group — like `Ctrl+Shift+T` (new tab) in Ghostty |
-| `Super+Shift+_` | Split horizontally | Underscore is a **horizontal line** — splits left/right |
-| `Super+Shift+\|` | Split vertically | Pipe is a **vertical line** — splits top/bottom |
-| `Super+Shift+A` | Ungroup (untab) | Un-**A**ssemble the group |
-| `Super+O` | Toggle split direction | **O**pposite orientation |
+| `Super+Left` / `Super+Right` | Focus column left / right | Arrow direction |
+| `Super+Shift+Left` / `Super+Shift+Right` | Move column left / right | Shift = carry |
+| `Super+Home` / `Super+End` | Focus first / last column | |
+| `Super+R` | Cycle column width (50% → 66% → 100%) | **R**esize column |
+| `Super+Shift+R` | Cycle window height in column | **R**esize height |
+| `Super+Ctrl+R` | Reset window height | **R**eset |
+| `Super+,` / `Super+.` | Consume window into / expel from column | Comma in, period out |
+| `Super+[` / `Super+]` | Consume or expel window from neighbouring column | |
 
-### Ghostty Comparison
-
-| Concept | Ghostty | Hyprland |
-|---------|---------|----------|
-| New tab | `Ctrl+Shift+T` | `Super+Shift+T` |
-| Horizontal split | `Ctrl+Shift+-` | `Super+Shift+_` |
-| Vertical split | `Ctrl+Shift+\`| `Super+Shift+\|` |
-| Navigate splits | `Ctrl+Shift+H/J/K/L` | `Super+J/K` (cycle) |
-
-## hy3: Tab Navigation
+## Workspaces (vertical)
 
 | Keys | Action | Mnemonic |
 |------|--------|----------|
-| `Super+Tab` | Next tab (wrap) | Tab = cycle forward through tabs |
-| `Super+Shift+Tab` | Previous tab (wrap) | Shift+Tab = cycle backward (reverse) |
-| `Alt+Tab` | Cycle windows + raise | Classic Alt+Tab window switcher |
+| `Super+Up` / `Super+Down` | Focus workspace above / below | |
+| `Super+K` / `Super+J` | Same, vim-style (laptop-friendly) | K up, J down |
+| `Super+Shift+Up` / `Super+Shift+Down` | Move column to workspace above / below | Shift = carry |
+| `Super+1`–`Super+9` | Jump to workspace 1–9 | |
+| `Super+Shift+1`–`Super+Shift+9` | Move current column to workspace N | |
+| `Super+ScrollWheel` | Scroll between workspaces | |
+| `Super+O` | Toggle overview | **O**verview |
 
-## Move Windows
-
-| Keys | Action | Mnemonic |
-|------|--------|----------|
-| `Super+Ctrl+Arrow` | Move window in direction | Ctrl = **c**ommand the window to move |
-
-## Resize Windows
+## Multi-Monitor
 
 | Keys | Action | Mnemonic |
 |------|--------|----------|
-| `Super+Shift+Arrow` | Resize in direction (repeatable) | Shift = **s**tretch the window edge |
+| `Super+Alt+Left/Right/Up/Down` | Focus the monitor in that direction | Alt = "monitor" axis |
 
-## Mouse
-
-| Keys | Action | Mnemonic |
-|------|--------|----------|
-| `Super+Left Click` | Drag to move window | Left click = grab and move |
-| `Super+Right Click` | Drag to resize window | Right click = context/adjust |
-
-## Workspaces
+## Output Scale (live)
 
 | Keys | Action | Mnemonic |
 |------|--------|----------|
-| `Super+1-4` | Switch to workspace 1-4 | Number = workspace number |
-| `Super+Right` | Next workspace | Arrow direction = workspace direction |
-| `Super+Left` | Previous workspace | Arrow direction = workspace direction |
+| `Super+=` | Increase scale by 0.25 | Equals = grow |
+| `Super+-` | Decrease scale by 0.25 | Minus = shrink |
+| `Super+0` | Reset scale to 1.5 | 0 = neutral |
 
 ## Screenshot & Recording
 
 | Keys | Action | Mnemonic |
 |------|--------|----------|
-| `Super+Shift+S` | Screenshot with annotation (swappy) | **S**creenshot — like Windows Snipping Tool |
-| `Super+S` | Screen recording (Kooha) | **S**creen record (without Shift = video) |
-
-## Utilities
-
-| Keys | Action | Mnemonic |
-|------|--------|----------|
-| `Super+Z` | Toggle zoom (pyprland) | **Z**oom |
-| `Super+V` | Toggle security camera view | **V**ideo feed |
-| `Super+C` | Rescue off-screen floating windows | **C**atch runaway windows |
+| `Super+Shift+S` | Region screenshot, edit in swappy | **S**creenshot |
+| `Ctrl+Print` | Whole-screen screenshot (niri-native) | |
+| `Alt+Print` | Window screenshot (niri-native) | |
+| `Super+S` | Region screen recording (gpu-screen-recorder) | **S**creen record |
+| `Super+Alt+S` | Whole-output screen recording | |
+| `Super+Shift+Alt+S` | Whole-output recording **with audio** | |
 
 ## Audio (Media Keys)
 
 | Keys | Action | Mnemonic |
 |------|--------|----------|
-| `Volume Up` | Raise volume | Hardware key |
-| `Volume Down` | Lower volume | Hardware key |
-| `Mute` | Toggle mute | Hardware key |
+| `Volume Up` / `Down` | Raise / lower volume (1% steps, capped at 150%) | Hardware key |
+| `Mute` | Toggle output mute | Hardware key |
+| `Mic Mute` | Toggle microphone mute | Hardware key |
+| `Brightness Up` / `Down` | Laptop screen brightness | Laptop only |
 
 ## Modifier Logic
 
-A quick way to remember which modifier does what:
-
 | Modifier | Meaning | Examples |
-|----------|---------|---------|
-| `Super` alone | Primary action | `Q` quit, `F` float, `Return` terminal |
-| `Super+Shift` | Stronger/related variant | `Q` force kill, `S` screenshot, `_` split |
-| `Super+Alt` | Utilities and panels | `R` refresh, `E` emoji, `V` clipboard |
-| `Super+Ctrl` | Structural changes | Move windows, remove master, swap master |
+|----------|---------|----------|
+| `Super` alone | Primary action / focus / navigate | `Q` quit, `F` float, `Up` workspace up |
+| `Super+Shift` | "Carry" or stronger variant | move column with arrows, `Shift+Q` SIGTERM |
+| `Super+Alt` | Cross-monitor / alternate variant | `Alt+arrows` focus monitor, `Alt+S` record output |
+| `Super+Ctrl` | Reset / structural | `Ctrl+R` reset height |

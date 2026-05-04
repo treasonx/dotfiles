@@ -19,23 +19,21 @@ sudo dnf install chezmoi
 These third-party repos provide packages not in the official Fedora repos.
 
 ```bash
-# Hyprland ecosystem (compositor, lock, idle, portal, plugins)
-sudo dnf copr enable solopasha/hyprland
-
 # Ghostty terminal
 sudo dnf copr enable pgdev/ghostty
 
 # Lazygit TUI
 sudo dnf copr enable atim/lazygit
 
-# SwayNotificationCenter
-sudo dnf copr enable erikreider/SwayNotificationCenter
-
 # Vicinae app launcher
 sudo dnf copr enable dulikiles/vicinae
 
 # nwg-shell utilities (nwg-look, nwg-displays)
 sudo dnf copr enable tofik/nwg-shell
+
+# Terra (for Noctalia Shell + Quickshell — bootstrapped automatically by
+# install_noctalia_deps, listed here for reference)
+# sudo dnf install --repofrompath terra,https://repos.fyralabs.com/terra$releasever terra-release
 ```
 
 ## Third-Party Repos
@@ -58,34 +56,27 @@ sudo rpm --import https://downloads.1password.com/linux/keys/1password.asc
 
 ```bash
 sudo dnf install \
-  hyprland \
-  hyprlock \
-  hypridle \
-  hyprpicker \
-  xdg-desktop-portal-hyprland \
+  niri \
+  xdg-desktop-portal-gnome \
   xdg-desktop-portal-gtk \
-  waybar \
-  rofi-wayland \
-  SwayNotificationCenter \
-  wlogout \
-  swww \
   vicinae \
   polkit-gnome \
   xorg-x11-server-Xwayland
+
+# Noctalia shell + Quickshell runtime (uses Terra repo — the
+# install_noctalia_deps script bootstraps the repo and pulls everything)
+install_noctalia_deps
 ```
 
 **What these do:**
-- `hyprland` — Tiling Wayland compositor (the window manager)
-- `hyprlock` / `hypridle` — Screen lock and idle timeout daemon
-- `hyprpicker` — Color picker for Wayland
+- `niri` — Scrollable-tiling Wayland compositor
+- `noctalia-shell` + `noctalia-qs` — Quickshell-based desktop shell (bar,
+  launcher, notifications, control center, lock screen, wallpaper, session
+  menu) — installed via `install_noctalia_deps`
 - `xdg-desktop-portal-*` — Desktop integration (file dialogs, screen sharing)
-- `waybar` — Status bar (clock, workspaces, system tray, etc.)
-- `rofi-wayland` — App launcher and menu system
-- `SwayNotificationCenter` — Notification daemon (`swaync`)
-- `wlogout` — Power/logout menu
-- `swww` — Animated wallpaper daemon
-- `vicinae` — Hyprland app launcher (layer shell based)
+- `vicinae` — Layer-shell app launcher
 - `polkit-gnome` — Authentication dialogs for privilege escalation
+  (launched at niri startup by the `polkit_agent` helper)
 
 ### Terminal Emulators
 
@@ -180,7 +171,7 @@ sudo dnf install \
 
 - `pamixer` — CLI volume control
 - `playerctl` — CLI media player control (play/pause/next from keybinds)
-- `pavucontrol` — GUI volume mixer (opened from waybar right-click)
+- `pavucontrol` — GUI volume mixer
 
 ### Networking & Bluetooth
 
@@ -243,12 +234,12 @@ sudo dnf install \
   qalculate-gtk
 ```
 
-- `jq` — JSON processor (used heavily in Hyprland scripts)
+- `jq` — JSON processor
 - `ImageMagick` — Image conversion (`convert` command for WebP scripts)
 - `libnotify` — `notify-send` for desktop notifications
 - `ddccontrol` — Monitor brightness via DDC-CI protocol
 - `rsync` — File sync/transfer (used by `rsync_upload`)
-- `qalculate-gtk` — Calculator (backend for rofi calculator applet)
+- `qalculate-gtk` — Calculator
 
 ### Development
 
@@ -293,14 +284,8 @@ Used by scripts in `~/.local/bin/`:
 pip install --user websockets mutagen
 ```
 
-- `websockets` — Used by `camera_toggle`, `doorbell_popup`, `eufy_2fa`
+- `websockets` — Used by `doorbell_popup`, `eufy_2fa`
 - `mutagen` — Audio metadata library used by `copy_album`
-
-Pyprland (Hyprland plugin manager) is also installed via pip:
-
-```bash
-pip install --user pyprland
-```
 
 ## Pipx Packages
 
@@ -333,18 +318,6 @@ cargo install jj-cli      # Jujutsu VCS (git-compatible)
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 ```
 
-### Wallust (color scheme generator from wallpapers)
-
-```bash
-# Install from source — see https://codeberg.org/explosion-mental/wallust
-cargo install wallust
-# or download a binary release
-```
-
-### AGS (Aylur's GTK Shell)
-
-Widget framework for Hyprland. See https://github.com/Aylur/ags for install instructions.
-
 ### Volta (Node.js version manager)
 
 ```bash
@@ -371,17 +344,13 @@ go install github.com/jesseduffield/lazydocker@latest
 # or download binary from GitHub releases
 ```
 
-### hy3 (Hyprland i3-style tiling plugin)
-
-Built from source. See https://github.com/outfoxxed/hy3 — requires matching hyprland-devel headers.
-
 ## Fonts
 
 ```bash
 sudo dnf install jetbrains-mono-fonts
 ```
 
-The Nerd Font variant (used by hyprlock, waybar icons, etc.) needs to be installed manually:
+The Nerd Font variant (used by Noctalia bar icons, lazygit, btop, etc.) needs to be installed manually:
 
 ```bash
 # Download from https://www.nerdfonts.com/font-downloads
@@ -427,7 +396,7 @@ sudo systemctl enable --now bluetooth
 
 | Category | Packages |
 |----------|----------|
-| Desktop (Hyprland) | hyprland, hyprlock, hypridle, waybar, rofi, swaync, wlogout, swww, vicinae, ags, pyprland |
+| Desktop (niri + Noctalia) | niri, noctalia-shell, noctalia-qs, vicinae, polkit-gnome |
 | Terminals | ghostty, kitty |
 | Shell | zsh, oh-my-zsh, fzf, fd-find, zoxide, eza |
 | Editors | neovim (LazyVim), lazygit, zellij |
@@ -438,6 +407,6 @@ sudo systemctl enable --now bluetooth
 | File mgmt | thunar, file-roller, baobab |
 | Dev runtimes | python3, rust/cargo, go, node/npm, docker |
 | Version mgmt | volta (node), bun, rustup |
-| Theming | qt5ct, qt6ct, kvantum, nwg-look, wallust |
+| Theming | qt5ct, qt6ct, kvantum, nwg-look |
 | Apps | vivaldi, telegram, 1password, slack, mpv, kooha |
 | Fonts | JetBrains Mono, JetBrains Mono Nerd Font |

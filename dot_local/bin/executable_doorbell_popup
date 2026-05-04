@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Doorbell Video Popup for Hyprland
+Doorbell Video Popup for niri
 
 Connects to eufy-security-ws WebSocket server and displays a video popup
 when the doorbell rings. The popup appears in the bottom-left of the
-active monitor.
+focused output.
 
 Usage:
     doorbell_popup [--ws-url URL] [-v]
@@ -36,53 +36,47 @@ MPV_CLASS = "doorbell-popup"
 
 
 def is_dpms_on() -> bool:
-    """Check if any monitor has DPMS on (screen is active)."""
+    """Check if the focused output has logical geometry (i.e. is awake).
+
+    Niri reports `logical: null` for outputs that are powered off, so the
+    presence of a logical block on focused-output is a good proxy for "a
+    screen is active and visible." Falls back to True on any IPC error so
+    we don't suppress the popup when something unexpected happens.
+    """
     try:
         result = subprocess.run(
-            ["hyprctl", "monitors", "-j"],
+            ["niri", "msg", "--json", "focused-output"],
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=5,
         )
         if result.returncode != 0:
             return True
-        monitors = json.loads(result.stdout)
-        for monitor in monitors:
-            if monitor.get("dpmsStatus", True):
-                return True
-        return False
+        output = json.loads(result.stdout)
+        return output.get("logical") is not None
     except Exception as e:
-        log.warning(f"Error checking DPMS: {e}")
+        log.warning(f"Error checking output state: {e}")
         return True
 
 
 def get_active_monitor_geometry() -> tuple[int, int, int, int]:
-    """Get geometry of active monitor (x, y, width, height)."""
+    """Get geometry of the focused output (x, y, width, height) in logical px."""
     try:
         result = subprocess.run(
-            ["hyprctl", "activeworkspace", "-j"],
-            capture_output=True, text=True, timeout=5
+            ["niri", "msg", "--json", "focused-output"],
+            capture_output=True, text=True, timeout=5,
         )
-        workspace = json.loads(result.stdout)
-        monitor_name = workspace.get("monitor", "")
-
-        result = subprocess.run(
-            ["hyprctl", "monitors", "-j"],
-            capture_output=True, text=True, timeout=5
+        output = json.loads(result.stdout)
+        logical = output.get("logical") or {}
+        return (
+            logical.get("x", 0),
+            logical.get("y", 0),
+            logical.get("width", 1920),
+            logical.get("height", 1080),
         )
-        monitors = json.loads(result.stdout)
-
-        for mon in monitors:
-            if mon.get("name") == monitor_name:
-                return (mon.get("x", 0), mon.get("y", 0),
-                        mon.get("width", 1920), mon.get("height", 1080))
-        if monitors:
-            mon = monitors[0]
-            return (mon.get("x", 0), mon.get("y", 0),
-                    mon.get("width", 1920), mon.get("height", 1080))
     except Exception as e:
         log.warning(f"Error getting monitor geometry: {e}")
-    return (0, 0, 1920, 1080)
+        return (0, 0, 1920, 1080)
 
 
 def send_notification(title: str, body: str, urgency: str = "normal"):

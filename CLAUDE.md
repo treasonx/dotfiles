@@ -18,11 +18,9 @@ Keep explanations concise - a sentence or two is usually enough.
 ```
 .                              # chezmoi source directory
 ├── dot_config/                # -> ~/.config/ (app configs)
-│   ├── hypr/                  # Hyprland compositor
+│   ├── niri/                  # niri compositor
+│   ├── noctalia/              # Noctalia shell (bar, launcher, notifications)
 │   ├── nvim/                  # Neovim
-│   ├── waybar/                # Status bar
-│   ├── rofi/                  # App launcher
-│   ├── ags/                   # AGS v2 custom shell (TypeScript/JSX)
 │   ├── ghostty/               # Terminal
 │   ├── zsh/                   # Shell config
 │   └── ...                    # btop, lazygit, etc.
@@ -48,11 +46,11 @@ Files in `admin/` are NOT deployed — they stay in the repo for local use.
 ### Editing configs
 ```bash
 # Option 1: Edit source directly, then apply
-vim dot_config/hypr/hyprland.conf.tmpl
+vim dot_config/niri/config.kdl.tmpl
 chezmoi apply -v
 
 # Option 2: Use chezmoi edit (opens target, syncs back to source)
-chezmoi edit ~/.config/hypr/hyprland.conf
+chezmoi edit ~/.config/niri/config.kdl
 ```
 
 ### Adding a new config
@@ -75,7 +73,7 @@ Files ending in `.tmpl` are Go templates. Use `{{ .machine }}` (values: `desktop
 # laptop-only config
 {{- end }}
 ```
-Current templates: `hyprland.conf.tmpl`, `monitors.conf.tmpl`.
+Current templates: `niri/config.kdl.tmpl`, `noctalia/settings.json.tmpl`.
 
 ### Checking state
 ```bash
@@ -115,7 +113,7 @@ When performing admin tasks that could be reused, create a Python script in `dot
 
 1. **Always use Python** — Scripts must be Python 3.10+
 2. **Prefer standard library** — Use `subprocess`, `pathlib`, `shutil`, `json`, etc.
-3. **No `.py` extension** — Scripts are invoked by name (e.g., `copy_album` not `copy_album.py`). The shebang handles interpreter selection. Only importable libraries keep `.py` (e.g., `j_lib.py`, `hypr_layout.py`).
+3. **No `.py` extension** — Scripts are invoked by name (e.g., `copy_album` not `copy_album.py`). The shebang handles interpreter selection. Only importable libraries keep `.py` (e.g., `j_lib.py`).
 4. **Chezmoi source name** — `executable_script_name` (no `.py`), deploys to `~/.local/bin/script_name`
 5. **Make scripts executable** — Add shebang `#!/usr/bin/env python3` and `chmod +x`
 6. **Include docstrings** — Document what the script does and how to use it
@@ -169,7 +167,7 @@ args = parser.run()
 - Scripts still work standalone: `copy_album /src /dest "Album" --dry-run`
 - `j` remembers args from the last invocation of each script (`~/.local/state/j/history.json`) and offers them as defaults — press Enter to reuse
 
-**Scripts that read stdin** (like `perplexity_chat`) should guard the parser:
+**Scripts that read stdin** should guard the parser so they still emit `--_j_meta` JSON without blocking on stdin:
 ```python
 import sys
 if "--_j_meta" in sys.argv or "-h" in sys.argv or "--help" in sys.argv:
@@ -184,16 +182,20 @@ if "--_j_meta" in sys.argv or "-h" in sys.argv or "--help" in sys.argv:
 4. `chezmoi apply -v`
 5. Verify: `my_script --_j_meta` outputs JSON, `my_script --help` works, `j` shows it in the picker
 
-## AGS v2 (Custom Desktop Shell)
+## Desktop shell — niri + Noctalia
 
-Located at `dot_config/ags/` -> `~/.config/ags/`. This project has its own `CLAUDE.md` and `.claude/skills/` with detailed AGS/Astal API reference. When working on the shell, set your working directory to `dot_config/ags/`.
+The compositor is **niri** (config: `dot_config/niri/config.kdl.tmpl`). The
+desktop shell — bar, launcher, notifications, control center, lock screen,
+wallpaper, session menu — is **Noctalia**, a Quickshell-based config
+(`dot_config/noctalia/settings.json.tmpl`). Noctalia spawns at niri startup
+via `spawn-at-startup "qs" "-c" "noctalia-shell"`.
 
 Quick reference:
-- `ags run` — Run the shell (bundles TypeScript on-the-fly)
-- `ags inspect` — GTK Inspector for CSS debugging
-- `ags request <msg>` — Send command to running instance
-- `install_ags_deps --check` — Verify AGS v2 + Astal dependencies
-- AGS stderr logs: `~/.local/state/ags/ags.log` (truncated each restart via `start_ags`)
+- `niri msg --json <subcommand>` — query niri IPC (e.g., `focused-window`,
+  `outputs`, `focused-output`)
+- `qs -c noctalia-shell ipc call <target> <action>` — toggle Noctalia
+  overlays (`wallpaper toggle`, `controlCenter toggle`, etc.)
+- `install_noctalia_deps --check` — verify Noctalia + optional dependencies
 
 ## Common Tasks
 
