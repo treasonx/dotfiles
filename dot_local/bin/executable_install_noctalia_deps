@@ -10,7 +10,6 @@ Usage:
     install_noctalia_deps                # Install everything
     install_noctalia_deps --check        # Report status only
     install_noctalia_deps --skip-optional  # Required packages only
-    install_noctalia_deps --remove-ags   # Uninstall AGS + Astal stack
 """
 
 from j_lib import JParser
@@ -44,16 +43,6 @@ OPTIONAL = [
     "jetbrains-mono-nerd-fonts",   # Bar / fixed-width font
 ]
 
-# AGS stack to remove with --remove-ags (mirrors install_ags_deps).
-AGS_PACKAGES = [
-    "aylurs-gtk-shell2",
-    "astal",
-    "astal-io",
-    "astal-gtk4",
-    "astal-gjs",
-    "astal-libs",
-]
-
 
 def run(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True, check=check)
@@ -78,7 +67,7 @@ def ensure_terra():
 
 
 def check_status():
-    """Print installation status. Returns (missing_required, missing_optional, ags_present)."""
+    """Print installation status. Returns (missing_required, missing_optional)."""
     missing_required = []
     for pkg in REQUIRED:
         installed = is_installed(pkg)
@@ -96,11 +85,7 @@ def check_status():
         if not installed:
             missing_optional.append(pkg)
 
-    ags_present = [p for p in AGS_PACKAGES if is_installed(p)]
-    if ags_present:
-        print(f"\n  AGS still present: {', '.join(ags_present)}")
-
-    return missing_required, missing_optional, ags_present
+    return missing_required, missing_optional
 
 
 def main():
@@ -109,12 +94,10 @@ def main():
                         help="Only check status, don't install")
     parser.add_argument("--skip-optional", action="store_true",
                         help="Install required packages only")
-    parser.add_argument("--remove-ags", action="store_true",
-                        help="Uninstall AGS v2 + Astal after Noctalia is in place")
     args = parser.run()
 
     print("Noctalia dependency status:\n")
-    missing_required, missing_optional, ags_present = check_status()
+    missing_required, missing_optional = check_status()
 
     if args.check:
         sys.exit(0 if not missing_required else 1)
@@ -130,10 +113,6 @@ def main():
     if not args.skip_optional and missing_optional:
         print(f"\nInstalling optional: {missing_optional}")
         subprocess.run(["sudo", "dnf", "install", "-y", *missing_optional], check=True)
-
-    if args.remove_ags and ags_present:
-        print(f"\nRemoving AGS stack: {ags_present}")
-        subprocess.run(["sudo", "dnf", "remove", "-y", *ags_present], check=True)
 
     print("\nDone. Start with: qs -c noctalia-shell")
 

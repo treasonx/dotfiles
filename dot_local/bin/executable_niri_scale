@@ -68,9 +68,6 @@ def main() -> int:
     # logical working area resizes and previously-valid coords can land off-screen.
     # Re-center them so nothing gets stranded. Tiled columns reflow on their own.
     subprocess.run(["niri_rescue_floating"], check=False)
-
-    # Ask AGS to show an OSD with the new scale (non-fatal if AGS isn't running).
-    subprocess.run(["ags", "request", "scale", f"{new:g}"], check=False)
     return 0
 
 

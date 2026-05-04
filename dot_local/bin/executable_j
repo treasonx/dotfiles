@@ -57,7 +57,6 @@ SCRIPTS = [
     "install_noctalia_deps:Install Noctalia Shell + optional deps",
     "niri_rescue_floating:Recenter floating niri windows after monitor changes",
     "niri_scale:Adjust niri output scale (--step N or --set N)",
-    "niri_cast:Niri IPC bridge for AGS Cast tab",
     "playlist:Create M3U playlists using beets",
     "rsync_upload:Upload files via rsync with bandwidth control",
     "screenrec:Toggle screen recording (region/output, wl-screenrec)",
@@ -73,9 +72,6 @@ SCRIPTS = [
 # Scripts NOT in the j picker (still work standalone):
 # Niri — launched by spawn-at-startup, keybinds, or portals:
 #   doorbell_popup, kill_active_process, polkit_agent, screenshot
-# AGS leftovers (pending removal):
-#   start_ags, screenshare_picker, clipboard_history, list_recent_files,
-#   list_wallpapers, perplexity_chat, wezterm_panes
 # Git aliases — invoked as `git wt` / `git wtr`:
 #   git-wt, git-wtr
 # PATH shims — transparently replace real binaries, invoked by typing the normal command:

@@ -44,8 +44,7 @@
   },
   "options": {
     "skills_paths": [
-      "~/.config/crush/skills",
-      "~/.config/ags/.claude/skills"
+      "~/.config/crush/skills"
     ]
   },
   "permissions": {
