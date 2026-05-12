@@ -17,8 +17,15 @@ CATPPUCCIN_FLAVOR="mocha"
 CATPPUCCIN_SHOW_TIME=true
 
 # Plugins (add wisely - too many slow down shell startup)
-# zsh-syntax-highlighting and zsh-autosuggestions cloned into ~/.config/zsh/oh-my-zsh-custom/plugins/
-plugins=(git zsh-autosuggestions zsh-syntax-highlighting)
+# External plugin repos (zsh-vi-mode, zsh-autosuggestions, zsh-syntax-highlighting)
+# are managed by chezmoi via .chezmoiexternal.toml.
+# Order matters: zsh-vi-mode first (rebinds keys), zsh-syntax-highlighting last (hard requirement).
+plugins=(git zsh-vi-mode zsh-autosuggestions zsh-syntax-highlighting)
+
+# Init zsh-vi-mode eagerly during sourcing so its keybinds settle before
+# autosuggestions/syntax-highlighting load (default is a precmd hook that
+# fires later and clobbers other plugins' bindings).
+ZVM_INIT_MODE=sourcing
 
 source $ZSH/oh-my-zsh.sh
 
