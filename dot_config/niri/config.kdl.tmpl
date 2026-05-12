@@ -314,7 +314,7 @@ binds {
     Mod+W        hotkey-overlay-title="Wallpaper picker" { spawn "qs" "-c" "noctalia-shell" "ipc" "call" "wallpaper" "toggle"; }
     Mod+B        hotkey-overlay-title="Control Center"   { spawn "qs" "-c" "noctalia-shell" "ipc" "call" "controlCenter" "toggle"; }
     Mod+Slash    hotkey-overlay-title="Notifications"    { spawn "qs" "-c" "noctalia-shell" "ipc" "call" "notifications" "toggleHistory"; }
-    Mod+L        hotkey-overlay-title="Session menu"     { spawn "qs" "-c" "noctalia-shell" "ipc" "call" "sessionMenu" "toggle"; }
+    Mod+Escape   hotkey-overlay-title="Session menu"     { spawn "qs" "-c" "noctalia-shell" "ipc" "call" "sessionMenu" "toggle"; }
 
     // Screenshot — niri's built-in interactive UI, plus the swappy pipeline
     //od+Shift+S     { screenshot; }
@@ -333,8 +333,12 @@ binds {
     // Columns (horizontal movement within a workspace)
     Mod+Left        { focus-column-left; }
     Mod+Right       { focus-column-right; }
+    Mod+H           { focus-column-left; }
+    Mod+L           { focus-column-right; }
     Mod+Shift+Left  { move-column-left; }
     Mod+Shift+Right { move-column-right; }
+    Mod+Shift+H     { move-column-left; }
+    Mod+Shift+L     { move-column-right; }
     Mod+Home        { focus-column-first; }
     Mod+End         { focus-column-last; }
     Mod+R           { switch-preset-column-width; }
@@ -379,8 +383,8 @@ binds {
     Mod+Shift+Page_Up   { move-workspace-up; }
     Mod+Shift+Page_Down { move-workspace-down; }
 
-    // Laptop-friendly workspace nav (no Page keys on most laptops).
-    // Vim-style: K=up, J=down. Shift variants carry the column along.
+    // Vim-style workspace nav: K=up, J=down (H/L for columns live in the
+    // Columns block above). Shift variants carry the column along.
     Mod+K       { focus-workspace-up; }
     Mod+J       { focus-workspace-down; }
     Mod+Shift+K { move-column-to-workspace-up; }
