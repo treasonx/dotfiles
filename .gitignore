@@ -4,3 +4,11 @@
 # Ignore zsh completion dump files
 *config/zsh/.zcompdump*
 .zsh_history
+
+# Local LLM stack: secrets and runtime state (admin/llm/ is not deployed by
+# chezmoi, but git would still track .env / data/ without these rules).
+admin/llm/.env
+admin/llm/data/
+
+# Opencode safety backups created when editing opencode.json
+dot_config/opencode/opencode.json.bak.*

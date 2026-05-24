@@ -1,0 +1,79 @@
+# Local LLM stack — vLLM + Open WebUI.
+#
+# Usage:
+#   just                          # list available models
+#   just llm vllm-qwen3-coder     # switch to that model + ensure UI up
+#   just stop                     # stop active model (frees VRAM)
+#   just logs                     # tail active model logs
+#   just pull <hf-repo>           # warm the shared HF cache
+#   just down                     # stop everything
+
+# Load .env so HF_TOKEN, WEBUI_SECRET_KEY, etc. reach recipes (and via
+# `-e HF_TOKEN` reach docker run). docker compose loads .env on its own,
+# but plain `docker run` recipes need just to do the loading.
+set dotenv-load := true
+
+default: list
+
+# List vllm-* services defined in docker-compose.yml.
+list:
+    @grep -E '^  vllm-[a-z0-9-]+:' docker-compose.yml | sed 's/[: ]//g' | sed 's/^/  /'
+
+# Switch to <model>: stop whichever vllm-* is currently up, start the requested one,
+# ensure Open WebUI is also up. Clients keep hitting localhost:8000.
+llm model:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    running=$(docker compose ps --services --filter status=running 2>/dev/null | grep '^vllm-' || true)
+    if [ -n "$running" ]; then
+        echo "Stopping $running"
+        docker compose stop $running
+    fi
+    docker compose up -d {{model}}
+    docker compose up -d open-webui
+    echo "Up: {{model}}. UI at http://localhost:3000  API at http://localhost:8000/v1"
+
+# Stop active vllm-* (frees the 4090); leaves Open WebUI running.
+stop:
+    #!/usr/bin/env bash
+    running=$(docker compose ps --services --filter status=running 2>/dev/null | grep '^vllm-' || true)
+    if [ -n "$running" ]; then docker compose stop $running; else echo "No vllm-* running"; fi
+
+# Tail the active model's logs (container is always named `vllm`).
+logs:
+    docker logs -f vllm
+
+# Tail the Open WebUI logs.
+ui-logs:
+    docker logs -f open-webui
+
+# Pre-download a HF model into the shared cache. Useful for warming
+# the cache before first run so `just llm` doesn't time out.
+# Uses the new `hf` CLI (huggingface_hub >= 0.26 renamed huggingface-cli → hf).
+pull repo:
+    docker run --rm \
+      -v ${HOME}/llm-cache/huggingface:/root/.cache/huggingface \
+      -e HF_TOKEN \
+      --entrypoint hf \
+      vllm/vllm-openai:latest \
+      download {{repo}}
+
+# What's running.
+status:
+    docker compose ps
+
+# Stop and remove everything.
+down:
+    docker compose down
+
+# Sanity check: GPU visible from inside a CUDA container.
+gpu-check:
+    docker run --rm --gpus all nvidia/cuda:12.6.0-base-ubuntu22.04 nvidia-smi
+
+# Discover tool-call parser names the current vLLM image supports.
+# Modern vLLM CLI: entrypoint is `vllm serve`, and help is grouped — must
+# query a specific flag with `--help=<flag>`. Also needs a GPU exposed so
+# vLLM can introspect device config while building the parser.
+parsers:
+    docker run --rm --gpus all --entrypoint vllm vllm/vllm-openai:latest \
+      serve --help=tool-call-parser
