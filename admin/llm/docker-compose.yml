@@ -1,0 +1,71 @@
+# Local LLM stack: vLLM (one model active) + Open WebUI frontend.
+#
+# Each vllm-* service shares `container_name: vllm` and binds host port 8000,
+# making them mutually exclusive — only one runs at a time. Use the `justfile`
+# (`just llm <service>`) to switch.
+#
+# Shared HuggingFace cache: ${HOME}/llm-cache/huggingface — weights live once
+# on disk, every model reuses them.
+
+x-vllm-base: &vllm-base
+  image: vllm/vllm-openai:latest
+  container_name: vllm
+  runtime: nvidia
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+  ipc: host
+  ports:
+    - "8000:8000"
+  volumes:
+    - ${HOME}/llm-cache/huggingface:/root/.cache/huggingface
+  environment:
+    - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN:-}
+  restart: unless-stopped
+
+services:
+  # Primary: 30B MoE coder model, AWQ 4-bit — fits 24 GB with 32k context.
+  # Official Qwen org did not publish an AWQ build of Qwen3-Coder-30B-A3B;
+  # using QuantTrio's community quant (516k+ downloads, most popular AWQ).
+  vllm-qwen3-coder:
+    <<: *vllm-base
+    command: >
+      --model QuantTrio/Qwen3-Coder-30B-A3B-Instruct-AWQ
+      --quantization awq
+      --dtype half
+      --max-model-len 90112
+      --kv-cache-dtype fp8
+      --gpu-memory-utilization 0.96
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+
+  # Fallback: proven Qwen2.5-Coder-32B if Qwen3 AWQ has issues.
+  vllm-qwen25-coder:
+    <<: *vllm-base
+    command: >
+      --model Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
+      --quantization awq
+      --dtype half
+      --max-model-len 32768
+      --gpu-memory-utilization 0.92
+      --enable-auto-tool-choice
+      --tool-call-parser hermes
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    ports:
+      - "3000:8080"
+    volumes:
+      - ./data/open-webui:/app/backend/data
+    environment:
+      - OPENAI_API_BASE_URL=http://host.docker.internal:8000/v1
+      - OPENAI_API_KEY=dummy
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
