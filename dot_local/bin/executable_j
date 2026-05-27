@@ -46,6 +46,7 @@ RESET = "\033[0m"
 # ── Script registry ───────────────────────────────────────────────────
 # Format: "command_name:Short description"
 SCRIPTS = [
+    "backup_home:Back up home directory to UGreen NAS",
     "copy_album:Copy audio files by album using metadata tags",
     "convert_webp:Convert WebP images to other formats",
     "dmps:Monitor power control via DDC/CI",

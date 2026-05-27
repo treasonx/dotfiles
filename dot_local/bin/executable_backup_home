@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+"""Back up the home directory to the UGreen NAS via rsync.
+
+Intended to run unattended from a systemd timer every 30 minutes.
+Skips gracefully if /mnt/ugreen is not mounted.  Logs to stdout/stderr
+(captured by the journal when run as a systemd service).
+
+Manual run:
+    backup_home              # normal backup
+    backup_home --dry-run    # preview what would transfer
+"""
+
+import json
+import os
+import socket
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+from j_lib import JParser
+
+MOUNT_POINT = Path("/mnt/ugreen")
+
+EXCLUDES = [
+    ".cache",
+    ".npm",
+    ".npm-global",
+    ".bun",
+    ".yarn",
+    ".cargo/registry",
+    ".rustup",
+    ".gradle",
+    ".codex",
+    ".local/lib",
+    ".local/state",
+    "__pycache__",
+    ".local/share/Trash",
+    "docker_data",
+    "docker_compose",
+    "docker_backup",
+    ".local/share/JetBrains",
+    ".vscode",
+    ".cursor",
+    ".cursor-personal",
+    ".augment",
+    "llm-cache",
+    "models",
+    "Downloads",
+    ".var",
+    ".steam",
+    ".local/share/Steam",
+    "mnt",
+    "smbshare",
+    ".zcompdump*",
+    ".bash_history",
+    ".zsh_history",
+    ".python_history",
+    ".claude/debug",
+    ".claude/history*",
+    ".claude/session-env",
+    "snap",
+    "tmp",
+    "nohup.out",
+]
+
+RSYNC_EXIT_DESCRIPTIONS = {
+    1: "syntax or usage error",
+    2: "protocol incompatibility",
+    3: "errors selecting input/output files",
+    5: "error starting client-server protocol",
+    10: "error in socket I/O",
+    11: "error in file I/O",
+    12: "error in rsync protocol data stream",
+    13: "errors with program diagnostics",
+    14: "error in IPC code",
+    20: "received SIGUSR1 or SIGINT",
+    30: "timeout in data send/receive",
+}
+
+
+def get_machine_type() -> str:
+    try:
+        result = subprocess.run(
+            ["chezmoi", "data", "--format", "json"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode == 0:
+            return json.loads(result.stdout).get("machine", "unknown")
+    except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
+        pass
+    return "unknown"
+
+
+def notify_failure(exit_code: int) -> None:
+    desc = RSYNC_EXIT_DESCRIPTIONS.get(exit_code, "unknown error")
+    body = (
+        f"rsync error: {desc} (exit code {exit_code})\n\n"
+        "Inspect logs:\n"
+        "journalctl --user -u backup-home.service -n 50"
+    )
+    try:
+        subprocess.run(
+            ["notify-send", "--urgency=critical", "Backup Failed", body],
+            timeout=5,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+
+
+def main() -> int:
+    parser = JParser(description="Back up home directory to UGreen NAS via rsync")
+    parser.add_argument(
+        "--dry-run", "-n", action="store_true",
+        help="Show what would be transferred without doing it",
+    )
+    args = parser.run()
+
+    if not os.path.ismount(MOUNT_POINT):
+        print(f"{MOUNT_POINT} is not mounted, skipping backup")
+        return 0
+
+    machine = get_machine_type()
+    hostname = socket.gethostname()
+    dest = MOUNT_POINT / f"{machine}_{hostname}"
+    dest.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        f.write("\n".join(EXCLUDES) + "\n")
+        exclude_file = f.name
+
+    try:
+        cmd = [
+            "rsync", "-a",
+            "--delete", "--delete-excluded",
+            "--partial",
+            "--info=stats2",
+            "--no-owner", "--no-group",
+            "--no-links",
+            "--filter=:- .gitignore",
+            f"--exclude-from={exclude_file}",
+        ]
+
+        if args.dry_run:
+            cmd.extend(["-n", "-v"])
+
+        cmd.append(str(Path.home()) + "/")
+        cmd.append(str(dest) + "/")
+
+        print(f"Backing up to {dest}")
+        result = subprocess.run(cmd)
+
+        if result.returncode in (23, 24):
+            print(f"Warning: rsync exited {result.returncode} (some files skipped)")
+            return 0
+
+        if result.returncode != 0:
+            notify_failure(result.returncode)
+
+        return result.returncode
+    finally:
+        os.unlink(exclude_file)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

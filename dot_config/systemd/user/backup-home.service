@@ -1,0 +1,9 @@
+[Unit]
+Description=Back up home directory to UGreen NAS
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/backup_home
+TimeoutStartSec=3600

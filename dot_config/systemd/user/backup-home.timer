@@ -1,0 +1,10 @@
+[Unit]
+Description=Run home directory backup every 30 minutes
+
+[Timer]
+OnCalendar=*:00/30
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target
