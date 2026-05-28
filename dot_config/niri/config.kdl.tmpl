@@ -142,11 +142,6 @@ environment {
     XDG_SESSION_TYPE "wayland"
     MOZ_ENABLE_WAYLAND "1"
     ELECTRON_OZONE_PLATFORM_HINT "auto"
-    {{- if eq .machine "desktop" }}
-    LIBVA_DRIVER_NAME "nvidia"
-    __GLX_VENDOR_LIBRARY_NAME "nvidia"
-    NVD_BACKEND "direct"
-    {{- end }}
 }
 
 screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
@@ -171,9 +166,9 @@ spawn-at-startup "systemctl" "--user" "import-environment" "WAYLAND_DISPLAY" "XD
 spawn-at-startup "polkit_agent"
 
 // Noctalia shell (bar, notifications, lock screen, wallpaper, control center,
-// session menu). Runs via the noctalia-qs Quickshell fork; config lives at
-// ~/.config/noctalia/settings.json. IPC: qs -c noctalia-shell ipc call ...
-spawn-at-startup "qs" "-c" "noctalia-shell"
+// session menu). v5+ is a standalone binary (no Quickshell). Config lives at
+// ~/.config/noctalia/settings.toml. IPC: noctalia msg <command>
+spawn-at-startup "noctalia"
 
 // Network manager tray
 spawn-at-startup "nm-applet" "--indicator"
@@ -310,11 +305,13 @@ binds {
     Mod+Alt+S   hotkey-overlay-title="Record output" { spawn "screenrec" "--mode" "output"; }
     Mod+Shift+Alt+S hotkey-overlay-title="Record output + audio" { spawn "screenrec" "--mode" "output" "--audio"; }
 
-    // Noctalia overlays (toggle via the noctalia-shell IPC)
-    Mod+W        hotkey-overlay-title="Wallpaper picker" { spawn "qs" "-c" "noctalia-shell" "ipc" "call" "wallpaper" "toggle"; }
-    Mod+B        hotkey-overlay-title="Control Center"   { spawn "qs" "-c" "noctalia-shell" "ipc" "call" "controlCenter" "toggle"; }
-    Mod+Slash    hotkey-overlay-title="Notifications"    { spawn "qs" "-c" "noctalia-shell" "ipc" "call" "notifications" "toggleHistory"; }
-    Mod+Escape   hotkey-overlay-title="Session menu"     { spawn "qs" "-c" "noctalia-shell" "ipc" "call" "sessionMenu" "toggle"; }
+    // Noctalia overlays (v5 IPC — `noctalia msg panel-toggle <id>`)
+    Mod+W        hotkey-overlay-title="Wallpaper picker" { spawn "noctalia" "msg" "panel-toggle" "wallpaper"; }
+    Mod+B        hotkey-overlay-title="Control Center"   { spawn "noctalia" "msg" "panel-toggle" "control-center"; }
+    // v5 has no standalone notifications panel — history lives inside control-center.
+    // Toggle the notifications tab of control-center instead.
+    Mod+Slash    hotkey-overlay-title="Notifications"    { spawn "noctalia" "msg" "panel-toggle" "control-center" "notifications"; }
+    Mod+Escape   hotkey-overlay-title="Session menu"     { spawn "noctalia" "msg" "panel-toggle" "session"; }
 
     // Screenshot — niri's built-in interactive UI, plus the swappy pipeline
     //od+Shift+S     { screenshot; }
