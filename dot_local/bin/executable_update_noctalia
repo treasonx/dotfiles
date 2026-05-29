@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+"""Pull the latest noctalia-git COPR build and reload the running shell.
+
+Noctalia v5 is installed as the `noctalia-git` snapshot package from the
+`lionheartp/Hyprland` COPR. It's under heavy development, so this fast-tracks
+the daily "pull latest + see progress" loop:
+
+  1. `dnf upgrade --refresh noctalia-git` — the `--refresh` is load-bearing:
+     dnf5 keeps separate metadata caches for your user and for root, so a plain
+     `sudo dnf upgrade` can report "Nothing to do" even when the COPR has a
+     newer build. --refresh expires root's cache first.
+  2. Restart the running `noctalia` process so the new binary actually loads.
+     Upgrading only swaps the file on disk; the live shell keeps the old code
+     in memory until the process is restarted (there is no reload-binary IPC).
+
+Restart is decided by comparing the binary's mtime to the running process's
+start time, so a stale shell gets reloaded even if the upgrade happened on an
+earlier run.
+
+Usage:
+    update_noctalia                  # Upgrade, then reload if needed
+    update_noctalia --no-restart     # Upgrade only, leave the live shell alone
+    update_noctalia --restart-only   # Skip dnf, just reload the shell
+    update_noctalia --force-restart  # Reload even if already up to date
+"""
+
+import os
+import subprocess
+import sys
+import time
+
+from j_lib import JParser
+
+PACKAGE = "noctalia-git"
+NOCTALIA_BIN = "/usr/bin/noctalia"
+
+
+def run(cmd: list[str], check: bool = False) -> subprocess.CompletedProcess:
+    return subprocess.run(cmd, capture_output=True, text=True, check=check)
+
+
+def installed_version() -> str | None:
+    """Return version-release of the installed package, or None if absent."""
+    r = run(["rpm", "-q", "--qf", "%{version}-%{release}", PACKAGE])
+    return r.stdout.strip() if r.returncode == 0 else None
+
+
+def running_pid() -> int | None:
+    """PID of the live noctalia process (exact name match), or None."""
+    r = run(["pgrep", "-x", "noctalia"])
+    pids = r.stdout.split()
+    return int(pids[0]) if pids else None
+
+
+def process_is_stale(pid: int) -> bool:
+    """True if the on-disk binary is newer than the running process.
+
+    `ps -o etimes=` gives elapsed seconds since the process started; subtract
+    from now to get its start epoch. If the binary was written after that, the
+    process is running old code.
+    """
+    try:
+        bin_mtime = os.path.getmtime(NOCTALIA_BIN)
+    except OSError:
+        return False
+    etimes = run(["ps", "-o", "etimes=", "-p", str(pid)]).stdout.strip()
+    if not etimes.isdigit():
+        return False
+    start_epoch = time.time() - int(etimes)
+    return bin_mtime > start_epoch
+
+
+def restart_noctalia() -> None:
+    """Kill the live shell and respawn it detached as a background daemon."""
+    pid = running_pid()
+    if pid is not None:
+        print(f"Restarting noctalia (was PID {pid})...")
+        run(["pkill", "-x", "noctalia"])
+        # Give the process a moment to release its Wayland surfaces / sockets.
+        time.sleep(0.6)
+    else:
+        print("noctalia not running; starting it...")
+    # start_new_session detaches from this script's process group so the shell
+    # survives after update_noctalia exits. `-d` daemonizes noctalia itself.
+    subprocess.Popen(
+        [NOCTALIA_BIN, "-d"],
+        start_new_session=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    print("Reloaded.")
+
+
+def main() -> None:
+    parser = JParser(
+        description="Upgrade noctalia-git from COPR and reload the shell"
+    )
+    parser.add_argument(
+        "--no-restart", "-n", action="store_true",
+        help="Upgrade only; don't restart the live shell",
+    )
+    parser.add_argument(
+        "--restart-only", action="store_true",
+        help="Skip dnf; just reload the running shell",
+    )
+    parser.add_argument(
+        "--force-restart", action="store_true",
+        help="Restart even if the running shell is already current",
+    )
+    args = parser.run()
+
+    if args.restart_only:
+        restart_noctalia()
+        return
+
+    before = installed_version()
+    print(f"Installed: {before or 'not installed'}")
+
+    # --refresh forces root's metadata cache to expire so we see new COPR builds.
+    print(f"\nUpgrading {PACKAGE} (sudo will prompt)...\n")
+    result = subprocess.run(
+        ["sudo", "dnf", "upgrade", "--refresh", "-y", PACKAGE]
+    )
+    if result.returncode != 0:
+        print("\ndnf upgrade failed; not restarting.", file=sys.stderr)
+        sys.exit(result.returncode)
+
+    after = installed_version()
+    upgraded = before != after
+    if upgraded:
+        print(f"\nUpgraded: {before} -> {after}")
+    else:
+        print(f"\nAlready up to date: {after}")
+
+    if args.no_restart:
+        print("Skipping restart (--no-restart). Live shell still runs old code.")
+        return
+
+    pid = running_pid()
+    needs_restart = args.force_restart or (pid is not None and process_is_stale(pid))
+    if needs_restart:
+        restart_noctalia()
+    elif pid is None:
+        restart_noctalia()
+    else:
+        print("Live shell already running the current binary; nothing to do.")
+
+
+if __name__ == "__main__":
+    main()
