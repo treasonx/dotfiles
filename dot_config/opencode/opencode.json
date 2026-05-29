@@ -188,13 +188,27 @@
         "apiKey": "dummy"
       },
       "models": {
-        "QuantTrio/Qwen3-Coder-30B-A3B-Instruct-AWQ": {
-          "name": "Qwen3 Coder 30B A3B (AWQ)",
+        "local-coder": {
+          "name": "Local vLLM Coder",
           "limit": {
-            "context": 90112,
-            "output": 8192
+            "context": 40960,
+            "output": 2048
           }
         }
+      }
+    }
+  },
+  "agent": {
+    "plan": {
+      "tools": {
+        "task": false,
+        "skill": false
+      }
+    },
+    "build": {
+      "tools": {
+        "task": false,
+        "skill": false
       }
     }
   }

@@ -20,18 +20,40 @@ list:
     @grep -E '^  vllm-[a-z0-9-]+:' docker-compose.yml | sed 's/[: ]//g' | sed 's/^/  /'
 
 # Switch to <model>: stop whichever vllm-* is currently up, start the requested one,
-# ensure Open WebUI is also up. Clients keep hitting localhost:8000.
+# update OpenCode's local-coder context, ensure Open WebUI is also up. Clients
+# keep hitting localhost:8000.
 llm model:
     #!/usr/bin/env bash
     set -euo pipefail
+    case "{{model}}" in
+      vllm-qwen3-coder) context=32767; output=1024 ;;
+      vllm-qwen3-14b) context=40960 ;;
+      vllm-qwen25-coder|vllm-devstral-small) context=32767; output=1024 ;;
+      vllm-qwen36-27b-autoround) context=40960; output=2048 ;;
+      *) echo "Unknown model: {{model}}" >&2; exit 2 ;;
+    esac
+    output=${output:-4096}
+    for config in \
+      "$HOME/.local/share/chezmoi/dot_config/opencode/opencode.json" \
+      "$HOME/.config/opencode/opencode.json"
+    do
+      if [ -f "$config" ]; then
+        tmp=$(mktemp)
+        jq --argjson context "$context" --argjson output "$output" \
+          '.provider["vllm-local"].models["local-coder"].limit.context = $context
+           | .provider["vllm-local"].models["local-coder"].limit.output = $output' \
+          "$config" > "$tmp"
+        mv "$tmp" "$config"
+      fi
+    done
     running=$(docker compose ps --services --filter status=running 2>/dev/null | grep '^vllm-' || true)
     if [ -n "$running" ]; then
         echo "Stopping $running"
         docker compose stop $running
     fi
-    docker compose up -d {{model}}
+    docker compose up -d --force-recreate {{model}}
     docker compose up -d open-webui
-    echo "Up: {{model}}. UI at http://localhost:3000  API at http://localhost:8000/v1"
+    echo "Up: {{model}}. OpenCode model: vllm-local/local-coder (${context} context, ${output} output). UI at http://localhost:3000  API at http://localhost:8000/v1"
 
 # Stop active vllm-* (frees the 4090); leaves Open WebUI running.
 stop:
@@ -39,13 +61,15 @@ stop:
     running=$(docker compose ps --services --filter status=running 2>/dev/null | grep '^vllm-' || true)
     if [ -n "$running" ]; then docker compose stop $running; else echo "No vllm-* running"; fi
 
-# Tail the active model's logs (container is always named `vllm`).
+# Tail the active model's logs.
 logs:
-    docker logs -f vllm
+    #!/usr/bin/env bash
+    running=$(docker compose ps --services --filter status=running 2>/dev/null | grep '^vllm-' || true)
+    if [ -n "$running" ]; then docker compose logs -f $running; else echo "No vllm-* running"; fi
 
 # Tail the Open WebUI logs.
 ui-logs:
-    docker logs -f open-webui
+    docker compose logs -f open-webui
 
 # Pre-download a HF model into the shared cache. Useful for warming
 # the cache before first run so `just llm` doesn't time out.

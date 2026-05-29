@@ -1,15 +1,13 @@
 # Local LLM stack: vLLM (one model active) + Open WebUI frontend.
 #
-# Each vllm-* service shares `container_name: vllm` and binds host port 8000,
-# making them mutually exclusive — only one runs at a time. Use the `justfile`
-# (`just llm <service>`) to switch.
+# Each vllm-* service binds host port 8000, making them mutually exclusive —
+# only one runs at a time. Use the `justfile` (`just llm <service>`) to switch.
 #
 # Shared HuggingFace cache: ${HOME}/llm-cache/huggingface — weights live once
 # on disk, every model reuses them.
 
 x-vllm-base: &vllm-base
   image: vllm/vllm-openai:latest
-  container_name: vllm
   runtime: nvidia
   deploy:
     resources:
@@ -25,35 +23,91 @@ x-vllm-base: &vllm-base
     - ${HOME}/llm-cache/huggingface:/root/.cache/huggingface
   environment:
     - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN:-}
-  restart: unless-stopped
+    # Fail fast if weights are not already in the shared cache. Use `just pull`
+    # to download models explicitly with progress before starting a service.
+    - HF_HUB_OFFLINE=1
+    - TRANSFORMERS_OFFLINE=1
+  # Model startup failures should stay failed instead of crash-looping. Repeated
+  # CUDA initialization attempts make GPU/driver faults harder to diagnose.
+  restart: "no"
 
 services:
-  # Primary: 30B MoE coder model, AWQ 4-bit — fits 24 GB with 32k context.
+  # Primary: 30B MoE coder model, AWQ 4-bit — practical local default.
   # Official Qwen org did not publish an AWQ build of Qwen3-Coder-30B-A3B;
   # using QuantTrio's community quant (516k+ downloads, most popular AWQ).
   vllm-qwen3-coder:
     <<: *vllm-base
     command: >
       --model QuantTrio/Qwen3-Coder-30B-A3B-Instruct-AWQ
+      --served-model-name local-coder
       --quantization awq
       --dtype half
-      --max-model-len 90112
+      --max-model-len 32768
       --kv-cache-dtype fp8
-      --gpu-memory-utilization 0.96
+      --gpu-memory-utilization 0.94
       --enable-auto-tool-choice
       --tool-call-parser qwen3_coder
+
+  # Smaller Qwen long-context option. Lower coding ceiling than Qwen3-Coder,
+  # but much more KV-cache headroom on 24 GB for long OpenCode sessions.
+  vllm-qwen3-14b:
+    <<: *vllm-base
+    command: >
+      --model Qwen/Qwen3-14B-AWQ
+      --served-model-name local-coder
+      --quantization awq
+      --dtype auto
+      --max-model-len 40960
+      --kv-cache-dtype fp8
+      --gpu-memory-utilization 0.94
+      --enable-auto-tool-choice
+      --tool-call-parser hermes
+      --reasoning-parser qwen3
 
   # Fallback: proven Qwen2.5-Coder-32B if Qwen3 AWQ has issues.
   vllm-qwen25-coder:
     <<: *vllm-base
     command: >
       --model Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
+      --served-model-name local-coder
       --quantization awq
       --dtype half
       --max-model-len 32768
       --gpu-memory-utilization 0.92
       --enable-auto-tool-choice
       --tool-call-parser hermes
+
+  # Qwen 3.6 27B AutoRound INT4 path for single 24 GB GPUs. Run text-only for
+  # OpenCode so we do not spend memory on the vision encoder.
+  vllm-qwen36-27b-autoround:
+    <<: *vllm-base
+    command: >
+      --model Lorbus/Qwen3.6-27B-int4-AutoRound
+      --served-model-name local-coder
+      --dtype auto
+      --max-model-len 40960
+      --kv-cache-dtype fp8
+      --gpu-memory-utilization 0.90
+      --language-model-only
+      --enforce-eager
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --trust-remote-code
+
+  # Non-Qwen coding-agent baseline from Mistral/OpenHands.
+  vllm-devstral-small:
+    <<: *vllm-base
+    command: >
+      --model mistralai/Devstral-Small-2505
+      --served-model-name local-coder
+      --dtype auto
+      --max-model-len 32768
+      --gpu-memory-utilization 0.90
+      --tokenizer_mode mistral
+      --config_format mistral
+      --load_format mistral
+      --enable-auto-tool-choice
+      --tool-call-parser mistral
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
