@@ -37,25 +37,44 @@ ApplicationWindow {
 
     // Shared persistent profile — cookies, localStorage, IndexedDB live under
     // ~/.local/state/webview-zone/profile/ so logins survive restarts.
-    WebEngineProfile {
-        id: sharedProfile
+    //
+    // Qt 6.9 deprecated instantiating WebEngineProfile directly. The supported
+    // path is to configure a WebEngineProfilePrototype, then mint the real
+    // profile with .instance(). The prototype only carries storage/cache
+    // properties, so httpUserAgent and the download-cancel handler are applied
+    // to the instance below (the sharedProfile property).
+    WebEngineProfilePrototype {
+        id: sharedProfilePrototype
         // storageName is what actually toggles on-disk persistence for
-        // cookies + login state in QtWebEngine. Without it, the profile
-        // behaves off-the-record for cookies even when offTheRecord=false
-        // and persistentCookiesPolicy=ForcePersistentCookies are set.
+        // cookies + login state in QtWebEngine. With it set, the profile is
+        // non-off-the-record — the prototype infers that from storageName,
+        // so there's no explicit offTheRecord flag to set anymore.
         storageName: "webview-zone"
-        offTheRecord: false
         persistentStoragePath: bridge.profilePath
         cachePath: bridge.profilePath
         httpCacheType: WebEngineProfile.DiskHttpCache
         persistentCookiesPolicy: WebEngineProfile.ForcePersistentCookies
-        // Strip the QtWebEngine/X.Y token from the UA so Google OAuth
-        // stops flagging us as an "embedded browser" and invalidating the
-        // session on every launch. Logfire uses Google SSO and was
-        // re-prompting on every restart even with cookies persisted.
-        httpUserAgent: bridge.userAgent
-        // Dashboards don't download; refuse to save anything the server sends.
-        onDownloadRequested: function(download) { download.cancel() }
+    }
+
+    // The concrete profile, minted from the prototype. It MUST be created in
+    // Component.onCompleted, not during construction: instance() returns null
+    // until the prototype reaches componentComplete, and a delegate's
+    // `profile:` binding evaluates while the tree is still being built (before
+    // any componentComplete fires). So we create it here, after construction,
+    // and gate the Repeater below on it being non-null — the panes only
+    // instantiate once the profile exists, binding to the fully configured one.
+    property var sharedProfile: null
+    Component.onCompleted: {
+        var p = sharedProfilePrototype.instance()
+        // Strip the QtWebEngine/X.Y token from the UA so Google OAuth stops
+        // flagging us as an "embedded browser" and invalidating the session on
+        // every launch. Logfire uses Google SSO and was re-prompting on every
+        // restart even with cookies persisted. Set before any view exists, so
+        // it applies to the first request.
+        p.httpUserAgent = bridge.userAgent
+        // Dashboards don't download; refuse to save what the server sends.
+        p.downloadRequested.connect(function (download) { download.cancel() })
+        root.sharedProfile = p
     }
 
     // Mask source for the OpacityMask below. Not visible itself; rendered
@@ -91,9 +110,12 @@ ApplicationWindow {
 
         Repeater {
             id: paneRepeater
-            model: bridge.urlsModel
+            // Gate on the profile: stays empty until Component.onCompleted has
+            // minted sharedProfile, then populates — so every pane binds to a
+            // ready profile instead of a transient null/default.
+            model: root.sharedProfile ? bridge.urlsModel : 0
             delegate: WebEngineView {
-                profile: sharedProfile
+                profile: root.sharedProfile
                 url: model.url
                 zoomFactor: model.zoom
                 SplitView.fillWidth: true
@@ -106,6 +128,16 @@ ApplicationWindow {
                 onContextMenuRequested: function (request) {
                     request.accepted = true
                     contextMenu.popup()
+                }
+                // Swallow the loaded pages' own JS console output. Without a
+                // handler, QtWebEngine routes every page console message to the
+                // 'js' logging category → stderr → journald. Third-party
+                // dashboards (e.g. logfire) throw recurring errors like
+                // "rootNode.getElementById is not a function", flooding the
+                // journal hundreds of times an hour. We don't control those
+                // pages, so we drop their console messages here. To debug a
+                // page, temporarily forward them: bridge.debugLog(message).
+                onJavaScriptConsoleMessage: function (level, message, lineNumber, sourceID) {
                 }
             }
         }
@@ -197,7 +229,7 @@ ApplicationWindow {
     // a site is wedged on stale/corrupt cached assets. Cookies and
     // localStorage are untouched — only HTTP cache is cleared.
     function clearCacheAndReload() {
-        sharedProfile.clearHttpCache()
+        root.sharedProfile.clearHttpCache()
         reloadFocused(true)
     }
 
