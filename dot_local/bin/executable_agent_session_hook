@@ -303,6 +303,16 @@ def find_agent_pid(agent: str) -> int:
     return os.getppid()
 
 
+def focused_window_id() -> int | None:
+    """ID of the currently focused niri window (best effort)."""
+    try:
+        out = subprocess.run(["niri", "msg", "--json", "focused-window"],
+                             capture_output=True, text=True, timeout=2)
+        return json.loads(out.stdout).get("id")
+    except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError, AttributeError):
+        return None
+
+
 def alive(entry: dict) -> bool:
     pid = entry.get("pid")
     if pid is None:
@@ -387,6 +397,15 @@ def ingest(agent: str) -> None:
                     "model": payload.get("model"),
                     "pid": pid,
                     "pid_start": proc_start_time(pid),
+                    # Hooks inherit the agent's env, which inherits the
+                    # Ghostty surface env — lets --focus present the exact
+                    # tab/split via D-Bus (ghostty > 1.3.1 sets this).
+                    "surface_id": os.environ.get("GHOSTTY_SURFACE_ID"),
+                    # The user (almost certainly) just launched the agent in
+                    # the focused window — a far better focus target than
+                    # PID matching, which collapses for single-instance
+                    # terminals where every window shares one PID.
+                    "window_id": focused_window_id(),
                     "started_at": time.time(),
                 }
                 # /clear and /compact issue a new session_id in the same
@@ -424,23 +443,43 @@ def do_focus(session_id: str) -> int:
     entry = load_state().get(session_id)
     if not entry:
         return 1
+
+    # Ghostty tab/split: present the exact surface via D-Bus. Ghostty raises
+    # the right window, switches to the tab, and focuses the split. Only
+    # available when the agent ran under ghostty > 1.3.1, which exposes
+    # GHOSTTY_SURFACE_ID as 0x-prefixed hex (busctl wants decimal).
+    try:
+        surface = int(entry.get("surface_id") or "0", 0)
+    except ValueError:
+        surface = 0
+    if surface:
+        try:
+            subprocess.run(["busctl", "--user", "call", "com.mitchellh.ghostty",
+                            "/com/mitchellh/ghostty", "org.gtk.Actions", "Activate",
+                            "sava{sv}", "present-surface", "1", "t", str(surface), "0"],
+                           capture_output=True, timeout=3)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+
     try:
         out = subprocess.run(["niri", "msg", "--json", "windows"],
                              capture_output=True, text=True, timeout=3)
         windows = json.loads(out.stdout)
     except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError):
         return 1
-    by_pid = {w["pid"]: w["id"] for w in windows if w.get("pid") is not None}
+    ids = {w["id"] for w in windows}
 
-    window_id = None
-    pid = entry.get("pid")
-    if pid:
-        for ancestor in ancestors(pid):
+    # Best window guess, in order: the window focused at session start
+    # (single-instance terminals share one PID, so PID matching can't tell
+    # windows apart), then the PID ancestor chain, then a unique title match.
+    window_id = entry.get("window_id") if entry.get("window_id") in ids else None
+    if window_id is None:
+        by_pid = {w["pid"]: w["id"] for w in windows if w.get("pid") is not None}
+        for ancestor in ancestors(entry.get("pid") or 0):
             if ancestor in by_pid:
                 window_id = by_pid[ancestor]
                 break
     if window_id is None:
-        # Multiplexer fallback: unique title match on the cwd basename.
         needle = os.path.basename(entry.get("cwd", "").rstrip("/"))
         if needle:
             matches = [w["id"] for w in windows if needle in (w.get("title") or "")]
