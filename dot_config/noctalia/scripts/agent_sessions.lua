@@ -135,9 +135,11 @@ function update()
   else
     render()
   end
-  -- Janitor: prune crashed sessions every ~30s. The hook only rewrites
-  -- (recomposes + re-nudges) when something actually changed.
-  if tick % 300 == 0 then
+  -- Janitor: prune dead sessions every ~10s. Codex has no SessionEnd hook,
+  -- so a quit codex is only removed by PID-liveness pruning — this bounds
+  -- its removal latency. The hook only rewrites (recomposes + re-nudges)
+  -- when something actually changed, so idle prunes are cheap no-ops.
+  if tick % 100 == 0 then
     noctalia.runAsync("'" .. hookBin .. "' --prune")
   end
 end
