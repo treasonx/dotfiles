@@ -1,5 +1,9 @@
 {
   "alwaysThinkingEnabled": true,
+  "skipAutoPermissionPrompt": true,
+  "permissions": {
+    "defaultMode": "auto"
+  },
   "enabledPlugins": {
     "coderabbit@claude-plugins-official": true,
     "compound-engineering@compound-engineering-plugin": true,
@@ -12,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'body=$(cat); (curl -sf --connect-timeout 1 --max-time 2 -X POST http://localhost:7777/state -H \"Content-Type: application/json\" -d \"$body\" || true) &'",
+            "command": "$HOME/.local/bin/agent_session_hook --agent claude",
             "timeout": 3
           }
         ]
@@ -24,19 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'body=$(cat); (curl -sf --connect-timeout 1 --max-time 2 -X POST http://localhost:7777/state -H \"Content-Type: application/json\" -d \"$body\" || true) &'",
-            "timeout": 3
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c 'body=$(cat); (curl -sf --connect-timeout 1 --max-time 2 -X POST http://localhost:7777/state -H \"Content-Type: application/json\" -d \"$body\" || true) &'",
+            "command": "$HOME/.local/bin/agent_session_hook --agent claude",
             "timeout": 3
           }
         ]
@@ -48,31 +40,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'body=$(cat); (curl -sf --connect-timeout 1 --max-time 2 -X POST http://localhost:7777/state -H \"Content-Type: application/json\" -d \"$body\" || true) &'",
+            "command": "$HOME/.local/bin/agent_session_hook --agent claude",
             "timeout": 3
           }
         ]
       }
     ],
-    "SubagentStart": [
+    "Notification": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'body=$(cat); (curl -sf --connect-timeout 1 --max-time 2 -X POST http://localhost:7777/state -H \"Content-Type: application/json\" -d \"$body\" || true) &'",
-            "timeout": 3
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c 'body=$(cat); (curl -sf --connect-timeout 1 --max-time 2 -X POST http://localhost:7777/state -H \"Content-Type: application/json\" -d \"$body\" || true) &'",
+            "command": "$HOME/.local/bin/agent_session_hook --agent claude",
             "timeout": 3
           }
         ]
@@ -84,7 +64,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'body=$(cat); (curl -sf --connect-timeout 1 --max-time 2 -X POST http://localhost:7777/state -H \"Content-Type: application/json\" -d \"$body\" || true) &'",
+            "command": "$HOME/.local/bin/agent_session_hook --agent claude",
             "timeout": 3
           }
         ]
@@ -96,15 +76,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'body=$(cat); (curl -sf --connect-timeout 1 --max-time 2 -X POST http://localhost:7777/state -H \"Content-Type: application/json\" -d \"$body\" || true) &'",
+            "command": "$HOME/.local/bin/agent_session_hook --agent claude",
             "timeout": 3
           }
         ]
       }
     ]
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "/home/james/.claude/scape/bridge.sh"
   }
 }

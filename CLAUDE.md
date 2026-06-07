@@ -186,15 +186,26 @@ if "--_j_meta" in sys.argv or "-h" in sys.argv or "--help" in sys.argv:
 
 The compositor is **niri** (config: `dot_config/niri/config.kdl.tmpl`). The
 desktop shell — bar, launcher, notifications, control center, lock screen,
-wallpaper, session menu — is **Noctalia**, a Quickshell-based config
-(`dot_config/noctalia/settings.json.tmpl`). Noctalia spawns at niri startup
-via `spawn-at-startup "qs" "-c" "noctalia-shell"`.
+wallpaper, session menu — is **Noctalia v5**, a native binary from the
+`noctalia-git` COPR (the old Quickshell/QML v4 is gone; v4 QML plugins do NOT
+work). It spawns at niri startup via `spawn-at-startup "noctalia"`.
+
+Config layering (TOML — the old settings.json era is over):
+- `~/.config/noctalia/config.toml` — curated layer, chezmoi-managed
+  (`dot_config/noctalia/config.toml`)
+- `~/.local/state/noctalia/settings.toml` — GUI-managed override layer
+  (wins last; do NOT chezmoi-manage; bar widget placement lives here)
+- Custom bar widgets are **Lua (luau) scripted widgets** in
+  `~/.config/noctalia/scripts/` — declared via `[widget.X] type = "scripted"`
+  blocks. Example: `agent_sessions.lua` (Claude/Codex session critters).
 
 Quick reference:
 - `niri msg --json <subcommand>` — query niri IPC (e.g., `focused-window`,
   `outputs`, `focused-output`)
-- `qs -c noctalia-shell ipc call <target> <action>` — toggle Noctalia
-  overlays (`wallpaper toggle`, `controlCenter toggle`, etc.)
+- `noctalia msg <command>` — Noctalia IPC (`config-reload`,
+  `scripted-widget <name> <target> <event> [payload]`, `bar-toggle`, …)
+- `noctalia config validate` — check TOML config validity
+- `update_noctalia` — pull latest COPR build + reload the shell
 - `install_noctalia_deps --check` — verify Noctalia + optional dependencies
 
 ## Common Tasks

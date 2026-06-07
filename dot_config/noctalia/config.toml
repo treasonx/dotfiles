@@ -1,0 +1,32 @@
+# Curated Noctalia config layer, managed by chezmoi.
+# Load order: built-in defaults -> this file -> settings.toml (GUI overrides win).
+# Bar widget placement lives in settings.toml; widget *definitions* live here.
+
+# Agent session slots — one animated emoji critter per running Claude Code /
+# Codex session, fed by ~/.local/bin/agent_session_hook via Claude/Codex hooks.
+# Slot N shows the Nth-oldest session and hides itself when unused.
+
+[widget.agent_slot_1]
+type = "scripted"
+script = "~/.config/noctalia/scripts/agent_sessions.lua"
+slot = 1
+
+[widget.agent_slot_2]
+type = "scripted"
+script = "~/.config/noctalia/scripts/agent_sessions.lua"
+slot = 2
+
+[widget.agent_slot_3]
+type = "scripted"
+script = "~/.config/noctalia/scripts/agent_sessions.lua"
+slot = 3
+
+[widget.agent_slot_4]
+type = "scripted"
+script = "~/.config/noctalia/scripts/agent_sessions.lua"
+slot = 4
+
+[widget.agent_slot_5]
+type = "scripted"
+script = "~/.config/noctalia/scripts/agent_sessions.lua"
+slot = 5
