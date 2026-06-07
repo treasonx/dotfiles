@@ -79,7 +79,7 @@ SCRIPTS = [
 # PATH shims — transparently replace real binaries, invoked by typing the normal command:
 #   bat, lazygit (Noctalia theme-aware launchers; fall back to Catppuccin)
 # Agent hooks — invoked by Claude Code / codex hooks (feeds the Noctalia agent-sessions widget):
-#   agent_session_hook
+#   agent_session_hook, render_agent_icons (theme-template post_hook)
 
 
 def fzf_select() -> str | None:

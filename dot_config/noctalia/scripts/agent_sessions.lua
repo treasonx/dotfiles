@@ -1,90 +1,121 @@
--- Agent session slot — one animated emoji critter per running Claude Code /
--- Codex CLI session.
+-- Agent sessions — one bar widget showing every running Claude Code / Codex
+-- session as a brand icon (Claude spark / OpenAI knot) in a single strip.
 --
 -- State is maintained by ~/.local/bin/agent_session_hook (driven by Claude /
--- Codex hooks) in ~/.local/state/agent-sessions/sessions.tsv, sorted oldest-
--- first. Each slot N (config key `slot`) renders the Nth session and hides
--- itself when there is none. The hook nudges slots via
--- `noctalia msg scripted-widget agent_slot_N all refresh`; polling every few
--- ticks is the fallback.
+-- Codex hooks) in ~/.local/state/agent-sessions/sessions.tsv. After every
+-- state change the hook recomposes ~/.cache/agent-sessions/strips/<gen>/{v,h}
+-- — 48 montage frames containing one icon per live session, published
+-- atomically via the strips/gen file ("<gen> <count>") — and nudges this
+-- widget via `noctalia msg scripted-widget agent_sessions all refresh`.
+-- The widget cycles strip frames and only switches generation after `gen`
+-- updates, so it never reads half-written images (no flicker); icons appear
+-- and disappear by recomposition, so one widget instance covers any number
+-- of sessions.
 --
--- Status display:  working    critter + sparkle cycle (✨ ⚡ 💫 🌟)
---                  waiting    critter + blinking ❗ (your turn)
---                  permission critter + 🙏/⚠️ fast flash (approval needed)
--- Click focuses the session's terminal window via niri (PID-chain match).
+-- Status display:  working    icon rotates (12-frame spin)
+--                  waiting    icon static, slow opacity pulse
+--                  permission icon static, fast pulse in error color
+-- Icons re-tint automatically on color-scheme change (agent_icon_colors
+-- user template -> render_agent_icons post_hook -> recompose).
+-- Click focuses the most urgent session's terminal window via niri
+-- (permission > waiting > working, oldest first within a tier).
 
 barWidget.define({
-  label = "Agent Session Slot",
-  version = "1.0.0",
+  label = "Agent Sessions",
+  version = "3.0.0",
   icon = "robot",
-  description = "Shows one running Claude Code / Codex session as an animated emoji critter.",
+  description = "Running Claude Code / Codex sessions as rotating/pulsing brand icons.",
   pickable = true,
   settings = {
-    { key = "slot", type = "integer", label = "Session slot (1 = oldest)", default = 1, min = 1, max = 16 },
-    { key = "claude_emoji", type = "string", label = "Claude critter", default = "😺" },
-    { key = "codex_emoji", type = "string", label = "Codex critter", default = "🐙" },
+    { key = "icon_size", type = "integer", label = "Icon size (px)", default = 20, min = 12, max = 48 },
+    { key = "orient", type = "select", label = "Bar orientation", default = "h",
+      options = { { value = "h", label = "Horizontal" }, { value = "v", label = "Vertical" } } },
   },
 })
 
-local slot = barWidget.getConfig("slot", 1)
-local critters = {
-  claude = barWidget.getConfig("claude_emoji", "😺"),
-  codex = barWidget.getConfig("codex_emoji", "🐙"),
-}
+local iconSize = barWidget.getConfig("icon_size", 20)
+-- Explicit, not barWidget.isVertical(): that derives from the widget's own
+-- container aspect (which our image feeds back into) and flaps mid-layout.
+local orient = barWidget.getConfig("orient", "h")
+local vertical = orient == "v"
 local home = noctalia.getenv("HOME") or "~"
 local tsvPath = home .. "/.local/state/agent-sessions/sessions.tsv"
-local focusBin = home .. "/.local/bin/agent_session_hook"
+local hookBin = home .. "/.local/bin/agent_session_hook"
+local stripsDir = home .. "/.cache/agent-sessions/strips/"
+local genPath = stripsDir .. "gen"
 
-local session = nil
+local STRIP_FRAMES = 48
+-- Mirror of the composer's geometry: 96px icons with 12px montage borders,
+-- so each tile is 96x120 (vertical) / 120x96 (horizontal).
+local CELL_RATIO = 120 / 96
+
+local sessions = {}
+local gen = nil        -- current strip generation hash (strips/<gen>/...)
+local genCount = 0     -- icon count baked into that generation
 local tick = 0
-
-local WORK_FX = { "✨", "⚡", "💫", "🌟" }
+local lastImage = nil
 
 local function render()
-  if not session then
+  if not gen or genCount == 0 then
     barWidget.setVisible(false)
+    lastImage = nil
     return
   end
   barWidget.setVisible(true)
 
-  local critter = critters[session.agent] or "🤖"
-  local text
-  if session.status == "working" then
-    text = critter .. WORK_FX[(tick % #WORK_FX) + 1]
-  elseif session.status == "permission" then
-    -- urgent: fast flash, cat gets appropriately alarmed
-    local face = session.agent == "claude" and "🙀" or critter
-    text = face .. ((tick % 2 == 0) and "⚠️" or "🙏")
-  else -- waiting
-    text = critter .. ((tick % 4 < 3) and "❗" or "  ")
+  local path = stripsDir .. gen .. "/" .. orient .. string.format("/strip_%02d.png", tick % STRIP_FRAMES)
+  if path ~= lastImage then
+    local cell = math.floor(iconSize * CELL_RATIO + 0.5)
+    local w = vertical and iconSize or (cell * genCount)
+    local h = vertical and (cell * genCount) or iconSize
+    barWidget.setImage(path, false, w, h)
+    lastImage = path
   end
-  barWidget.setText(text)
 end
 
 local function refresh()
-  noctalia.runAsync("cat '" .. tsvPath .. "' 2>/dev/null", function(result)
+  -- One read for both: line 1 = "<gen> <count>" (atomically published by
+  -- the composer), rest = sessions TSV. On any failed read we keep the
+  -- previous state — the widget must never blink out on a transient error.
+  local cmd = "cat '" .. genPath .. "' 2>/dev/null; echo; cat '" .. tsvPath .. "' 2>/dev/null"
+  noctalia.runAsync(cmd, function(result)
+    local out = result.stdout
+    if not out or out == "" then
+      return -- transient failure: keep showing what we have
+    end
+    local first, rest = string.match(out, "^([^\n]*)\n(.*)$")
+    local newGen, newCount = string.match(first or "", "^(%x+) (%d+)")
+    if newGen then
+      gen = newGen
+      genCount = tonumber(newCount) or 0
+    end
+
     local rows = {}
-    for line in string.gmatch(result.stdout or "", "[^\n]+") do
+    for line in string.gmatch(rest or "", "[^\n]+") do
       local id, agent, status, cwd, model =
         string.match(line, "([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t?([^\t]*)")
       if id and id ~= "" then
         table.insert(rows, { id = id, agent = agent, status = status, cwd = cwd, model = model })
       end
     end
+    sessions = rows
 
-    session = rows[slot]
-    if session then
-      local prettyCwd = session.cwd
-      if string.sub(prettyCwd, 1, #home) == home then
-        prettyCwd = "~" .. string.sub(prettyCwd, #home + 1)
-      end
-      local tooltip = {
-        { key = "Agent", value = session.agent == "claude" and "Claude Code" or "Codex" },
-        { key = "Status", value = session.status },
-        { key = "Dir", value = prettyCwd },
-      }
-      if session.model and session.model ~= "" then
-        table.insert(tooltip, { key = "Model", value = session.model })
+    if #sessions > 0 then
+      local tooltip = {}
+      for _, s in ipairs(sessions) do
+        local prettyCwd = s.cwd
+        if string.sub(prettyCwd, 1, #home) == home then
+          prettyCwd = "~" .. string.sub(prettyCwd, #home + 1)
+        end
+        local statusLabel = ({
+          working = "working…",
+          waiting = "waiting for you",
+          permission = "needs permission!",
+        })[s.status] or s.status
+        table.insert(tooltip, {
+          key = s.agent == "claude" and "Claude" or "Codex",
+          value = statusLabel .. "  " .. prettyCwd,
+        })
       end
       barWidget.setTooltip(tooltip)
     else
@@ -94,26 +125,35 @@ local function refresh()
   end)
 end
 
-barWidget.setUpdateInterval(400)
+barWidget.setUpdateInterval(100)
 
 function update()
   tick = tick + 1
   -- Re-read state every ~2s as a fallback; animate locally every tick.
-  if tick % 5 == 1 then
+  if tick % 20 == 1 then
     refresh()
   else
     render()
   end
-  -- Slot 1 doubles as janitor: prune crashed sessions every ~30s. The hook
-  -- only rewrites (and re-nudges) when something actually changed.
-  if slot == 1 and tick % 75 == 0 then
-    noctalia.runAsync("'" .. focusBin .. "' --prune")
+  -- Janitor: prune crashed sessions every ~30s. The hook only rewrites
+  -- (recomposes + re-nudges) when something actually changed.
+  if tick % 300 == 0 then
+    noctalia.runAsync("'" .. hookBin .. "' --prune")
   end
 end
 
 function onClick()
-  if session then
-    noctalia.runAsync("'" .. focusBin .. "' --focus '" .. session.id .. "'")
+  -- Focus the most urgent session: permission > waiting > working,
+  -- oldest first within a tier (sessions are already sorted oldest-first).
+  local order = { permission = 1, waiting = 2, working = 3 }
+  local target = nil
+  for _, s in ipairs(sessions) do
+    if not target or (order[s.status] or 9) < (order[target.status] or 9) then
+      target = s
+    end
+  end
+  if target then
+    noctalia.runAsync("'" .. hookBin .. "' --focus '" .. target.id .. "'")
   end
 end
 
@@ -123,4 +163,6 @@ function onIpc(event, payload)
   end
 end
 
+-- Make sure icon frames + strips exist on first run (no-op when up to date).
+noctalia.runAsync(home .. "/.local/bin/render_agent_icons; '" .. hookBin .. "' --compose")
 refresh()

@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""Render theme-tinted icon frames for the Noctalia agent-sessions widget.
+
+Rasterizes the Claude / OpenAI brand SVGs (~/.config/noctalia/icons/) into
+PNG animation frames under ~/.cache/agent-sessions/icons/<agent>/:
+
+    rot_00..11.png    12 rotation steps (30° apart)  — "working" spin
+    pulse_00..07.png  8 opacity steps (icon color)   — "waiting" pulse
+    alert_00..07.png  8 opacity steps (error color)  — "permission" pulse
+
+Colors come from ~/.local/state/agent-sessions/theme.json, which Noctalia
+renders from the current palette via the `agent_icon_colors` user template
+(user-templates.toml). This script runs as that template's post_hook, so
+frames re-tint automatically on every color-scheme change. Re-rendering is
+skipped when nothing changed (colors + SVG mtimes hashed into a marker file).
+
+Requires ImageMagick (`magick`) with librsvg support.
+"""
+
+import hashlib
+import json
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+from j_lib import JParser
+
+ICON_DIR = Path.home() / ".config" / "noctalia" / "icons"
+THEME_FILE = Path.home() / ".local" / "state" / "agent-sessions" / "theme.json"
+OUT_DIR = Path.home() / ".cache" / "agent-sessions" / "icons"
+SVGS = {"claude": ICON_DIR / "claude.svg", "codex": ICON_DIR / "openai.svg"}
+
+SIZE = 96          # rendered px; the widget scales it down on the bar
+ROT_FRAMES = 12
+PULSE_FRAMES = 8
+PULSE_MIN = 0.35   # opacity floor of the pulse
+
+FALLBACK = {"icon": "#e2e2e2", "error": "#ffb4ab"}
+
+
+def load_colors() -> dict:
+    try:
+        data = json.loads(THEME_FILE.read_text())
+        return {"icon": data.get("icon", FALLBACK["icon"]),
+                "error": data.get("error", FALLBACK["error"])}
+    except (OSError, json.JSONDecodeError):
+        return dict(FALLBACK)
+
+
+def tinted_svg(svg_path: Path, color: str) -> bytes:
+    """Inject a color into either stroke-based (Tabler) or fill-based SVGs."""
+    svg = svg_path.read_text()
+    if "currentColor" in svg:
+        svg = svg.replace("currentColor", color)
+    elif "fill=" not in svg.split(">", 1)[0]:
+        svg = svg.replace("<svg", f'<svg fill="{color}"', 1)
+    else:
+        import re
+        svg = re.sub(r'fill="#?[0-9a-fA-F]*"', f'fill="{color}"', svg, count=1)
+    return svg.encode()
+
+
+def magick(args: list, svg: bytes) -> None:
+    subprocess.run(["magick", "-background", "none", "svg:-", *args],
+                   input=svg, check=True, capture_output=True)
+
+
+def render_agent(agent: str, svg_path: Path, colors: dict) -> None:
+    out = OUT_DIR / agent
+    out.mkdir(parents=True, exist_ok=True)
+    base = tinted_svg(svg_path, colors["icon"])
+    alert = tinted_svg(svg_path, colors["error"])
+    density = ["-density", "300", "-resize", f"{SIZE}x{SIZE}"]
+
+    for i in range(ROT_FRAMES):
+        angle = i * (360 / ROT_FRAMES)
+        # SRT distort rotates around the center without clipping corners
+        magick([*density, "-distort", "SRT", str(angle),
+                "-gravity", "center", "-extent", f"{SIZE}x{SIZE}",
+                str(out / f"rot_{i:02d}.png")], base)
+
+    for name, svg in (("pulse", base), ("alert", alert)):
+        for i in range(PULSE_FRAMES):
+            # ping-pong opacity: 1.0 -> PULSE_MIN -> back, sampled evenly
+            t = i / (PULSE_FRAMES - 1)
+            opacity = 1.0 - (1.0 - PULSE_MIN) * (2 * t if t <= 0.5 else 2 * (1 - t))
+            magick([*density, "-channel", "A", "-evaluate", "multiply",
+                    f"{opacity:.3f}", "+channel",
+                    str(out / f"{name}_{i:02d}.png")], svg)
+
+
+def state_hash(colors: dict) -> str:
+    h = hashlib.sha256(json.dumps(colors, sort_keys=True).encode())
+    for p in SVGS.values():
+        try:
+            h.update(p.read_bytes())
+        except OSError:
+            pass
+    h.update(f"{SIZE}/{ROT_FRAMES}/{PULSE_FRAMES}/{PULSE_MIN}".encode())
+    return h.hexdigest()
+
+
+def main() -> int:
+    parser = JParser(description="Render theme-tinted icon frames for the agent-sessions widget")
+    parser.add_argument("--force", action="store_true",
+                        help="Re-render even if nothing changed")
+    args = parser.run()
+
+    if shutil.which("magick") is None:
+        print("error: ImageMagick (magick) not found", file=sys.stderr)
+        return 1
+
+    colors = load_colors()
+    marker = OUT_DIR / ".render-hash"
+    digest = state_hash(colors)
+    if not args.force and marker.exists() and marker.read_text() == digest:
+        return 0
+
+    for agent, svg_path in SVGS.items():
+        if not svg_path.exists():
+            print(f"error: missing {svg_path}", file=sys.stderr)
+            return 1
+        render_agent(agent, svg_path, colors)
+
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    marker.write_text(digest)
+    print(f"rendered frames -> {OUT_DIR} (icon {colors['icon']}, error {colors['error']})")
+
+    # Recompose the widget's session strips with the freshly tinted frames.
+    subprocess.run([str(Path.home() / ".local" / "bin" / "agent_session_hook"),
+                    "--compose"], check=False, capture_output=True)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

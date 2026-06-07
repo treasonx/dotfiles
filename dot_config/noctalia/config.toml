@@ -2,31 +2,33 @@
 # Load order: built-in defaults -> this file -> settings.toml (GUI overrides win).
 # Bar widget placement lives in settings.toml; widget *definitions* live here.
 
-# Agent session slots — one animated emoji critter per running Claude Code /
-# Codex session, fed by ~/.local/bin/agent_session_hook via Claude/Codex hooks.
-# Slot N shows the Nth-oldest session and hides itself when unused.
+# Agent sessions — a single bar widget showing one animated brand icon per
+# running Claude Code / Codex session, fed by ~/.local/bin/agent_session_hook
+# via Claude/Codex hooks. Icons appear/disappear by strip recomposition, so
+# only this one widget instance goes in the bar.
 
-[widget.agent_slot_1]
+# Exports the current palette's icon/error colors; the post_hook renders the
+# rotation/pulse PNG frames (~/.cache/agent-sessions/icons/) so the widget
+# icons re-tint automatically on every color-scheme change.
+# NOTE: v5 reads user templates from [theme.templates.user.<name>] in THIS
+# file — the old user-templates.toml is no longer honored (schema:
+# src/config/schema/config_schema.cpp templatesSchema/userTemplateSchema).
+[theme.templates.user.agent_icon_colors]
+enabled = true
+input_path = "~/.config/noctalia/templates/agent-icon-colors.json"
+output_path = "~/.local/state/agent-sessions/theme.json"
+post_hook = "~/.local/bin/render_agent_icons"
+
+# Orientation is explicit config rather than barWidget.isVertical():
+# isVertical derives from the widget's own container aspect, which our image
+# choice feeds back into — sampling it mid-layout flickers the orientation.
+# Use agent_sessions in horizontal bars, agent_sessions_v in vertical ones.
+[widget.agent_sessions]
 type = "scripted"
 script = "~/.config/noctalia/scripts/agent_sessions.lua"
-slot = 1
+orient = "h"
 
-[widget.agent_slot_2]
+[widget.agent_sessions_v]
 type = "scripted"
 script = "~/.config/noctalia/scripts/agent_sessions.lua"
-slot = 2
-
-[widget.agent_slot_3]
-type = "scripted"
-script = "~/.config/noctalia/scripts/agent_sessions.lua"
-slot = 3
-
-[widget.agent_slot_4]
-type = "scripted"
-script = "~/.config/noctalia/scripts/agent_sessions.lua"
-slot = 4
-
-[widget.agent_slot_5]
-type = "scripted"
-script = "~/.config/noctalia/scripts/agent_sessions.lua"
-slot = 5
+orient = "v"
