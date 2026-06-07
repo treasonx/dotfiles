@@ -72,8 +72,11 @@ SRC = 96   # per-icon frame size rendered by render_agent_icons
 PAD = 12   # montage border per side -> tile is 96x120 (or 120x96 horizontal)
 
 # Per-session name labels baked into the "hl" (horizontal, labeled) strips.
-LABEL_MAX = 12        # characters before truncation with an ellipsis
-LABEL_POINTSIZE = 44  # at 96px source -> ~9-10px beside a 20px bar icon
+# The strip is scaled by icon_size/96 on the bar, so the on-screen text size
+# is LABEL_POINTSIZE * icon_size/96 — 62 ≈ a 13px UI font at 20px icons,
+# matching the size of regular bar widget text.
+LABEL_MAX = 12
+LABEL_POINTSIZE = 62
 
 # Noctalia bar widgets to nudge after every state change (see
 # ~/.config/noctalia/config.toml).
@@ -198,6 +201,17 @@ def label_color() -> str:
         return "#e2e2e2"
 
 
+def label_font() -> str | None:
+    """System sans font file (what Noctalia's bar text uses), via fontconfig."""
+    try:
+        out = subprocess.run(["fc-match", "-f", "%{file}", "sans"],
+                             capture_output=True, text=True, timeout=3)
+        path = out.stdout.strip()
+        return path if path and Path(path).exists() else None
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
 def strip_dims(png: Path) -> str:
     """Pixel size of a strip frame as "W H" ("0 0" when unreadable)."""
     try:
@@ -259,8 +273,9 @@ def compose_strips() -> None:
             icon_hash = (ICON_CACHE / ".render-hash").read_text()
         except OSError:
             pass
-        sig = json.dumps([icon_hash] + [[e.get("agent"), e.get("status"), lb]
-                                        for (_, e), lb in zip(rows, labels)])
+        sig = json.dumps([icon_hash, LABEL_POINTSIZE, label_font()]
+                         + [[e.get("agent"), e.get("status"), lb]
+                            for (_, e), lb in zip(rows, labels)])
         gen = hashlib.sha256(sig.encode()).hexdigest()[:8]
         gen_dir = STRIP_DIR / gen
 
@@ -275,11 +290,13 @@ def compose_strips() -> None:
 
             # One name image per session, reused across all 48 "hl" frames.
             color = label_color()
+            font = label_font()
+            font_args = ["-font", font] if font else []
             label_files = []
             for i, lb in enumerate(labels):
                 p = gen_dir / f"label_{i:02d}.png"
                 subprocess.run(["magick", "-background", "none", "-fill", color,
-                                "-pointsize", str(LABEL_POINTSIZE),
+                                *font_args, "-pointsize", str(LABEL_POINTSIZE),
                                 f"label:{lb}", str(p)],
                                check=False, capture_output=True)
                 label_files.append(str(p))
