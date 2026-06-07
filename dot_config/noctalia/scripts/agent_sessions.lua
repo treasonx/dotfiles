@@ -13,8 +13,11 @@
 -- of sessions.
 --
 -- Status display:  working    icon rotates (12-frame spin)
---                  waiting    icon static, slow opacity pulse
---                  permission icon static, fast pulse in error color
+--                  tool       2x spin while a tool call runs
+--                  ack        quick scale pop on prompt submit (~0.7s)
+--                  compacting slow scale breathe
+--                  waiting    solid, still
+--                  permission fast pulse in error color
 -- Icons re-tint automatically on color-scheme change (agent_icon_colors
 -- user template -> render_agent_icons post_hook -> recompose).
 -- Click focuses the most urgent session's terminal window via niri
@@ -109,6 +112,9 @@ local function refresh()
         end
         local statusLabel = ({
           working = "working…",
+          tool = "running a tool…",
+          ack = "working…",
+          compacting = "compacting…",
           waiting = "waiting for you",
           permission = "needs permission!",
         })[s.status] or s.status
@@ -145,12 +151,13 @@ function update()
 end
 
 function onClick()
-  -- Focus the most urgent session: permission > waiting > working,
-  -- oldest first within a tier (sessions are already sorted oldest-first).
-  local order = { permission = 1, waiting = 2, working = 3 }
+  -- Focus the most urgent session: permission > waiting > working-ish
+  -- (working/tool/ack/compacting), oldest first within a tier (sessions
+  -- are already sorted oldest-first).
+  local order = { permission = 1, waiting = 2 }
   local target = nil
   for _, s in ipairs(sessions) do
-    if not target or (order[s.status] or 9) < (order[target.status] or 9) then
+    if not target or (order[s.status] or 3) < (order[target.status] or 3) then
       target = s
     end
   end

@@ -4,7 +4,8 @@
 Invoked as a hook by both agents (JSON event on stdin), it maintains
 ~/.local/state/agent-sessions/sessions.json (canonical) and sessions.tsv
 (pre-sorted mirror for the Luau widget) — one entry per live session with its
-status (working / waiting / permission), cwd, and agent PID.
+status (working / tool / ack / compacting / waiting / permission), cwd, and
+agent PID.
 
 After every write it recomposes ~/.cache/agent-sessions/strips/ — 48-frame
 animation strips (vertical + horizontal) montaging one brand icon per live
@@ -74,6 +75,10 @@ WIDGET_NAMES = ("agent_sessions", "agent_sessions_v")
 
 # Entries without a usable PID fall back to age-based pruning.
 STALE_SECONDS = 12 * 3600
+
+# A prompt-submit "ack" pop decays back to the working spin after this long
+# (a detached sleep+--prune is scheduled at ingest to drive the decay).
+ACK_SECONDS = 0.7
 
 
 def build_parser() -> JParser:
@@ -165,9 +170,15 @@ def nudge_widgets() -> None:
 def frame_name(status: str, t: int) -> str:
     if status == "working":
         return f"rot_{t % 12:02d}.png"
+    if status == "tool":
+        return f"rot_{(t * 2) % 12:02d}.png"  # 2x spin while a tool call runs
     if status == "permission":
         return f"alert_{t % 8:02d}.png"
-    return f"pulse_{(t // 2) % 8:02d}.png"  # waiting: half-speed pulse
+    if status == "compacting":
+        return f"breathe_{t % 12:02d}.png"
+    if status == "ack":
+        return f"breathe_{(t * 2) % 12:02d}.png"  # quick pop on prompt submit
+    return "rot_00.png"  # waiting: solid, still
 
 
 def compose_strips() -> None:
@@ -325,7 +336,16 @@ def alive(entry: dict) -> bool:
 
 
 def prune(state: dict) -> dict:
-    return {sid: e for sid, e in state.items() if alive(e)}
+    """Drop dead sessions; decay expired ack pops back to the working spin."""
+    now = time.time()
+    out = {}
+    for sid, e in state.items():
+        if not alive(e):
+            continue
+        if e.get("status") == "ack" and now - e.get("updated_at", 0) >= ACK_SECONDS:
+            e = {**e, "status": "working"}
+        out[sid] = e
+    return out
 
 
 # ── Ingest ────────────────────────────────────────────────────────────
@@ -362,9 +382,15 @@ def ingest(agent: str) -> None:
     if event == "sessionstart":
         status = "working" if payload.get("source") == "compact" else "waiting"
     elif event == "userpromptsubmit":
-        status = "working"
+        status = "ack"  # one-shot pop; decays to "working" via --prune
+    elif event == "pretooluse":
+        status = "tool"
     elif event == "posttooluse":
         status = "working"  # heartbeat; also clears a granted permission
+    elif event == "precompact":
+        status = "compacting"
+    elif event == "postcompact":
+        status = "working"
     elif event == "stop":
         status = "waiting"
     elif event == "sessionend":
@@ -422,6 +448,20 @@ def ingest(agent: str) -> None:
         save_state(state)
     finally:
         os.close(fd)
+
+    if status == "ack":
+        schedule_ack_decay()
+
+
+def schedule_ack_decay() -> None:
+    """Detached sleep + --prune so an ack pop settles into the working spin."""
+    me = Path(__file__).resolve()
+    try:
+        subprocess.Popen(
+            ["sh", "-c", f"(sleep {ACK_SECONDS + 0.1:.1f}; '{me}' --prune) &"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError:
+        pass
 
 
 # ── Prune / focus / dump ──────────────────────────────────────────────

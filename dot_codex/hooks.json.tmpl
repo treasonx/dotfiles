@@ -24,7 +24,43 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{ .chezmoi.homeDir }}/.local/bin/agent_session_hook --agent codex",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{ .chezmoi.homeDir }}/.local/bin/agent_session_hook --agent codex",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{ .chezmoi.homeDir }}/.local/bin/agent_session_hook --agent codex",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
       {
         "matcher": "",
         "hooks": [

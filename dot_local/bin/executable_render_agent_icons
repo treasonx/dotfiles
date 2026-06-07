@@ -4,9 +4,10 @@
 Rasterizes the Claude / OpenAI brand SVGs (~/.config/noctalia/icons/) into
 PNG animation frames under ~/.cache/agent-sessions/icons/<agent>/:
 
-    rot_00..11.png    12 rotation steps (30° apart)  — "working" spin
-    pulse_00..07.png  8 opacity steps (icon color)   — "waiting" pulse
-    alert_00..07.png  8 opacity steps (error color)  — "permission" pulse
+    rot_00..11.png     12 rotation steps (30° apart)  — "working"/"tool" spin
+    pulse_00..07.png   8 opacity steps (icon color)   — legacy pulse
+    alert_00..07.png   8 opacity steps (error color)  — "permission" pulse
+    breathe_00..11.png 12 scale steps (ping-pong)     — "compacting"/"ack" breathe
 
 Colors come from ~/.local/state/agent-sessions/theme.json, which Noctalia
 renders from the current palette via the `agent_icon_colors` user template
@@ -35,6 +36,8 @@ SIZE = 96          # rendered px; the widget scales it down on the bar
 ROT_FRAMES = 12
 PULSE_FRAMES = 8
 PULSE_MIN = 0.35   # opacity floor of the pulse
+BREATHE_FRAMES = 12
+BREATHE_MIN = 0.70  # scale floor of the breathe
 
 FALLBACK = {"icon": "#e2e2e2", "error": "#ffb4ab"}
 
@@ -89,6 +92,15 @@ def render_agent(agent: str, svg_path: Path, colors: dict) -> None:
                     f"{opacity:.3f}", "+channel",
                     str(out / f"{name}_{i:02d}.png")], svg)
 
+    for i in range(BREATHE_FRAMES):
+        # ping-pong scale: 1.0 -> BREATHE_MIN -> back, centered on the canvas
+        t = i / (BREATHE_FRAMES - 1)
+        scale = 1.0 - (1.0 - BREATHE_MIN) * (2 * t if t <= 0.5 else 2 * (1 - t))
+        s = max(1, round(SIZE * scale))
+        magick(["-density", "300", "-resize", f"{s}x{s}",
+                "-gravity", "center", "-extent", f"{SIZE}x{SIZE}",
+                str(out / f"breathe_{i:02d}.png")], base)
+
 
 def state_hash(colors: dict) -> str:
     h = hashlib.sha256(json.dumps(colors, sort_keys=True).encode())
@@ -97,7 +109,8 @@ def state_hash(colors: dict) -> str:
             h.update(p.read_bytes())
         except OSError:
             pass
-    h.update(f"{SIZE}/{ROT_FRAMES}/{PULSE_FRAMES}/{PULSE_MIN}".encode())
+    h.update(f"{SIZE}/{ROT_FRAMES}/{PULSE_FRAMES}/{PULSE_MIN}"
+             f"/{BREATHE_FRAMES}/{BREATHE_MIN}".encode())
     return h.hexdigest()
 
 

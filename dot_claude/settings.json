@@ -36,7 +36,55 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.local/bin/agent_session_hook --agent claude",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.local/bin/agent_session_hook --agent claude",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.local/bin/agent_session_hook --agent claude",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.local/bin/agent_session_hook --agent claude",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
       {
         "matcher": "",
         "hooks": [
