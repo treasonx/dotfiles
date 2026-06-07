@@ -19,16 +19,12 @@ input_path = "~/.config/noctalia/templates/agent-icon-colors.json"
 output_path = "~/.local/state/agent-sessions/theme.json"
 post_hook = "~/.local/bin/render_agent_icons"
 
-# Orientation is explicit config rather than barWidget.isVertical():
-# isVertical derives from the widget's own container aspect, which our image
-# choice feeds back into — sampling it mid-layout flickers the orientation.
-# Use agent_sessions in horizontal bars, agent_sessions_v in vertical ones.
+# Orientation is the widget's "orient" setting (default horizontal) rather
+# than barWidget.isVertical(): isVertical derives from the widget's own
+# container aspect, which our image choice feeds back into — sampling it
+# mid-layout flickers the orientation. One definition covers both; flip the
+# setting in the GUI for a vertical bar. (Settings are per widget name, so
+# bars with *different* orientations at once would need a second definition.)
 [widget.agent_sessions]
 type = "scripted"
 script = "~/.config/noctalia/scripts/agent_sessions.lua"
-orient = "h"
-
-[widget.agent_sessions_v]
-type = "scripted"
-script = "~/.config/noctalia/scripts/agent_sessions.lua"
-orient = "v"

@@ -76,8 +76,8 @@ LABEL_MAX = 12        # characters before truncation with an ellipsis
 LABEL_POINTSIZE = 44  # at 96px source -> ~9-10px beside a 20px bar icon
 
 # Noctalia bar widgets to nudge after every state change (see
-# ~/.config/noctalia/config.toml — one definition per bar orientation).
-WIDGET_NAMES = ("agent_sessions", "agent_sessions_v")
+# ~/.config/noctalia/config.toml).
+WIDGET_NAMES = ("agent_sessions",)
 
 # Entries without a usable PID fall back to age-based pruning.
 STALE_SECONDS = 12 * 3600
