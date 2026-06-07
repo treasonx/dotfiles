@@ -8,7 +8,8 @@ status (working / tool / ack / compacting / waiting / permission), cwd, and
 agent PID.
 
 After every write it recomposes ~/.cache/agent-sessions/strips/ — 48-frame
-animation strips (vertical + horizontal) montaging one brand icon per live
+animation strips (v = vertical, h = horizontal, hl = horizontal with the
+session's cwd basename beside each icon) montaging one brand icon per live
 session from the frames rendered by render_agent_icons — then nudges the
 single Noctalia v5 scripted widget (~/.config/noctalia/scripts/
 agent_sessions.lua) via `noctalia msg scripted-widget agent_sessions all
@@ -57,6 +58,7 @@ STATE_FILE = STATE_DIR / "sessions.json"
 TSV_FILE = STATE_DIR / "sessions.tsv"
 LOCK_FILE = STATE_DIR / "sessions.json.lock"
 DEBUG_LOG = STATE_DIR / "debug.log"
+THEME_FILE = STATE_DIR / "theme.json"
 
 ICON_CACHE = Path.home() / ".cache" / "agent-sessions" / "icons"
 STRIP_DIR = Path.home() / ".cache" / "agent-sessions" / "strips"
@@ -68,6 +70,10 @@ COMPOSE_LOCK = STRIP_DIR / ".compose.lock"
 STRIP_FRAMES = 48
 SRC = 96   # per-icon frame size rendered by render_agent_icons
 PAD = 12   # montage border per side -> tile is 96x120 (or 120x96 horizontal)
+
+# Per-session name labels baked into the "hl" (horizontal, labeled) strips.
+LABEL_MAX = 12        # characters before truncation with an ellipsis
+LABEL_POINTSIZE = 44  # at 96px source -> ~9-10px beside a 20px bar icon
 
 # Noctalia bar widgets to nudge after every state change (see
 # ~/.config/noctalia/config.toml — one definition per bar orientation).
@@ -138,8 +144,12 @@ def save_state(state: dict) -> None:
     rows = sorted(state.items(), key=lambda kv: kv[1].get("started_at", 0))
     lines = []
     for sid, e in rows:
+        model = e.get("model")
+        if isinstance(model, dict):  # Claude payloads carry {"display_name": …}
+            model = model.get("display_name")
         fields = [sid, e.get("agent", ""), e.get("status", ""),
-                  e.get("cwd", ""), e.get("model") or ""]
+                  e.get("cwd", ""), str(model or ""),
+                  short_label(e.get("cwd", ""), e.get("agent", ""))]
         lines.append("\t".join(f.replace("\t", " ").replace("\n", " ") for f in fields))
     tsv_tmp = TSV_FILE.with_suffix(".tsv.tmp")
     tsv_tmp.write_text("\n".join(lines) + ("\n" if lines else ""))
@@ -166,6 +176,38 @@ def nudge_widgets() -> None:
 
 
 # ── Strip composition ─────────────────────────────────────────────────
+
+def short_label(cwd: str, agent: str) -> str:
+    """Short display name for a session: its working-directory basename."""
+    name = os.path.basename((cwd or "").rstrip("/"))
+    if cwd and cwd.rstrip("/") == str(Path.home()):
+        name = "~"
+    if not name:
+        name = agent
+    name = name.lstrip("@")  # "label:@…" would make ImageMagick read a file
+    if len(name) > LABEL_MAX:
+        name = name[:LABEL_MAX - 1] + "…"
+    return name
+
+
+def label_color() -> str:
+    """Theme icon color for label text (same source render_agent_icons uses)."""
+    try:
+        return json.loads(THEME_FILE.read_text()).get("icon", "#e2e2e2")
+    except (OSError, json.JSONDecodeError):
+        return "#e2e2e2"
+
+
+def strip_dims(png: Path) -> str:
+    """Pixel size of a strip frame as "W H" ("0 0" when unreadable)."""
+    try:
+        out = subprocess.run(["magick", "identify", "-format", "%w %h", str(png)],
+                             capture_output=True, text=True, timeout=5)
+        w, h = out.stdout.split()
+        return f"{int(w)} {int(h)}"
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return "0 0"
+
 
 def frame_name(status: str, t: int) -> str:
     if status == "working":
@@ -211,12 +253,14 @@ def compose_strips() -> None:
 
         state = load_state()
         rows = sorted(state.items(), key=lambda kv: kv[1].get("started_at", 0))
+        labels = [short_label(e.get("cwd", ""), e.get("agent", "")) for _, e in rows]
         icon_hash = ""
         try:
             icon_hash = (ICON_CACHE / ".render-hash").read_text()
         except OSError:
             pass
-        sig = json.dumps([icon_hash] + [[e.get("agent"), e.get("status")] for _, e in rows])
+        sig = json.dumps([icon_hash] + [[e.get("agent"), e.get("status"), lb]
+                                        for (_, e), lb in zip(rows, labels)])
         gen = hashlib.sha256(sig.encode()).hexdigest()[:8]
         gen_dir = STRIP_DIR / gen
 
@@ -227,7 +271,28 @@ def compose_strips() -> None:
             pass
 
         if rows and not gen_dir.exists():
+            gen_dir.mkdir(parents=True, exist_ok=True)
+
+            # One name image per session, reused across all 48 "hl" frames.
+            color = label_color()
+            label_files = []
+            for i, lb in enumerate(labels):
+                p = gen_dir / f"label_{i:02d}.png"
+                subprocess.run(["magick", "-background", "none", "-fill", color,
+                                "-pointsize", str(LABEL_POINTSIZE),
+                                f"label:{lb}", str(p)],
+                               check=False, capture_output=True)
+                label_files.append(str(p))
+
             procs = []
+
+            def flush(force: bool = False) -> None:
+                nonlocal procs
+                if force or len(procs) >= 16:
+                    for p in procs:
+                        p.wait()
+                    procs = []
+
             for orient, tile, geom in (("v", f"1x{len(rows)}", f"+0+{PAD}"),
                                        ("h", f"{len(rows)}x1", f"+{PAD}+0")):
                 out_dir = gen_dir / orient
@@ -240,17 +305,39 @@ def compose_strips() -> None:
                          "-tile", tile, "-geometry", geom,
                          *frames, str(out_dir / f"strip_{t:02d}.png")],
                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
-                    if len(procs) >= 16:
-                        for p in procs:
-                            p.wait()
-                        procs = []
-            for p in procs:
-                p.wait()
+                    flush()
 
-        # Publish atomically, then prune generations older than ~a minute
-        # (the widget may still be mid-cycle on the previous one).
+            # "hl": horizontal with the session name beside each icon —
+            # +append with -gravity center keeps the text vertically centered
+            # against the padded 120px icon cell.
+            out_dir = gen_dir / "hl"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            for t in range(STRIP_FRAMES):
+                args = ["magick", "-background", "none", "-gravity", "center"]
+                for i, (_, e) in enumerate(rows):
+                    if i:
+                        args += ["-size", f"{PAD}x1", "xc:none"]  # gap between sessions
+                    frame = str(ICON_CACHE / e["agent"] / frame_name(e.get("status", "waiting"), t))
+                    # 12x0: pad horizontally only, so hl matches h's 96px height
+                    args += ["(", frame, "-bordercolor", "none", "-border", f"{PAD}x0", ")",
+                             label_files[i]]
+                args += ["+append", "+repage", str(out_dir / f"strip_{t:02d}.png")]
+                procs.append(subprocess.Popen(args, stdout=subprocess.DEVNULL,
+                                              stderr=subprocess.DEVNULL))
+                flush()
+            flush(force=True)
+
+        # Publish atomically — including the measured strip dimensions, since
+        # the labeled variant's width depends on text metrics the widget can't
+        # predict. Line: "<gen> <count> <vW> <vH> <hW> <hH> <hlW> <hlH>".
+        line = f"{gen} {len(rows)}"
+        if rows:
+            for variant in ("v", "h", "hl"):
+                line += " " + strip_dims(gen_dir / variant / "strip_00.png")
+        # Prune generations older than ~a minute after publishing (the widget
+        # may still be mid-cycle on the previous one).
         tmp = GEN_FILE.with_suffix(".tmp")
-        tmp.write_text(f"{gen} {len(rows)}")
+        tmp.write_text(line)
         os.replace(tmp, GEN_FILE)
         now = time.time()
         for d in STRIP_DIR.iterdir():

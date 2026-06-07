@@ -3,10 +3,13 @@
 --
 -- State is maintained by ~/.local/bin/agent_session_hook (driven by Claude /
 -- Codex hooks) in ~/.local/state/agent-sessions/sessions.tsv. After every
--- state change the hook recomposes ~/.cache/agent-sessions/strips/<gen>/{v,h}
--- — 48 montage frames containing one icon per live session, published
--- atomically via the strips/gen file ("<gen> <count>") — and nudges this
--- widget via `noctalia msg scripted-widget agent_sessions all refresh`.
+-- state change the hook recomposes ~/.cache/agent-sessions/strips/<gen>/
+-- {v,h,hl} (hl = horizontal with the session's cwd basename beside each
+-- icon, used when the show_labels setting is on) — 48 montage frames
+-- containing one icon per live session, published atomically via the
+-- strips/gen file ("<gen> <count> <vW> <vH> <hW> <hH> <hlW> <hlH>") — and
+-- nudges this widget via `noctalia msg scripted-widget agent_sessions all
+-- refresh`.
 -- The widget cycles strip frames and only switches generation after `gen`
 -- updates, so it never reads half-written images (no flicker); icons appear
 -- and disappear by recomposition, so one widget instance covers any number
@@ -33,6 +36,8 @@ barWidget.define({
     { key = "icon_size", type = "integer", label = "Icon size (px)", default = 20, min = 12, max = 48 },
     { key = "orient", type = "select", label = "Bar orientation", default = "h",
       options = { { value = "h", label = "Horizontal" }, { value = "v", label = "Vertical" } } },
+    { key = "show_labels", type = "bool",
+      label = "Project name beside icons (horizontal only)", default = false },
   },
 })
 
@@ -41,6 +46,9 @@ local iconSize = barWidget.getConfig("icon_size", 20)
 -- container aspect (which our image feeds back into) and flaps mid-layout.
 local orient = barWidget.getConfig("orient", "h")
 local vertical = orient == "v"
+local showLabels = barWidget.getConfig("show_labels", false)
+-- Strip variant to display: labels are only composed for horizontal bars.
+local variant = vertical and "v" or (showLabels and "hl" or "h")
 local home = noctalia.getenv("HOME") or "~"
 local tsvPath = home .. "/.local/state/agent-sessions/sessions.tsv"
 local hookBin = home .. "/.local/bin/agent_session_hook"
@@ -48,13 +56,15 @@ local stripsDir = home .. "/.cache/agent-sessions/strips/"
 local genPath = stripsDir .. "gen"
 
 local STRIP_FRAMES = 48
--- Mirror of the composer's geometry: 96px icons with 12px montage borders,
--- so each tile is 96x120 (vertical) / 120x96 (horizontal).
+local SRC = 96  -- per-icon source size rendered by render_agent_icons
+-- Fallback mirror of the composer's geometry (96px icons, 12px borders) for
+-- gen files that predate published dimensions; self-heals on next recompose.
 local CELL_RATIO = 120 / 96
 
 local sessions = {}
 local gen = nil        -- current strip generation hash (strips/<gen>/...)
 local genCount = 0     -- icon count baked into that generation
+local genDims = nil    -- { v = {w,h}, h = {w,h}, hl = {w,h} } from the gen file
 local tick = 0
 local lastImage = nil
 
@@ -66,11 +76,20 @@ local function render()
   end
   barWidget.setVisible(true)
 
-  local path = stripsDir .. gen .. "/" .. orient .. string.format("/strip_%02d.png", tick % STRIP_FRAMES)
+  local path = stripsDir .. gen .. "/" .. variant .. string.format("/strip_%02d.png", tick % STRIP_FRAMES)
   if path ~= lastImage then
-    local cell = math.floor(iconSize * CELL_RATIO + 0.5)
-    local w = vertical and iconSize or (cell * genCount)
-    local h = vertical and (cell * genCount) or iconSize
+    local w, h
+    local d = genDims and genDims[variant]
+    if d and d.w > 0 and d.h > 0 then
+      -- Scale the published strip size so icons render at icon_size px.
+      local scale = iconSize / SRC
+      w = math.floor(d.w * scale + 0.5)
+      h = math.floor(d.h * scale + 0.5)
+    else
+      local cell = math.floor(iconSize * CELL_RATIO + 0.5)
+      w = vertical and iconSize or (cell * genCount)
+      h = vertical and (cell * genCount) or iconSize
+    end
     barWidget.setImage(path, false, w, h)
     lastImage = path
   end
@@ -87,7 +106,18 @@ local function refresh()
       return -- transient failure: keep showing what we have
     end
     local first, rest = string.match(out, "^([^\n]*)\n(.*)$")
-    local newGen, newCount = string.match(first or "", "^(%x+) (%d+)")
+    local newGen, newCount, vw, vh, hw, hh, lw, lh = string.match(
+      first or "", "^(%x+) (%d+) (%d+) (%d+) (%d+) (%d+) (%d+) (%d+)")
+    if newGen then
+      genDims = {
+        v = { w = tonumber(vw), h = tonumber(vh) },
+        h = { w = tonumber(hw), h = tonumber(hh) },
+        hl = { w = tonumber(lw), h = tonumber(lh) },
+      }
+    else
+      newGen, newCount = string.match(first or "", "^(%x+) (%d+)")
+      genDims = nil
+    end
     if newGen then
       gen = newGen
       genCount = tonumber(newCount) or 0
@@ -95,10 +125,11 @@ local function refresh()
 
     local rows = {}
     for line in string.gmatch(rest or "", "[^\n]+") do
-      local id, agent, status, cwd, model =
-        string.match(line, "([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t?([^\t]*)")
+      local id, agent, status, cwd, model, label =
+        string.match(line, "([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t?([^\t]*)\t?([^\t]*)")
       if id and id ~= "" then
-        table.insert(rows, { id = id, agent = agent, status = status, cwd = cwd, model = model })
+        table.insert(rows, { id = id, agent = agent, status = status,
+                             cwd = cwd, model = model, label = label })
       end
     end
     sessions = rows
@@ -118,8 +149,12 @@ local function refresh()
           waiting = "waiting for you",
           permission = "needs permission!",
         })[s.status] or s.status
+        local who = s.agent == "claude" and "Claude" or "Codex"
+        if s.label and s.label ~= "" then
+          who = who .. " · " .. s.label
+        end
         table.insert(tooltip, {
-          key = s.agent == "claude" and "Claude" or "Codex",
+          key = who,
           value = statusLabel .. "  " .. prettyCwd,
         })
       end
