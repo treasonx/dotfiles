@@ -1,6 +1,19 @@
 # Fedora Dependencies
 
-Everything needed to set up a fresh Fedora system for this dotfiles repo. Organized by install method so you can run through each section in order.
+Everything needed to set up a fresh Fedora system for this dotfiles repo.
+
+The source of truth is `.chezmoidata/packages.toml`. Use the `packages` helper
+to audit, install, and update declared packages:
+
+```bash
+packages audit             # Report missing and undeclared packages
+packages install           # Install missing declared packages, prompting first
+packages update            # Walk through updates for DNF, Brew, Flatpak, etc.
+packages snapshot          # Print current installed state by manager
+```
+
+The sections below explain the package groups and manual caveats. When adding or
+removing packages, update `.chezmoidata/packages.toml` first.
 
 ## Prerequisites
 

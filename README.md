@@ -22,6 +22,22 @@ chezmoi apply -v           # Apply changes
 chezmoi cd                 # cd into the source repo
 ```
 
+## Package Management
+
+Package inventory lives in `.chezmoidata/packages.toml` and is managed through
+the `packages` helper:
+
+```bash
+packages audit             # Show missing and undeclared packages
+packages install           # Install declared packages, prompting by manager
+packages update            # Walk through DNF, Brew, Flatpak, npm, etc. updates
+packages snapshot          # Print current installed state by manager
+```
+
+`chezmoi apply` only bootstraps declared Brew formulae when Homebrew is present.
+Full system updates are intentionally interactive through `packages update` so
+sudo prompts and long package-manager runs happen when you ask for them.
+
 ## What's Managed
 
 - **Shell:** zsh, aliases, oh-my-zsh

@@ -82,6 +82,18 @@ chezmoi status             # Quick summary of drift
 chezmoi managed            # List all managed files
 ```
 
+### Package management
+```bash
+packages audit             # Compare installed packages to .chezmoidata/packages.toml
+packages install           # Install missing declared packages, prompting by manager
+packages update            # Interactive update walk-through; prompts before sudo
+packages snapshot          # Print installed packages by manager for manifest cleanup
+```
+
+Package declarations live in `.chezmoidata/packages.toml`. Keep normal
+`chezmoi apply` runs non-interactive; use `packages update` for full system
+updates.
+
 ## Available MCP Tools
 
 ### linux-mcp-server (read-only diagnostics)

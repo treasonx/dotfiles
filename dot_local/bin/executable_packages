@@ -1,0 +1,555 @@
+#!/usr/bin/env python3
+"""Audit, install, and update packages declared by this dotfiles repo."""
+
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tomllib
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Iterable
+
+from j_lib import JParser
+
+MANAGERS = ("dnf", "brew", "flatpak", "cargo", "npm", "go", "bun", "pipx")
+
+
+@dataclass
+class CommandResult:
+    returncode: int
+    stdout: str
+    stderr: str
+
+
+def run(cmd: list[str], check: bool = False) -> CommandResult:
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if check and proc.returncode != 0:
+        raise subprocess.CalledProcessError(
+            proc.returncode, cmd, output=proc.stdout, stderr=proc.stderr
+        )
+    return CommandResult(proc.returncode, proc.stdout, proc.stderr)
+
+
+def command_exists(name: str) -> bool:
+    return shutil.which(name) is not None
+
+
+def source_dir() -> Path:
+    r = run(["chezmoi", "source-path"])
+    if r.returncode == 0 and r.stdout.strip():
+        return Path(r.stdout.strip())
+    return Path(__file__).resolve().parents[2]
+
+
+def load_manifest() -> dict:
+    manifest = source_dir() / ".chezmoidata" / "packages.toml"
+    with manifest.open("rb") as f:
+        return tomllib.load(f)
+
+
+def selected_managers(value: str) -> tuple[str, ...]:
+    if value == "all":
+        return MANAGERS
+    managers = tuple(part.strip() for part in value.split(",") if part.strip())
+    unknown = sorted(set(managers) - set(MANAGERS))
+    if unknown:
+        raise SystemExit(f"unknown manager(s): {', '.join(unknown)}")
+    return managers
+
+
+def confirm(prompt: str, assume_yes: bool = False) -> bool:
+    if assume_yes:
+        return True
+    answer = input(f"{prompt} [y/N] ").strip().lower()
+    return answer in {"y", "yes"}
+
+
+def print_section(title: str) -> None:
+    print(f"\n== {title} ==")
+
+
+def print_list(label: str, values: Iterable[str]) -> None:
+    items = sorted(set(values))
+    if not items:
+        print(f"{label}: none")
+        return
+    print(f"{label}:")
+    for item in items:
+        print(f"  - {item}")
+
+
+def dnf_packages(manifest: dict, machine: str | None) -> list[str]:
+    dnf = manifest.get("dnf", {})
+    packages = list(dnf.get("packages", []))
+    if machine == "desktop":
+        packages.extend(dnf.get("desktop_only", []))
+    elif machine == "laptop":
+        packages.extend(dnf.get("laptop_only", []))
+    return sorted(set(packages))
+
+
+def rpm_installed(package: str) -> bool:
+    return run(["rpm", "-q", package]).returncode == 0
+
+
+def installed_dnf_user_packages() -> set[str]:
+    if not command_exists("dnf"):
+        return set()
+    r = run(["dnf", "--setopt=logdir=/tmp", "repoquery", "--userinstalled", "--qf", "%{name}"])
+    if r.returncode != 0:
+        return set()
+    return {line.strip() for line in r.stdout.splitlines() if line.strip()}
+
+
+def installed_brew_formulae() -> set[str]:
+    if not command_exists("brew"):
+        return set()
+    r = run(["brew", "list", "--formula"])
+    return {line.strip() for line in r.stdout.splitlines() if line.strip()}
+
+
+def installed_flatpaks() -> set[str]:
+    if not command_exists("flatpak"):
+        return set()
+    r = run(["flatpak", "list", "--app", "--columns=application"])
+    return {line.strip() for line in r.stdout.splitlines() if line.strip()}
+
+
+def installed_npm_globals() -> set[str]:
+    if not command_exists("npm"):
+        return set()
+    r = run(["npm", "list", "-g", "--depth=0", "--parseable"])
+    packages = set()
+    for line in r.stdout.splitlines()[1:]:
+        name = Path(line).name
+        if "/@" in line:
+            parent = Path(line).parent.name
+            name = f"{parent}/{name}"
+        if name:
+            packages.add(name)
+    return packages
+
+
+def installed_cargo_crates() -> set[str]:
+    crates_file = Path.home() / ".cargo" / ".crates.toml"
+    if crates_file.exists():
+        try:
+            text = crates_file.read_text()
+        except OSError:
+            text = ""
+        names = set()
+        for line in text.splitlines():
+            m = re.match(r'"([^" ]+)\s', line)
+            if m:
+                names.add(m.group(1))
+        if names:
+            return names
+
+    if not command_exists("cargo"):
+        return set()
+    r = run(["cargo", "install", "--list"])
+    names = set()
+    for line in r.stdout.splitlines():
+        if line and not line.startswith(" "):
+            names.add(line.split()[0])
+    return names
+
+
+def installed_go_binaries() -> set[str]:
+    go_bin = Path(os.environ.get("GOBIN") or Path.home() / "go" / "bin")
+    if not go_bin.exists():
+        return set()
+    return {p.name for p in go_bin.iterdir() if p.is_file() and os.access(p, os.X_OK)}
+
+
+def bun_available_tools() -> set[str]:
+    bun_bin = Path.home() / ".bun" / "bin"
+    if not bun_bin.exists():
+        return set()
+    return {p.name for p in bun_bin.iterdir() if p.is_file() and os.access(p, os.X_OK)}
+
+
+def installed_pipx_packages() -> set[str]:
+    if not command_exists("pipx"):
+        return set()
+    env = os.environ.copy()
+    env.setdefault("PIPX_LOG_DIR", "/tmp/pipx-log")
+    proc = subprocess.run(
+        ["pipx", "list", "--short"],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+    packages = set()
+    for line in proc.stdout.splitlines():
+        if " " in line:
+            packages.add(line.split()[0])
+    return packages
+
+
+def declared_for(manager: str, manifest: dict, machine: str | None) -> set[str]:
+    if manager == "dnf":
+        return set(dnf_packages(manifest, machine))
+    if manager == "brew":
+        return set(manifest.get("brew", {}).get("formulae", []))
+    if manager == "flatpak":
+        return set(manifest.get("flatpak", {}).get("apps", []))
+    if manager == "cargo":
+        cargo = manifest.get("cargo", {})
+        return set(cargo.get("crates", []))
+    if manager == "npm":
+        return set(manifest.get("npm", {}).get("global", []))
+    if manager == "go":
+        return {tool["binary"] for tool in manifest.get("go", {}).get("tools", [])}
+    if manager == "bun":
+        return set(manifest.get("bun", {}).get("tools", []))
+    if manager == "pipx":
+        return set(manifest.get("pipx", {}).get("packages", []))
+    return set()
+
+
+def installed_for(manager: str) -> set[str]:
+    if manager == "dnf":
+        return {pkg for pkg in installed_dnf_user_packages()}
+    if manager == "brew":
+        return installed_brew_formulae()
+    if manager == "flatpak":
+        return installed_flatpaks()
+    if manager == "cargo":
+        return installed_cargo_crates()
+    if manager == "npm":
+        return installed_npm_globals()
+    if manager == "go":
+        return installed_go_binaries()
+    if manager == "bun":
+        return bun_available_tools()
+    if manager == "pipx":
+        return installed_pipx_packages()
+    return set()
+
+
+def missing_for(manager: str, declared: set[str]) -> set[str]:
+    if manager == "dnf":
+        return {pkg for pkg in declared if not rpm_installed(pkg)}
+    return declared - installed_for(manager)
+
+
+def audit(args: argparse.Namespace) -> int:
+    manifest = load_manifest()
+    exit_code = 0
+    for manager in selected_managers(args.manager):
+        if not manager_available(manager):
+            print_section(manager)
+            print("manager not installed; skipping")
+            continue
+
+        declared = declared_for(manager, manifest, args.machine)
+        installed = installed_for(manager)
+        missing = missing_for(manager, declared)
+        drift = installed - declared if args.show_drift else set()
+        if missing:
+            exit_code = 1
+
+        print_section(manager)
+        print_list("missing declared packages", missing)
+        if args.show_drift:
+            print_list("installed but undeclared", drift)
+    return exit_code
+
+
+def manager_available(manager: str) -> bool:
+    required = {
+        "dnf": "dnf",
+        "brew": "brew",
+        "flatpak": "flatpak",
+        "cargo": "cargo",
+        "npm": "npm",
+        "go": "go",
+        "bun": "bun",
+        "pipx": "pipx",
+    }
+    return command_exists(required[manager])
+
+
+def install(args: argparse.Namespace) -> int:
+    manifest = load_manifest()
+    for manager in selected_managers(args.manager):
+        if not manager_available(manager):
+            print_section(manager)
+            print("manager not installed; skipping")
+            continue
+        declared = declared_for(manager, manifest, args.machine)
+        missing = sorted(missing_for(manager, declared))
+        print_section(manager)
+        if not missing:
+            print("all declared packages installed")
+            continue
+        print_list("will install", missing)
+        if args.dry_run:
+            print(command_for_install(manager, missing, manifest, args.yes))
+            continue
+        if confirm(f"Install missing {manager} packages?", args.yes):
+            run_install(manager, missing, manifest, args.yes)
+    return 0
+
+
+def command_for_install(manager: str, missing: list[str], manifest: dict, yes: bool) -> str:
+    yes_flag = " -y" if yes else ""
+    if manager == "dnf":
+        return "sudo dnf install" + yes_flag + " " + " ".join(missing)
+    if manager == "brew":
+        return "brew install " + " ".join(missing)
+    if manager == "flatpak":
+        return "flatpak install flathub " + " ".join(missing)
+    if manager == "cargo":
+        return "\n".join(f"cargo install {pkg}" for pkg in missing)
+    if manager == "npm":
+        return "npm install -g " + " ".join(missing)
+    if manager == "go":
+        by_binary = {
+            tool["binary"]: tool
+            for tool in manifest.get("go", {}).get("tools", [])
+        }
+        return "\n".join(
+            f"go install {by_binary[pkg]['module']}@{by_binary[pkg].get('version', 'latest')}"
+            for pkg in missing
+        )
+    if manager == "bun":
+        return "bun install -g " + " ".join(missing)
+    if manager == "pipx":
+        return "\n".join(f"pipx install {pkg}" for pkg in missing)
+    return ""
+
+
+def run_install(manager: str, missing: list[str], manifest: dict, yes: bool) -> None:
+    if manager == "dnf":
+        cmd = ["sudo", "dnf", "install"]
+        if yes:
+            cmd.append("-y")
+        run_stream(cmd + missing)
+    elif manager == "brew":
+        run_stream(["brew", "install", *missing])
+    elif manager == "flatpak":
+        run_stream(["flatpak", "install", "flathub", *missing])
+    elif manager == "cargo":
+        for pkg in missing:
+            run_stream(["cargo", "install", pkg])
+    elif manager == "npm":
+        run_stream(["npm", "install", "-g", *missing])
+    elif manager == "go":
+        by_binary = {
+            tool["binary"]: tool
+            for tool in manifest.get("go", {}).get("tools", [])
+        }
+        for pkg in missing:
+            tool = by_binary[pkg]
+            run_stream(["go", "install", f"{tool['module']}@{tool.get('version', 'latest')}"])
+    elif manager == "bun":
+        run_stream(["bun", "install", "-g", *missing])
+    elif manager == "pipx":
+        for pkg in missing:
+            run_stream(["pipx", "install", pkg])
+
+
+def run_stream(cmd: list[str]) -> None:
+    print("+ " + " ".join(cmd))
+    subprocess.run(cmd, check=True)
+
+
+def update(args: argparse.Namespace) -> int:
+    for manager in selected_managers(args.manager):
+        if not manager_available(manager):
+            print_section(manager)
+            print("manager not installed; skipping")
+            continue
+        print_section(manager)
+        if manager == "dnf":
+            update_dnf(args)
+        elif manager == "brew":
+            update_brew(args)
+        elif manager == "flatpak":
+            update_flatpak(args)
+        elif manager == "cargo":
+            update_cargo(args)
+        elif manager == "npm":
+            update_npm(args)
+        elif manager == "go":
+            update_go(args)
+        elif manager == "bun":
+            update_bun(args)
+        elif manager == "pipx":
+            update_pipx(args)
+    return 0
+
+
+def update_dnf(args: argparse.Namespace) -> None:
+    cmd = ["dnf", "--setopt=logdir=/tmp", "check-update"]
+    if args.temp_cache:
+        cmd.insert(1, "--setopt=cachedir=/tmp/dnf-cache")
+    r = run(cmd)
+    if r.stdout.strip():
+        print(r.stdout.strip())
+    if r.returncode == 0:
+        print("no DNF updates found")
+        return
+    if r.returncode != 100:
+        print((r.stderr or "dnf check-update failed").strip(), file=sys.stderr)
+        return
+    if args.dry_run:
+        print("sudo dnf upgrade --refresh")
+        return
+    if confirm("Run sudo dnf upgrade --refresh?", args.yes):
+        run_stream(["sudo", "dnf", "upgrade", "--refresh"])
+
+
+def update_brew(args: argparse.Namespace) -> None:
+    run_stream_or_print(["brew", "update"], args.dry_run)
+    r = run(["brew", "outdated"])
+    if not r.stdout.strip():
+        print("no Brew updates found")
+        return
+    print(r.stdout.strip())
+    if args.dry_run:
+        print("brew upgrade")
+        return
+    if confirm("Run brew upgrade?", args.yes):
+        run_stream(["brew", "upgrade"])
+
+
+def update_flatpak(args: argparse.Namespace) -> None:
+    r = run(["flatpak", "remote-ls", "--updates"])
+    if r.stdout.strip():
+        print(r.stdout.strip())
+    else:
+        print("Flatpak may not support remote-ls --updates here; `flatpak update` will decide.")
+    if args.dry_run:
+        print("flatpak update")
+        return
+    if confirm("Run flatpak update?", args.yes):
+        run_stream(["flatpak", "update"])
+
+
+def update_cargo(args: argparse.Namespace) -> None:
+    if command_exists("cargo-install-update"):
+        cmd = ["cargo", "install-update", "-a"]
+        run_stream_or_print(cmd, args.dry_run)
+        return
+    print("cargo-update is not installed; install it with: cargo install cargo-update")
+    print("After that, this command can run: cargo install-update -a")
+
+
+def update_npm(args: argparse.Namespace) -> None:
+    r = run(["npm", "outdated", "-g", "--depth=0"])
+    if r.stdout.strip():
+        print(r.stdout.strip())
+    else:
+        print("no npm global updates found")
+        return
+    if args.dry_run:
+        print("npm update -g")
+        return
+    if confirm("Run npm update -g?", args.yes):
+        run_stream(["npm", "update", "-g"])
+
+
+def update_go(args: argparse.Namespace) -> None:
+    manifest = load_manifest()
+    tools = manifest.get("go", {}).get("tools", [])
+    if not tools:
+        print("no Go tools declared")
+        return
+    for tool in tools:
+        cmd = ["go", "install", f"{tool['module']}@{tool.get('version', 'latest')}"]
+        run_stream_or_print(cmd, args.dry_run)
+
+
+def update_bun(args: argparse.Namespace) -> None:
+    run_stream_or_print(["bun", "upgrade"], args.dry_run)
+
+
+def update_pipx(args: argparse.Namespace) -> None:
+    run_stream_or_print(["pipx", "upgrade-all"], args.dry_run)
+
+
+def run_stream_or_print(cmd: list[str], dry_run: bool) -> None:
+    if dry_run:
+        print(" ".join(cmd))
+        return
+    run_stream(cmd)
+
+
+def snapshot(args: argparse.Namespace) -> int:
+    for manager in selected_managers(args.manager):
+        print_section(manager)
+        if not manager_available(manager):
+            print("manager not installed; skipping")
+            continue
+        print_list("installed", installed_for(manager))
+    return 0
+
+
+def build_parser() -> JParser:
+    parser = JParser(description="Audit, install, and update dotfiles packages")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    def add_common(p: argparse.ArgumentParser) -> None:
+        p.add_argument(
+            "--manager",
+            default="all",
+            help="Manager to use: all or comma-separated dnf,brew,flatpak,cargo,npm,go,bun,pipx",
+        )
+        p.add_argument(
+            "--machine",
+            choices=["desktop", "laptop"],
+            default=None,
+            help="Include machine-specific packages",
+        )
+
+    audit_p = sub.add_parser("audit", help="Report missing and undeclared packages")
+    add_common(audit_p)
+    audit_p.add_argument(
+        "--show-drift",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Show installed packages that are not declared in the manifest",
+    )
+    audit_p.set_defaults(func=audit)
+
+    install_p = sub.add_parser("install", help="Install missing declared packages")
+    add_common(install_p)
+    install_p.add_argument("--dry-run", action="store_true", help="Print commands only")
+    install_p.add_argument("--yes", "-y", action="store_true", help="Do not prompt")
+    install_p.set_defaults(func=install)
+
+    update_p = sub.add_parser("update", help="Walk through updates by manager")
+    add_common(update_p)
+    update_p.add_argument("--dry-run", action="store_true", help="Print commands only")
+    update_p.add_argument("--yes", "-y", action="store_true", help="Do not prompt")
+    update_p.add_argument(
+        "--temp-cache",
+        action="store_true",
+        help="Use /tmp for DNF cache/logs; useful in restricted shells",
+    )
+    update_p.set_defaults(func=update)
+
+    snapshot_p = sub.add_parser("snapshot", help="Print installed packages by manager")
+    add_common(snapshot_p)
+    snapshot_p.set_defaults(func=snapshot)
+
+    return parser
+
+
+def main() -> int:
+    parser = build_parser()
+    args = parser.run()
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
