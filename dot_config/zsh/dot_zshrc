@@ -96,6 +96,7 @@ path=(
     $HOME/.local/bin
     /usr/local/cuda-12.3/bin
     /usr/local/go/bin
+    $HOME/go/bin
     $path
 )
 
@@ -140,6 +141,10 @@ autoload -Uz compinit && compinit
 # Tool-specific completions
 [[ -s "$HOME/.bun/_bun" ]] && source "$HOME/.bun/_bun"
 command -v jj &>/dev/null && source <(jj util completion zsh)
+
+# worktrunk (wt) — git worktree manager; wrapper lets `wt switch` cd the shell,
+# and registers completions (must come after compinit)
+if command -v wt >/dev/null 2>&1; then eval "$(command wt config shell init zsh)"; fi
 
 # =============================================================================
 # SHELL FUNCTIONS
@@ -219,3 +224,10 @@ auto_activate_venv
 
 # ShiftUp scratch org auto-switch
 [[ -f "/home/james/projects/shiftupai/guided-selling/scripts/shell/org-auto-switch.zsh" ]] && source "/home/james/projects/shiftupai/guided-selling/scripts/shell/org-auto-switch.zsh"
+
+# bun completions
+[ -s "/home/james/.bun/_bun" ] && source "/home/james/.bun/_bun"
+
+#THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
+export SDKMAN_DIR="$HOME/.sdkman"
+[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
