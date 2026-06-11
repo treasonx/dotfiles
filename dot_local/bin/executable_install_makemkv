@@ -1,0 +1,243 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DOWNLOAD_PAGE="https://www.makemkv.com/download/"
+LINUX_FORUM_PAGE="https://forum.makemkv.com/forum/viewtopic.php?f=3&t=224"
+WORKDIR="${TMPDIR:-/tmp}/makemkv-build"
+FFMPEG_VERSION="${FFMPEG_VERSION:-7.1.4}"
+FFMPEG_PREFIX="${FFMPEG_PREFIX:-/opt/makemkv-ffmpeg7}"
+INSTALL_DEPS=1
+KEEP_BUILD=0
+SUDO_KEEPALIVE_PID=""
+
+usage() {
+  cat <<'USAGE'
+Usage: install_makemkv [--no-deps] [--keep-build] [--version VERSION]
+
+Downloads the current MakeMKV Linux source and binary tarballs, builds them
+against the system FFmpeg libraries, installs them, and verifies makemkvcon.
+
+Options:
+  --no-deps          Skip Fedora build dependency installation
+  --keep-build      Leave the build directory in /tmp after install
+  --version VERSION Install a specific MakeMKV version instead of auto-detecting
+
+Environment:
+  MAKEMKV_VERSION   Same as --version
+  FFMPEG_VERSION    FFmpeg 7.x version for MakeMKV binary compatibility
+  FFMPEG_PREFIX     Private FFmpeg 7 install prefix, default /opt/makemkv-ffmpeg7
+  MAKEFLAGS         Passed through to make, for example MAKEFLAGS=-j16
+USAGE
+}
+
+log() {
+  printf '==> %s\n' "$*"
+}
+
+die() {
+  printf 'error: %s\n' "$*" >&2
+  exit 1
+}
+
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+cleanup() {
+  if [[ -n "$SUDO_KEEPALIVE_PID" ]]; then
+    kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
+  fi
+
+  if [[ "${KEEP_BUILD:-0}" -eq 0 && -n "${WORKDIR:-}" ]]; then
+    rm -rf "$WORKDIR"
+  fi
+}
+
+start_sudo_keepalive() {
+  log "Refreshing sudo credentials"
+  sudo -v
+
+  while true; do
+    sudo -n true 2>/dev/null || exit
+    sleep 60
+  done &
+  SUDO_KEEPALIVE_PID="$!"
+}
+
+build_ffmpeg_compat() {
+  local tarball="ffmpeg-${FFMPEG_VERSION}.tar.xz"
+  local url="https://ffmpeg.org/releases/${tarball}"
+
+  log "Building FFmpeg ${FFMPEG_VERSION} compatibility libraries for makemkvcon"
+  cd "$WORKDIR"
+
+  if [[ ! -f "$tarball" ]]; then
+    log "Downloading ${tarball}"
+    curl -fL --retry 3 -o "$tarball" "$url"
+  fi
+
+  rm -rf "ffmpeg-${FFMPEG_VERSION}"
+  tar -xJf "$tarball"
+  cd "$WORKDIR/ffmpeg-${FFMPEG_VERSION}"
+
+  ./configure \
+    --prefix="$FFMPEG_PREFIX" \
+    --enable-shared \
+    --disable-static \
+    --disable-programs \
+    --disable-doc \
+    --disable-debug \
+    --disable-x86asm
+
+  make ${MAKEFLAGS:-}
+  sudo make install
+
+  printf '%s\n' "$FFMPEG_PREFIX/lib" | sudo tee /etc/ld.so.conf.d/makemkv-ffmpeg7.conf >/dev/null
+  sudo ldconfig
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --no-deps)
+      INSTALL_DEPS=0
+      ;;
+    --keep-build)
+      KEEP_BUILD=1
+      ;;
+    --version)
+      shift
+      [[ $# -gt 0 ]] || die "--version requires a value"
+      MAKEMKV_VERSION="$1"
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      die "unknown argument: $1"
+      ;;
+  esac
+  shift
+done
+
+need_cmd curl
+need_cmd tar
+need_cmd make
+need_cmd sudo
+
+if [[ -x /usr/bin/pkg-config ]]; then
+  export PKG_CONFIG=/usr/bin/pkg-config
+else
+  need_cmd pkg-config
+fi
+
+export PKG_CONFIG_PATH="/usr/lib64/pkgconfig:/usr/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+
+if [[ -r /etc/os-release ]]; then
+  # shellcheck disable=SC1091
+  . /etc/os-release
+else
+  ID=""
+fi
+
+if [[ "${ID:-}" != "fedora" ]]; then
+  die "this script currently targets Fedora; detected ID=${ID:-unknown}"
+fi
+
+start_sudo_keepalive
+
+if [[ "$INSTALL_DEPS" -eq 1 ]]; then
+  need_cmd dnf
+  log "Installing Fedora build dependencies"
+  sudo dnf install -y \
+    gcc \
+    gcc-c++ \
+    glibc-devel \
+    make \
+    mesa-libGL-devel \
+    openssl-devel \
+    expat-devel \
+    ffmpeg-devel \
+    pkgconf-pkg-config \
+    qt5-qtbase-devel \
+    zlib-devel
+fi
+
+if [[ -z "${MAKEMKV_VERSION:-}" ]]; then
+  log "Detecting latest MakeMKV Linux version"
+  page="$(curl -fsSL "$LINUX_FORUM_PAGE")"
+  MAKEMKV_VERSION="$(
+    printf '%s' "$page" |
+      grep -Eo 'makemkv-(oss|bin)-[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz' |
+      grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' |
+      sort -V |
+      tail -n 1
+  )"
+
+  if [[ -z "$MAKEMKV_VERSION" ]]; then
+    page="$(curl -fsSL "$DOWNLOAD_PAGE")"
+    MAKEMKV_VERSION="$(
+      printf '%s' "$page" |
+        grep -Eo 'MakeMKV [0-9]+\.[0-9]+\.[0-9]+' |
+        awk '{print $2}' |
+        sort -V |
+        tail -n 1
+    )"
+  fi
+fi
+
+[[ -n "${MAKEMKV_VERSION:-}" ]] || die "could not determine MakeMKV version"
+
+OSS_TARBALL="makemkv-oss-${MAKEMKV_VERSION}.tar.gz"
+BIN_TARBALL="makemkv-bin-${MAKEMKV_VERSION}.tar.gz"
+OSS_URL="https://www.makemkv.com/download/${OSS_TARBALL}"
+BIN_URL="https://www.makemkv.com/download/${BIN_TARBALL}"
+
+log "Using MakeMKV ${MAKEMKV_VERSION}"
+rm -rf "$WORKDIR"
+mkdir -p "$WORKDIR"
+trap cleanup EXIT
+
+cd "$WORKDIR"
+
+log "Downloading ${OSS_TARBALL}"
+curl -fL --retry 3 -o "$OSS_TARBALL" "$OSS_URL"
+log "Downloading ${BIN_TARBALL}"
+curl -fL --retry 3 -o "$BIN_TARBALL" "$BIN_URL"
+
+log "Extracting tarballs"
+tar -xzf "$OSS_TARBALL"
+tar -xzf "$BIN_TARBALL"
+
+log "Building makemkv-oss"
+cd "$WORKDIR/makemkv-oss-${MAKEMKV_VERSION}"
+log "Using pkg-config: $("$PKG_CONFIG" --version)"
+"$PKG_CONFIG" --modversion Qt5Core Qt5Gui Qt5Widgets Qt5DBus >/dev/null
+./configure
+make ${MAKEFLAGS:-}
+sudo make install
+
+log "Building makemkv-bin"
+cd "$WORKDIR/makemkv-bin-${MAKEMKV_VERSION}"
+make ${MAKEFLAGS:-}
+
+log "Installing makemkv-bin"
+sudo -v
+printf 'yes\n' | sudo make install
+
+log "Verifying makemkvcon"
+if ldd /usr/bin/makemkvcon | grep -q 'not found'; then
+  missing_libs="$(ldd /usr/bin/makemkvcon | grep 'not found' || true)"
+  if printf '%s\n' "$missing_libs" | grep -Eq 'libav(codec\.so\.61|util\.so\.59)'; then
+    printf '%s\n' "$missing_libs" >&2
+    build_ffmpeg_compat
+  fi
+fi
+
+if ldd /usr/bin/makemkvcon | grep -q 'not found'; then
+  ldd /usr/bin/makemkvcon | grep 'not found' >&2
+  die "makemkvcon still has missing shared libraries after compatibility install"
+fi
+
+/usr/bin/makemkvcon --version
+log "MakeMKV install complete"
