@@ -329,13 +329,33 @@ load_plugins {
 //     }
 // }
 
+// Inline Noctalia theme block. The checked-in colors are a valid fallback;
+// ~/.local/bin/sync_zellij_theme replaces only the block between these markers
+// whenever Noctalia renders a new palette.
+// >>> noctalia zellij theme >>>
+themes {
+    noctalia {
+        fg "#cdd6f4"
+        bg "#1e1e2e"
+        black "#212232"
+        red "#f38ba8"
+        green "#fab387"
+        yellow "#94e2d5"
+        blue "#cba6f7"
+        magenta "#bb8af4"
+        cyan "#fab185"
+        white "#cdd6f4"
+        orange "#96e9db"
+    }
+}
+// <<< noctalia zellij theme <<<
+
 // Choose the theme that is specified in the themes section.
 // Default: default
 //
-// Noctalia-generated theme file lives at ~/.config/zellij/themes/noctalia.kdl
-// (rendered by Noctalia user-template `zellij`). If that file is missing, swap
-// this line back to `theme "catppuccin-mocha"` — zellij ships catppuccin-mocha
-// as a builtin, so it's a one-line recovery.
+// Noctalia renders the theme block above and sync_zellij_theme splices it into
+// the active config so running sessions pick it up. If something goes wrong,
+// swap this line to `theme "catppuccin-mocha"` as a one-line recovery.
 theme "noctalia"
 
 // The name of the default layout to load on startup

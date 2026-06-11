@@ -67,6 +67,7 @@ SCRIPTS = [
     "sddm_rollback:Revert display manager from SDDM back to GDM",
     "sync_lazydocker_theme:Splice Noctalia theme fragment into lazydocker config.yml",
     "sync_sddm_wallpaper:Copy current Noctalia wallpaper to SDDM greeter",
+    "sync_zellij_theme:Splice Noctalia theme fragment into Zellij config.kdl",
     "transcode_video:Transcode videos to H.265 1080p MP4 via HandBrake",
     "update_noctalia:Upgrade noctalia-git from COPR and reload the shell",
     "v:Open file in nvim by fuzzy name match",

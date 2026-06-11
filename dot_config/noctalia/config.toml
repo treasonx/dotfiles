@@ -19,6 +19,14 @@ input_path = "~/.config/noctalia/templates/agent-icon-colors.json"
 output_path = "~/.local/state/agent-sessions/theme.json"
 post_hook = "~/.local/bin/render_agent_icons"
 
+# Renders Zellij's Noctalia theme as a fragment, then splices it into the
+# active config.kdl so Zellij's config watcher repaints existing sessions.
+[theme.templates.user.zellij_theme]
+enabled = true
+input_path = "~/.config/noctalia/templates/zellij-theme.kdl"
+output_path = "~/.config/zellij/noctalia-theme-fragment.kdl"
+post_hook = "~/.local/bin/sync_zellij_theme"
+
 # Orientation is the widget's "orient" setting (default horizontal) rather
 # than barWidget.isVertical(): isVertical derives from the widget's own
 # container aspect, which our image choice feeds back into — sampling it
