@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+"""Fuzzy-pick, attach, resurrect, or create zellij sessions."""
+
+import os
+import re
+import shutil
+import subprocess
+import sys
+
+try:
+    from j_lib import JParser
+except ModuleNotFoundError:
+    from executable_j_lib import JParser
+
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+NEW_SESSION = "+ new session"
+
+
+def list_sessions() -> list[tuple[str, str, str]]:
+    """Return (name, status, raw_line) rows from `zellij ls`."""
+    result = subprocess.run(["zellij", "ls"], capture_output=True, text=True)
+    if result.returncode != 0 and "No" in result.stderr:
+        return []
+
+    sessions = []
+    for raw in result.stdout.splitlines():
+        line = ANSI_RE.sub("", raw).strip()
+        if not line:
+            continue
+        name = line.split(None, 1)[0]
+        status = "exited" if "EXITED" in line else "running"
+        sessions.append((name, status, line))
+    return sessions
+
+
+def default_session_name() -> str:
+    cwd_name = os.path.basename(os.getcwd().rstrip(os.sep))
+    return cwd_name or "zellij"
+
+
+def prompt_session_name() -> str | None:
+    default = default_session_name()
+    try:
+        name = input(f"New session name [{default}]: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return None
+    return name or default
+
+
+def fzf_select(lines: list[str]) -> str | None:
+    result = subprocess.run(
+        ["fzf", "--prompt=zellij> ", "--height=~50%", "--reverse", "--ansi"],
+        input="\n".join(lines),
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    return result.stdout.strip()
+
+
+def main() -> int:
+    JParser(description="Filter, attach, resurrect, or start zellij sessions").run()
+
+    if shutil.which("fzf") is None:
+        print("fzf not found", file=sys.stderr)
+        return 1
+
+    rows = list_sessions()
+    display = [NEW_SESSION]
+    max_name = max([len(name) for name, _, _ in rows] + [len(NEW_SESSION)])
+    display.extend(f"{name:<{max_name}}  {status}  {raw}" for name, status, raw in rows)
+
+    selected = fzf_select(display)
+    if selected is None:
+        return 0
+
+    selected_name = selected.split(None, 1)[0]
+    if selected == NEW_SESSION or selected_name == "+":
+        name = prompt_session_name()
+        if not name:
+            return 0
+        return subprocess.run(["zellij", "attach", "--create", name]).returncode
+
+    return subprocess.run(["zellij", "attach", selected_name]).returncode
+
+
+if __name__ == "__main__":
+    sys.exit(main())

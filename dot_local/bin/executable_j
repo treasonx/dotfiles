@@ -56,6 +56,8 @@ SCRIPTS = [
     "ga:Git add with fuzzy matching",
     "gco:Git checkout file with fuzzy matching",
     "install_noctalia_deps:Install Noctalia Shell + optional deps",
+    "jzc:Select and delete exited zellij sessions",
+    "jzs:Filter, attach, resurrect, or start zellij sessions",
     "niri_rescue_floating:Recenter floating niri windows after monitor changes",
     "niri_scale:Adjust niri output scale (--step N or --set N)",
     "packages:Audit, install, and update declared packages",
