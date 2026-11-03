@@ -1,5 +1,10 @@
 # Fedora Dependencies
 
+For a minimal Framework laptop rebuild, follow
+[the recovery checklist](docs/fedora-laptop-recovery.md). Its reviewed package
+and file selection lives in `.chezmoidata/laptop-restore.toml`; the full
+inventory below is broader and includes optional desktop/development tools.
+
 Everything needed to set up a fresh Fedora system for this dotfiles repo.
 
 The source of truth is `.chezmoidata/packages.toml`. Use the `packages` helper
@@ -44,9 +49,8 @@ sudo dnf copr enable dulikiles/vicinae
 # nwg-shell utilities (nwg-look, nwg-displays)
 sudo dnf copr enable tofik/nwg-shell
 
-# Terra (for Noctalia Shell + Quickshell — bootstrapped automatically by
-# install_noctalia_deps, listed here for reference)
-# sudo dnf install --repofrompath terra,https://repos.fyralabs.com/terra$releasever terra-release
+# Noctalia v5 (native binary; no Quickshell)
+sudo dnf copr enable lionheartp/Hyprland
 ```
 
 ## Third-Party Repos
@@ -83,7 +87,7 @@ install_noctalia_deps
 
 **What these do:**
 - `niri` — Scrollable-tiling Wayland compositor
-- `noctalia-shell` + `noctalia-qs` — Quickshell-based desktop shell (bar,
+- `noctalia-git` — Native Noctalia v5 desktop shell (bar,
   launcher, notifications, control center, lock screen, wallpaper, session
   menu) — installed via `install_noctalia_deps`
 - `xdg-desktop-portal-*` — Desktop integration (file dialogs, screen sharing)

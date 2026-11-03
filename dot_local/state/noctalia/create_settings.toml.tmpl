@@ -1,0 +1,144 @@
+# Initial laptop preferences from linux-server; created once, then GUI-owned.
+config_version = 16
+
+[backdrop]
+enabled = true
+
+[bar]
+order = [ "default", "left" ]
+
+    [bar.default]
+    center = [ "clock", "volume", "group:g1" ]
+    end = [ "workspaces", "clipboard", "notifications", "tray", "battery", "session" ]
+    margin_edge = 0
+    margin_ends = 0
+    position = "bottom"
+    radius = 0
+    start = [ "caffeine" ]
+
+        [[bar.default.capsule_group]]
+        fill = "surface_container"
+        id = "g1"
+        members = [ "media", "audio_visualizer" ]
+        opacity = 1.0
+        padding = 6.0
+
+    [bar.left]
+    center = [ "taskbar" ]
+    enabled = true
+    end = [ "cpu", "temp", "ram", "network_tx", "network_tx", "sysmon" ]
+    margin_edge = 0
+    margin_ends = 0
+    position = "left"
+    radius = 0
+    start = []
+
+[control_center]
+sidebar = "full"
+
+[desktop_widgets]
+enabled = false
+
+[idle]
+behavior_order = [ "lock", "screen-off", "suspend" ]
+
+    [idle.behavior.lock]
+    action = "lock"
+    enabled = false
+    timeout = 600
+
+    [idle.behavior.screen-off]
+    action = "screen_off"
+    enabled = true
+    timeout = 660
+
+    [idle.behavior.suspend]
+    action = "suspend"
+    enabled = false
+    lock_before_suspend = true
+    timeout = 900
+
+[notification]
+position = "bottom_right"
+
+[osd]
+position = "bottom_center"
+
+    [osd.kinds]
+    media = false
+
+[shell]
+password_style = "random"
+polkit_agent = true
+settings_show_advanced = true
+telemetry_enabled = true
+
+    [shell.panel]
+    open_near_click_control_center = true
+
+[theme]
+community_palette = "m3-content"
+custom_palette = "ADW"
+source = "wallpaper"
+wallpaper_scheme = "ADW"
+
+    [theme.templates]
+    builtin_ids = [ "cava", "gtk3", "ghostty", "niri" ]
+    community_ids = []
+
+[wallpaper]
+directory = "{{ .chezmoi.homeDir }}/Pictures/wallpapers"
+
+    [wallpaper.default]
+    path = "{{ .chezmoi.homeDir }}/Pictures/wallpapers/recovery/primary.png"
+
+    [wallpaper.last]
+    path = "{{ .chezmoi.homeDir }}/Pictures/wallpapers/recovery/primary.png"
+
+[weather]
+enabled = false
+
+[widget.audio_visualizer]
+bands = 20
+capsule = true
+high_color = "on_tertiary"
+low_color = "tertiary"
+width = 146.0
+
+[widget.clock]
+format = "{:%H:%M - %a %b %d}"
+
+[widget.cpu]
+show_label = false
+show_value = false
+
+[widget.media]
+capsule = true
+hide_when_no_media = true
+title_scroll = "always"
+
+[widget.network_tx]
+show_label = false
+show_value = false
+
+[widget.ram]
+show_label = false
+show_value = false
+
+[widget.sysmon]
+capsule = true
+show_value = false
+stat = "swap_pct"
+
+[widget.taskbar]
+show_all_outputs = true
+
+[widget.temp]
+show_label = false
+show_value = false
+
+[widget.tray]
+drawer = true
+
+[widget.workspaces]
+hide_when_empty = true

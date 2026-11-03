@@ -68,7 +68,9 @@ _ctp_disk_precmd() {
     if (( EPOCHSECONDS - _CTP_DISK_LAST_CHECK >= 60 )); then
         _CTP_DISK_LAST_CHECK=$EPOCHSECONDS
         local used_pct
-        used_pct=${$(df / 2>/dev/null | awk 'NR==2 {gsub(/%/,"",$5); print $5}')##[[:space:]]}
+        # 'command' bypasses the df=duf alias: duf stats EVERY mount (including
+        # dead network automounts) and prints a table awk can't parse.
+        used_pct=${$(command df --output=pcent / 2>/dev/null | awk 'NR==2 {gsub(/%/,"",$1); print $1}')##[[:space:]]}
         if [[ -n "$used_pct" && "$used_pct" =~ ^[0-9]+$ ]]; then
             if (( used_pct >= 90 )); then
                 _CTP_DISK_PROMPT="%F{${catppuccin_red}}%1{󰋊%} ${used_pct}%%%f "

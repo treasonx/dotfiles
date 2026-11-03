@@ -162,8 +162,10 @@ screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
 spawn-at-startup "dbus-update-activation-environment" "--systemd" "WAYLAND_DISPLAY" "XDG_CURRENT_DESKTOP"
 spawn-at-startup "systemctl" "--user" "import-environment" "WAYLAND_DISPLAY" "XDG_CURRENT_DESKTOP"
 
-// Polkit agent — launches polkit-gnome (or kde) so GUI apps can prompt for sudo.
+{{- if eq .machine "desktop" }}
+// Primary uses a standalone agent; laptop uses Noctalia's built-in agent.
 spawn-at-startup "polkit_agent"
+{{- end }}
 
 // Noctalia shell (bar, notifications, lock screen, wallpaper, control center,
 // session menu). v5+ is a standalone binary (no Quickshell). Config lives at
@@ -177,14 +179,14 @@ spawn-at-startup "nm-applet" "--indicator"
 spawn-sh-at-startup "wl-paste --type text --watch cliphist store"
 spawn-sh-at-startup "wl-paste --type image --watch cliphist store"
 
-// Scratchpad manager (works on any Wayland compositor)
+{{- if eq .machine "desktop" }}
+// Optional primary-machine integrations.
 spawn-at-startup "pypr"
+spawn-at-startup "/home/james/.local/bin/doorbell_popup"
+{{- end }}
 
 // Rofi/app-launcher server
 spawn-at-startup "vicinae" "server"
-
-// Doorbell popup daemon
-spawn-at-startup "/home/james/.local/bin/doorbell_popup"
 
 // Glanceable web dashboard is launched by the systemd user unit
 // webview-zone.service (WantedBy=graphical-session.target), not via
@@ -321,12 +323,17 @@ binds {
     Alt+Print       { screenshot-window; }
     Mod+Shift+S   { spawn "screenshot" "--swappy"; }
 
+    {{- if eq .machine "desktop" }}
+    // Primary-machine annotation tool; not required by the laptop restore.
+    Mod+D hotkey-overlay-title="Annotate screen" { spawn "wayscriber" "--daemon-toggle"; }
+    {{- end }}
+
     // Window management
     Mod+Q repeat=false { close-window; }
     Mod+Shift+Q        { spawn "kill_active_process"; }
     Mod+F              { toggle-window-floating; }
-    // Mod+Shift+F     { fullscreen-window; }
     Mod+Shift+F        { maximize-column; }
+    Mod+F11            { fullscreen-window; }
     Mod+C              { spawn "niri_rescue_floating"; }
 
     // Columns (horizontal movement within a workspace)

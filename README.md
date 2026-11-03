@@ -4,6 +4,11 @@ Personal dotfiles managed with [chezmoi](https://www.chezmoi.io/).
 
 ## Quick Start
 
+For the encrypted Framework laptop reinstall, use the
+[laptop recovery checklist](docs/fedora-laptop-recovery.md). It restores the
+essential desktop with a preview first and keeps Fedora's default GDM login.
+The full `init --apply` below installs a broader configuration and runs hooks.
+
 ```bash
 # Install chezmoi and apply dotfiles in one command
 chezmoi init --apply git@github.com:treasonx/dotfiles.git

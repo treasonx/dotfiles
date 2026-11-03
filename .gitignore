@@ -4,6 +4,7 @@
 # Ignore zsh completion dump files
 *config/zsh/.zcompdump*
 .zsh_history
+__pycache__/
 
 # Local LLM stack: secrets and runtime state (admin/llm/ is not deployed by
 # chezmoi, but git would still track .env / data/ without these rules).

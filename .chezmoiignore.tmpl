@@ -21,8 +21,14 @@
 {{- if ne .machine "desktop" }}
 .config/webview-zone
 .local/bin/webview_zone
+.local/bin/restart_webview_zone
 .local/share/webview-zone
 .config/systemd/user/webview-zone.service
+{{- end }}
+
+# A one-time laptop seed; existing GUI edits remain machine-local.
+{{- if ne .machine "laptop" }}
+.local/state/noctalia/settings.toml
 {{- end }}
 
 # SDDM greeter theme sources — installed to /usr/share and /etc by

@@ -16,6 +16,7 @@
     url = "https://github.com/jeffreytse/zsh-vi-mode.git"
     refreshPeriod = "168h"
 
+{{- if not (get . "essentialsOnly" | default false) }}
 # fabric — AI augmentation CLI (https://github.com/danielmiessler/fabric)
 # archive-file extracts a single file from the release tarball; "latest"
 # always resolves to the newest GitHub release, so weekly refresh = auto-update.
@@ -25,3 +26,4 @@
     path = "fabric"
     executable = true
     refreshPeriod = "168h"  # check for new release weekly
+{{- end }}

@@ -1,0 +1,24 @@
+# Small, explicit restore set. The full packages.toml is intentionally broader.
+[laptop_restore]
+copr = ["lionheartp/Hyprland", "pgdev/ghostty", "dulikiles/vicinae"]
+packages = [
+  "chezmoi", "git", "python3", "zsh", "niri", "noctalia-git", "ghostty",
+  "vicinae", "xdg-desktop-portal-gnome", "xdg-desktop-portal-gtk",
+  "network-manager-applet", "pipewire", "wireplumber",
+  "wl-clipboard", "cliphist", "brightnessctl", "grim", "slurp", "swappy",
+  "libnotify", "gpu-screen-recorder", "thunar", "fzf", "fd-find", "zoxide",
+  "bat", "eza", "zellij", "cava", "unzip", "curl", "jetbrains-mono-fonts",
+  "ripgrep", "neovim", "ImageMagick",
+]
+sources = [
+  "dot_config/niri", "dot_config/noctalia", "dot_config/ghostty",
+  "dot_config/zsh", "dot_config/zellij", "dot_config/bat", "dot_zshenv", "dot_zprofile",
+  "dot_local/state/noctalia/create_settings.toml.tmpl",
+  "dot_local/bin/executable_j_lib.py", "dot_local/bin/executable_j",
+  "dot_local/bin/executable_screenshot",
+  "dot_local/bin/executable_screenrec", "dot_local/bin/executable_kill_active_process",
+  "dot_local/bin/executable_niri_scale", "dot_local/bin/executable_niri_rescue_floating",
+  "dot_local/bin/executable_render_agent_icons", "dot_local/bin/executable_sync_zellij_theme",
+  "dot_local/bin/executable_restore_laptop",
+  "dot_local/bin/executable_bat-noctalia",
+]

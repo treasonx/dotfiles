@@ -15,8 +15,8 @@
 
 set -euo pipefail
 
-{{- if ne .machine "laptop" }}
-echo "Skipping SDDM/Noctalia install on machine={{ .machine }} (see admin/james_desktop.md)."
+{{- if not (and (eq .machine "laptop") (get . "installCustomGreeter" | default false)) }}
+echo "Keeping the existing display manager (custom greeter is opt-in)."
 exit 0
 {{- end }}
 
