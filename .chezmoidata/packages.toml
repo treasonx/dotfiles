@@ -16,6 +16,7 @@ repos = [
 
 packages = [
   "1password",
+  "adw-gtk3-theme",
   "alsa-utils",
   "akmod-nvidia",
   "bat",
@@ -70,6 +71,7 @@ packages = [
   "python3-pip",
   "python3.12",
   "pipx",
+  "plasma-breeze-common",
   "qalculate-gtk",
   "qt5ct",
   "qt6ct",
