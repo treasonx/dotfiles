@@ -19,6 +19,8 @@ Do not erase the laptop until all of these are checked:
 - The selected release has all packages in `.chezmoidata/laptop-restore.toml`
   available from its official repositories and the three documented COPRs.
 - You have stored the new disk-encryption passphrase independently of this SSD.
+- The private assets listed below verify with `sha256sum -c SHA256SUMS` in
+  their kit directory on `linux-server`.
 - You explicitly confirm the disk being erased: **WD_BLACK SN770 1TB,
   serial 24274K807970, approximately 931.5 GiB**. Its current name is `nvme0n1`;
   verify model/serial rather than assuming that name will remain the same.
@@ -27,6 +29,47 @@ The local preparation directory is temporary and lives on the disk being wiped.
 It is not a recovery copy. The private off-machine destination will be recorded
 in the execution status below. This is a selected desktop backup, not a full
 home or system backup; erasure has no full-system rollback.
+
+## Private recovery assets
+
+Secrets stay out of Git. The private kit lives on `linux-server` under
+`~/laptop-recovery-kit/` (mode `700`; secret files `600`). Each subdirectory
+has its own `SHA256SUMS`.
+
+| Asset | Kit location | Captured | Contents |
+|---|---|---|---|
+| Cloudflare tunnel | `cloudflared/` | 2026-11-09 | Tunnel credentials JSON (`<tunnel-id>.json`), account `cert.pem`, `config.yaml` |
+
+### Cloudflare tunnel
+
+The laptop runs a named tunnel that routes `james.shiftupai.dev` to
+`http://localhost:8000` (all other hosts return 404). Its source was
+`~/.cloudflared/`, used by Homebrew's `cloudflared` (2026.5.2). No systemd
+unit existed; the tunnel was started by hand.
+
+- `<tunnel-id>.json` — credentials needed to run the tunnel. Secret.
+- `cert.pem` — account origin cert from `cloudflared tunnel login`; needed only
+  to create, delete, or route tunnels, not to run one. Secret.
+- `config.yaml` — ingress rules; references the credentials file under
+  `~/.cloudflared/`.
+
+Restore after fresh SSH access works (or from the portable copy):
+
+```bash
+# install cloudflared (Homebrew, or Cloudflare's Fedora repo)
+mkdir -m 700 ~/.cloudflared
+scp -p 'linux-server:laptop-recovery-kit/cloudflared/*' ~/.cloudflared/
+cd ~/.cloudflared && sha256sum -c SHA256SUMS && rm SHA256SUMS
+chmod 600 ~/.cloudflared/*.json ~/.cloudflared/cert.pem
+cloudflared tunnel run          # reads ~/.cloudflared/config.yaml
+```
+
+Only one machine should run this tunnel at a time. To start it at boot instead,
+`sudo cloudflared service install` creates a system unit that reads
+`/etc/cloudflared/config.yml`; copy the config there and point
+`credentials-file` at its new path. If the credentials are lost, recreate the
+tunnel with `cloudflared tunnel login` and `cloudflared tunnel create`, then
+re-route the hostname with `cloudflared tunnel route dns`.
 
 ## Install Fedora — user takes over here
 
