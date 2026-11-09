@@ -42,10 +42,16 @@ has its own `SHA256SUMS`.
 
 ### Cloudflare tunnel
 
-The laptop runs a named tunnel that routes `james.shiftupai.dev` to
-`http://localhost:8000` (all other hosts return 404). Its source was
-`~/.cloudflared/`, used by Homebrew's `cloudflared` (2026.5.2). No systemd
-unit existed; the tunnel was started by hand.
+A named tunnel routes `james.shiftupai.dev` to `http://localhost:8000` (all
+other hosts return 404). Its source was the laptop's `~/.cloudflared/`, used by
+Homebrew's `cloudflared` (2026.5.2). No systemd unit existed; the tunnel was
+started by hand.
+
+**Current state (2026-11-09):** `linux-server` runs this same tunnel (same
+tunnel ID and credentials; its own `cert.pem` from a separate login). The
+reinstalled laptop holds a verified standby copy in `~/.cloudflared/` but does
+**not** run it (`cloudflared` itself is not yet installed there; use the repo
+commands below). Stop the primary's connector before starting it here.
 
 - `<tunnel-id>.json` — credentials needed to run the tunnel. Secret.
 - `cert.pem` — account origin cert from `cloudflared tunnel login`; needed only
@@ -56,7 +62,9 @@ unit existed; the tunnel was started by hand.
 Restore after fresh SSH access works (or from the portable copy):
 
 ```bash
-# install cloudflared (Homebrew, or Cloudflare's Fedora repo)
+# Fedora does not package cloudflared; use Cloudflare's signed repo:
+sudo dnf config-manager addrepo --from-repofile=https://pkg.cloudflare.com/cloudflared.repo
+sudo dnf install cloudflared
 mkdir -m 700 ~/.cloudflared
 scp -p 'linux-server:laptop-recovery-kit/cloudflared/*' ~/.cloudflared/
 cd ~/.cloudflared && sha256sum -c SHA256SUMS && rm SHA256SUMS
@@ -92,7 +100,9 @@ configuration.
 Run the following as `james` in GNOME Terminal. Do not run `chezmoi init --apply`
 or a blanket `chezmoi apply` during this recovery.
 
-1. Obtain the recovery kit from the primary or removable storage. Verify
+1. Obtain the recovery kit from the primary
+   (`linux-server:~/recovery/framework-20261103-d73a8ac/recovery-kit/`, reachable
+   over Tailscale as `linux-server`) or removable storage. Verify
    `sha256sum -c SHA256SUMS` from the kit directory. Its prepared source archive
    is named `reinstall-source.tar.gz`; extract it into an empty `~/dotfiles`.
    `reinstall-history.bundle` preserves the committed history if GitHub is
@@ -103,8 +113,8 @@ or a blanket `chezmoi apply` during this recovery.
    ```bash
    sudo dnf install chezmoi git python3 zsh
    sudo dnf copr enable lionheartp/Hyprland
-   sudo dnf copr enable pgdev/ghostty
-   sudo dnf copr enable dulikiles/vicinae
+   sudo dnf copr enable scottames/ghostty
+   sudo dnf copr enable varlad/zellij
    cd ~/dotfiles
    python3 dot_local/bin/executable_restore_laptop --packages
    sudo dnf install $(python3 dot_local/bin/executable_restore_laptop --packages)
@@ -114,6 +124,15 @@ or a blanket `chezmoi apply` during this recovery.
    package inventory are required. Noctalia is the native **v5 `noctalia-git`**
    package, not the old Quickshell v4 setup. `gpu-screen-recorder` supplies the
    recording helper; the laptop uses Noctalia's built-in polkit agent.
+
+   Vicinae (the `Super+Space` launcher) is **not** installed from RPM: the
+   `dulikiles/vicinae` COPR build segfaults on Fedora 45's Qt 6.11
+   (`QWaylandApplication` interface revision mismatch). Copy the primary's
+   self-contained AppImage instead; niri puts `~/.local/bin` first in `PATH`:
+
+   ```bash
+   scp -p linux-server:.local/bin/vicinae ~/.local/bin/vicinae
+   ```
 
 3. Initialize chezmoi against the extracted source **without applying**:
 

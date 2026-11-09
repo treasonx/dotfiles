@@ -1,9 +1,9 @@
 # Small, explicit restore set. The full packages.toml is intentionally broader.
 [laptop_restore]
-copr = ["lionheartp/Hyprland", "pgdev/ghostty", "dulikiles/vicinae"]
+copr = ["lionheartp/Hyprland", "scottames/ghostty", "varlad/zellij"]
 packages = [
   "chezmoi", "git", "python3", "zsh", "niri", "noctalia-git", "ghostty",
-  "vicinae", "xdg-desktop-portal-gnome", "xdg-desktop-portal-gtk",
+  "xdg-desktop-portal-gnome", "xdg-desktop-portal-gtk",
   "network-manager-applet", "pipewire", "wireplumber",
   "wl-clipboard", "cliphist", "brightnessctl", "grim", "slurp", "swappy",
   "libnotify", "gpu-screen-recorder", "thunar", "fzf", "fd-find", "zoxide",

@@ -38,7 +38,7 @@ These third-party repos provide packages not in the official Fedora repos.
 
 ```bash
 # Ghostty terminal
-sudo dnf copr enable pgdev/ghostty
+sudo dnf copr enable scottames/ghostty
 
 # Lazygit TUI
 sudo dnf copr enable atim/lazygit

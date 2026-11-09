@@ -7,7 +7,7 @@
 repos = [
   "rpmfusion-free",
   "rpmfusion-nonfree",
-  "pgdev/ghostty",
+  "scottames/ghostty",
   "atim/lazygit",
   "dulikiles/vicinae",
   "tofik/nwg-shell",
