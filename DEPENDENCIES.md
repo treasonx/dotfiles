@@ -232,10 +232,14 @@ sudo dnf install \
   qt5ct \
   qt6ct \
   kvantum \
-  nwg-look
+  nwg-look \
+  adw-gtk3-theme \
+  plasma-breeze-common
 ```
 
-- `qt5ct` / `qt6ct` — Qt theme configuration tools
+- `qt5ct` / `qt6ct` — Qt theme configuration tools (qt6ct config is chezmoi-managed; uses Fusion + BreezeDark palette)
+- `adw-gtk3-theme` — libadwaita look for GTK3 apps; `adw-gtk3-dark` set by `run_onchange_set-dark-theme.sh`
+- `plasma-breeze-common` — provides `/usr/share/color-schemes/BreezeDark.colors` used by qt6ct
 - `kvantum` — Qt style engine for consistent theming
 - `nwg-look` — GTK settings for Wayland (replaces lxappearance)
 
