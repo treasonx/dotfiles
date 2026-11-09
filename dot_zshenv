@@ -1,5 +1,6 @@
-# ~/.zshenv - Set ZDOTDIR to use XDG config
+# ~/.zshenv - bootstrap only.
+#
+# Read only when ZDOTDIR is not already set in the environment. Sets
+# ZDOTDIR and hands off to the real zshenv; see that file for why.
 export ZDOTDIR="$HOME/.config/zsh"
-
-# Load cargo environment if installed via rustup
-[[ -f "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"
+[[ -r "$ZDOTDIR/.zshenv" ]] && . "$ZDOTDIR/.zshenv"

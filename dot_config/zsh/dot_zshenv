@@ -1,0 +1,26 @@
+# ~/.config/zsh/.zshenv - real per-user zshenv ($ZDOTDIR/.zshenv)
+#
+# ZDOTDIR is exported, so any shell started from an existing session has
+# it already set and zsh reads THIS file directly, never ~/.zshenv. When
+# ZDOTDIR is unset (a fresh session) ~/.zshenv sets it and sources this.
+# Either way this file runs exactly once -- so it, not ~/.zshenv, is where
+# zshenv config belongs.
+
+# Load cargo environment if installed via rustup
+[[ -f "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"
+
+# Skip Fedora's /etc/zprofile for login shells.
+#
+# /etc/zprofile sources /etc/profile, whose line 48 runs
+#     HOSTNAME=$(/usr/bin/hostnamectl --transient)
+# unconditionally. That is a D-Bus call to systemd-hostnamed, and when
+# hostnamed can't start (e.g. a dead CIFS mount blocks the mount namespace it
+# needs — see admin/fix_terminal_hang_hostnamed.md) it blocks for the full
+# ~25s D-Bus timeout before falling back. No dotfile config can skip that one
+# line, so we skip the file and redo its work in $ZDOTDIR/.zprofile instead.
+#
+# Login shells only: non-login shells never read /etc/zprofile anyway, and
+# they DO need GLOBAL_RCS so /etc/zshrc loads /etc/profile.d for them.
+# $ZDOTDIR/.zprofile turns GLOBAL_RCS back on so /etc/zshrc and /etc/zlogin
+# still load for login shells.
+[[ -o login ]] && unsetopt GLOBAL_RCS

@@ -1,3 +1,32 @@
-// Placeholder so `include "./noctalia.kdl"` in config.kdl resolves on machines
-// where Noctalia hasn't enabled niri theming yet. Noctalia overwrites this
-// file when its niri-theming toggle is turned on.
+layout {
+
+    focus-ring {
+        active-color   "#d4c5a9"
+        inactive-color "#141311"
+        urgent-color   "#ffb4ab"
+    }
+
+    border {
+        active-color   "#d4c5a9"
+        inactive-color "#141311"
+        urgent-color   "#ffb4ab"
+    }
+
+
+    tab-indicator {
+        active-color   "#d4c5a9"
+        inactive-color "#b7a98e"
+        urgent-color   "#ffb4ab"
+    }
+
+    insert-hint {
+        color "#d4c5a980"
+    }
+}
+
+recent-windows {
+    highlight {
+        active-color "#d4c5a9"
+        urgent-color "#ffb4ab"
+    }
+}

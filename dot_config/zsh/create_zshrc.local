@@ -1,8 +1,5 @@
-#!/bin/sh
-# This script only runs if ~/.config/zsh/zshrc.local doesn't exist yet.
-# It creates a starter template for machine-specific secrets and config.
-cat <<'TEMPLATE'
 # ~/.config/zsh/zshrc.local
+# chezmoi creates this file only if absent; this is shell config, not a generator.
 # Machine-specific and sensitive configuration — NOT tracked by git
 # Edit this file directly on each machine.
 
@@ -35,4 +32,3 @@ cat <<'TEMPLATE'
 
 # Additional plugins for this machine
 # plugins+=(docker kubectl)
-TEMPLATE

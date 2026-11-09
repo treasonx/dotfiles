@@ -1,0 +1,78 @@
+# ~/.config/zsh/.zprofile - login shell setup
+#
+# ~/.zshenv does `unsetopt GLOBAL_RCS` for login shells, so Fedora's
+# /etc/zprofile (and with it /etc/profile) is skipped. See the comment there
+# for why. This file redoes /etc/profile's work without its one poisonous
+# line, then hands the global rc files back.
+
+# Re-enable global rc files so /etc/zshrc and /etc/zlogin still load.
+setopt GLOBAL_RCS
+
+# Mirrors /etc/profile. Keep in sync if Fedora changes that file.
+_etc_profile_without_hostnamectl() {
+    # /etc/zprofile wraps its sourcing the same way: the profile.d scripts are
+    # sh scripts, and ~/.zshenv options like NOMATCH would break them.
+    emulate -L ksh
+
+    pathmunge() {
+        # If the path is a compat symlink, do nothing.
+        [ -h "$1" ] && return
+        case ":${PATH}:" in
+            *:"$1":*) ;;
+            *)
+                if [ "$2" = "after" ]; then
+                    PATH=$PATH:$1
+                else
+                    PATH=$1:$PATH
+                fi
+                ;;
+        esac
+    }
+
+    if [ -x /usr/bin/id ]; then
+        USER="$(/usr/bin/id -un)"
+        LOGNAME=$USER
+        MAIL="/var/spool/mail/$USER"
+    fi
+
+    if [ "$EUID" = "0" ]; then
+        pathmunge /usr/sbin
+        pathmunge /usr/local/sbin
+    else
+        pathmunge /usr/local/sbin after
+        pathmunge /usr/sbin after
+    fi
+
+    # THE POINT OF THIS FILE: /etc/profile tries hostnamectl (a D-Bus call to
+    # systemd-hostnamed) first and falls back to `hostname`. We go straight to
+    # the fallback -- same value, no D-Bus round trip, no 25s stall when
+    # hostnamed is wedged.
+    HOSTNAME=$(/usr/bin/hostname 2>/dev/null) || HOSTNAME=$(/usr/bin/uname -n)
+
+    if [ -z "$HISTSIZE" ]; then
+        HISTSIZE=1000
+    fi
+
+    if [ "$HISTCONTROL" = "ignorespace" ]; then
+        export HISTCONTROL=ignoreboth
+    else
+        export HISTCONTROL=ignoredups
+    fi
+
+    export PATH USER LOGNAME MAIL HOSTNAME HISTSIZE HISTCONTROL
+
+    # /etc/zshrc guards its own profile.d loop with `if [[ ! -o login ]]`, so
+    # for a LOGIN shell these come only from /etc/profile. Without this we
+    # would silently lose flatpak's XDG_DATA_DIRS, lang.sh, vte.sh, etc.
+    for i in /etc/profile.d/*.sh /etc/profile.d/sh.local; do
+        if [ -r "$i" ]; then
+            if [ "${-#*i}" != "$-" ]; then
+                . "$i"
+            else
+                . "$i" >/dev/null
+            fi
+        fi
+    done
+}
+_etc_profile_without_hostnamectl
+unset -f _etc_profile_without_hostnamectl pathmunge

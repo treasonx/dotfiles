@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """Install Noctalia Shell + optional deps on Fedora.
 
-Noctalia is a Wayland desktop shell built on Quickshell (QML). As of v4.6.1
-it requires `noctalia-qs`, a maintained Quickshell fork. The Fedora-official
-distribution path (per upstream docs) is the Terra repository, which ships
-both `noctalia-shell` (QML config) and `noctalia-qs` (runtime) as RPMs.
+Noctalia v5 is a native Wayland desktop shell. Its Fedora package is
+noctalia-git from the lionheartp/Hyprland COPR; it needs no Quickshell.
 
 Usage:
     install_noctalia_deps                # Install everything
@@ -17,16 +15,8 @@ import subprocess
 import sys
 
 
-# Terra bootstrap — the $releasever placeholder is expanded by dnf, so this
-# single definition works on any Fedora release.
-TERRA_REPO_PATH = "terra,https://repos.fyralabs.com/terra$releasever"
-
-# Core Noctalia runtime. noctalia-qs is pulled transitively by noctalia-shell,
-# listed here so --check flags a partial install clearly.
 REQUIRED = [
-    "terra-release",    # Bootstraps the Terra repo definition + GPG key
-    "noctalia-shell",   # QML shell config
-    "noctalia-qs",      # Quickshell fork (required by noctalia-shell v4.6.1+)
+    "noctalia-git",
 ]
 
 # Optional but recommended by Noctalia docs + to match current user stack.
@@ -52,16 +42,11 @@ def is_installed(package: str) -> bool:
     return run(["rpm", "-q", package], check=False).returncode == 0
 
 
-def ensure_terra():
-    """Add the Terra repo if missing. terra-release manages its own GPG key."""
-    if is_installed("terra-release"):
-        return
-    print("\nBootstrapping Terra repository...")
+def ensure_repository():
+    """Enable the upstream-documented Fedora COPR with normal GPG checks."""
+    print("\nEnabling Noctalia v5 repository...")
     subprocess.run(
-        [
-            "sudo", "dnf", "install", "-y", "--nogpgcheck",
-            "--repofrompath", TERRA_REPO_PATH, "terra-release",
-        ],
+        ["sudo", "dnf", "copr", "enable", "-y", "lionheartp/Hyprland"],
         check=True,
     )
 
@@ -102,8 +87,7 @@ def main():
     if args.check:
         sys.exit(0 if not missing_required else 1)
 
-    ensure_terra()
-    # Re-check REQUIRED after the Terra bootstrap (terra-release is now installed).
+    ensure_repository()
     missing_required = [p for p in REQUIRED if not is_installed(p)]
 
     if missing_required:
@@ -114,7 +98,7 @@ def main():
         print(f"\nInstalling optional: {missing_optional}")
         subprocess.run(["sudo", "dnf", "install", "-y", *missing_optional], check=True)
 
-    print("\nDone. Start with: qs -c noctalia-shell")
+    print("\nDone. Start with: noctalia")
 
 
 if __name__ == "__main__":

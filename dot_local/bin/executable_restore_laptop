@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+"""Preview or apply the minimal laptop desktop from this dotfiles repository.
+
+Does not install packages, run chezmoi hooks, download externals, or enable
+services. See docs/fedora-laptop-recovery.md for prerequisite installation.
+"""
+
+from pathlib import Path
+import shlex
+import subprocess
+import sys
+import tomllib
+
+try:
+    from j_lib import JParser
+except ModuleNotFoundError:
+    # Source-tree execution before chezmoi has deployed j_lib.py.
+    from executable_j_lib import JParser
+
+
+def main() -> int:
+    parser = JParser(description="Preview or restore the minimal laptop desktop")
+    parser.add_argument("--source", type=Path, help="Dotfiles repository directory")
+    parser.add_argument("--destination", type=Path, default=Path.home(),
+                        help="Destination home (defaults to your home)")
+    parser.add_argument("--config", type=Path, help="Chezmoi config file")
+    parser.add_argument("--apply", action="store_true", help="Apply files; default is preview")
+    parser.add_argument("--packages", action="store_true", help="Print prerequisite RPM names only")
+    args = parser.run()
+
+    source = args.source
+    if source is None:
+        candidate = Path(__file__).resolve().parents[2]
+        if (candidate / ".chezmoidata/laptop-restore.toml").is_file():
+            source = candidate
+        else:
+            result = subprocess.run(["chezmoi", "source-path"], capture_output=True,
+                                    text=True, check=True)
+            source = Path(result.stdout.strip())
+    source = source.expanduser().resolve()
+    with (source / ".chezmoidata/laptop-restore.toml").open("rb") as stream:
+        manifest = tomllib.load(stream)["laptop_restore"]
+    if args.packages:
+        print(" ".join(manifest["packages"]))
+        return 0
+
+    command = ["chezmoi", "--source", str(source),
+               "--destination", str(args.destination.expanduser().resolve()),
+               "--override-data", '{"essentialsOnly":true}']
+    if args.config:
+        command.extend(["--config", str(args.config.expanduser().resolve())])
+    profile = subprocess.run([*command, "execute-template", "{{ .machine }}"],
+                             capture_output=True, text=True, check=True).stdout.strip()
+    if profile != "laptop":
+        parser.error("chezmoi machine must be laptop; initialize without --apply first")
+
+    targets = []
+    for entry in manifest["sources"]:
+        target = (source / entry).resolve()
+        if not target.is_relative_to(source) or not target.exists():
+            parser.error(f"missing or unsafe restore source: {entry}")
+        targets.append(str(target))
+    # Convert first: apply --source-path selects directory entries themselves,
+    # while destination paths recursively include their managed contents.
+    mapped = subprocess.run([*command, "target-path", *targets], capture_output=True,
+                            text=True, check=True)
+    targets = mapped.stdout.splitlines()
+    command.extend(["apply", "--exclude=scripts,externals", "--parent-dirs"])
+    if not args.apply:
+        command.extend(["--dry-run", "--verbose"])
+    command.extend(targets)
+    print(shlex.join(command), flush=True)
+    return subprocess.run(command, check=False).returncode
+
+
+if __name__ == "__main__":
+    sys.exit(main())

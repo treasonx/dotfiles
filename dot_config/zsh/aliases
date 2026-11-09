@@ -21,8 +21,8 @@ alias bat='bat-noctalia'
 alias cat='bat-noctalia --paging=never'
 
 # Modern coreutils replacements (cargo/dnf installed)
-alias du='dust'          # disk usage with bar charts
-alias df='duf'           # pretty disk free table
+command -v dust &>/dev/null && alias du='dust'  # optional disk usage charts
+command -v duf &>/dev/null && alias df='duf'    # optional disk free table
 alias grep='rg'          # ripgrep — fast, respects .gitignore
 
 # Git shortcuts (matches Neovim git plugin patterns)
@@ -59,7 +59,7 @@ alias md='mkdir -p'  # Make directory
 alias rd='rmdir'     # Remove directory
 
 # Process management (procs — colored process list with tree view)
-alias ps='procs'
+command -v procs &>/dev/null && alias ps='procs'
 alias k='kill'
 alias ka='killall'
 

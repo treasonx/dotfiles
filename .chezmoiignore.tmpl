@@ -21,11 +21,37 @@
 {{- if ne .machine "desktop" }}
 .config/webview-zone
 .local/bin/webview_zone
+.local/bin/restart_webview_zone
 .local/share/webview-zone
 .config/systemd/user/webview-zone.service
+{{- end }}
+
+# A one-time laptop seed; existing GUI edits remain machine-local.
+{{- if ne .machine "laptop" }}
+.local/state/noctalia/settings.toml
+{{- end }}
+
+# Desktop-only services (home backup timer, VNC server).
+{{- if ne .machine "desktop" }}
+.config/systemd/user/backup-home.service
+.config/systemd/user/backup-home.timer
+.config/systemd/user/wayvnc.service
 {{- end }}
 
 # SDDM greeter theme sources — installed to /usr/share and /etc by
 # run_once_install-sddm-noctalia.sh, never deployed to $HOME.
 sddm-theme-noctalia
 etc
+
+# Repo-only files: docs, admin workspace, tests, and helper sources. These
+# live in the source tree for reference and must never land in $HOME.
+README.md
+CLAUDE.md
+CHEATSHEET.md
+DEPENDENCIES.md
+SDDM_BLACK_SCREEN_FIX.md
+admin
+docs
+tests
+fix_sddm
+sddm-weston

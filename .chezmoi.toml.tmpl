@@ -1,2 +1,4 @@
 [data]
     machine = "{{ promptStringOnce . "machine" "Machine type (desktop/laptop)" }}"
+    # Custom SDDM greeter is optional; standard Fedora GDM is the default.
+    installCustomGreeter = false

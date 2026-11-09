@@ -96,6 +96,7 @@ path=(
     $HOME/.local/bin
     /usr/local/cuda-12.3/bin
     /usr/local/go/bin
+    $HOME/go/bin
     $path
 )
 
@@ -107,11 +108,13 @@ typeset -U path
 # =============================================================================
 
 # Homebrew (adds to PATH dynamically)
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+if [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
 
 # vivid LS_COLORS (catppuccin mocha file type colors for ls/eza/tab-completion)
 # Must be after brew shellenv since vivid is brew-installed
-export LS_COLORS="$(vivid generate catppuccin-mocha)"
+command -v vivid &>/dev/null && export LS_COLORS="$(vivid generate catppuccin-mocha)"
 
 # fnm (Fast Node Manager) — auto-switches Node version per .nvmrc on cd
 if command -v fnm &>/dev/null; then
@@ -123,10 +126,10 @@ fi
 [[ -f "$HOME/google-cloud-sdk/completion.zsh.inc" ]] && source "$HOME/google-cloud-sdk/completion.zsh.inc"
 
 # fzf keybindings: Ctrl+T (file finder), Ctrl+R (history), Alt+C (cd into directory)
-source /usr/share/fzf/shell/key-bindings.zsh
+[[ -r /usr/share/fzf/shell/key-bindings.zsh ]] && source /usr/share/fzf/shell/key-bindings.zsh
 
 # Zoxide (smarter cd command)
-eval "$(zoxide init zsh)"
+command -v zoxide &>/dev/null && eval "$(zoxide init zsh)"
 
 # =============================================================================
 # COMPLETION SYSTEM
@@ -140,6 +143,10 @@ autoload -Uz compinit && compinit
 # Tool-specific completions
 [[ -s "$HOME/.bun/_bun" ]] && source "$HOME/.bun/_bun"
 command -v jj &>/dev/null && source <(jj util completion zsh)
+
+# worktrunk (wt) — git worktree manager; wrapper lets `wt switch` cd the shell,
+# and registers completions (must come after compinit)
+if command -v wt >/dev/null 2>&1; then eval "$(command wt config shell init zsh)"; fi
 
 # =============================================================================
 # SHELL FUNCTIONS
@@ -219,3 +226,10 @@ auto_activate_venv
 
 # ShiftUp scratch org auto-switch
 [[ -f "/home/james/projects/shiftupai/guided-selling/scripts/shell/org-auto-switch.zsh" ]] && source "/home/james/projects/shiftupai/guided-selling/scripts/shell/org-auto-switch.zsh"
+
+# bun completions
+[ -s "/home/james/.bun/_bun" ] && source "/home/james/.bun/_bun"
+
+#THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
+export SDKMAN_DIR="$HOME/.sdkman"
+[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"

@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+"""Splice Noctalia's generated Zellij theme into config.kdl.
+
+Zellij documents live theme reload for themes defined inline in the active
+config file. Noctalia renders a fragment to
+~/.config/zellij/noctalia-theme-fragment.kdl, and this script stamps it into
+~/.config/zellij/config.kdl between sentinel marker lines:
+
+  // >>> noctalia zellij theme >>>
+  ...rendered themes block...
+  // <<< noctalia zellij theme <<<
+
+Called as the post_hook of the Noctalia user template `zellij_theme`.
+
+Fallback: if the fragment file is missing, this is a no-op so the checked-in
+fallback theme block remains intact.
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+from j_lib import JParser
+
+CONFIG = Path.home() / ".config" / "zellij" / "config.kdl"
+FRAGMENT = Path.home() / ".config" / "zellij" / "noctalia-theme-fragment.kdl"
+BEGIN = "// >>> noctalia zellij theme >>>"
+END = "// <<< noctalia zellij theme <<<"
+
+
+def main() -> int:
+    JParser(description="Splice Noctalia Zellij theme into config.kdl").run()
+
+    if not FRAGMENT.is_file():
+        # Expected on first run before Noctalia renders the fragment.
+        return 0
+    if not CONFIG.is_file():
+        print(f"error: {CONFIG} missing", file=sys.stderr)
+        return 1
+
+    original = CONFIG.read_text().splitlines(keepends=True)
+    begin_idx = end_idx = None
+    for i, line in enumerate(original):
+        if line.rstrip() == BEGIN:
+            begin_idx = i
+        elif line.rstrip() == END:
+            end_idx = i
+            break
+
+    if begin_idx is None or end_idx is None or end_idx <= begin_idx:
+        print(
+            f"error: sentinel markers not found in {CONFIG}. Expected lines:\n"
+            f"  {BEGIN}\n"
+            "  ...theme block...\n"
+            f"  {END}\n",
+            file=sys.stderr,
+        )
+        return 1
+
+    fragment = FRAGMENT.read_text()
+    if "themes" not in fragment or "noctalia" not in fragment:
+        print(f"error: {FRAGMENT} does not look like a Zellij theme", file=sys.stderr)
+        return 1
+    if not fragment.endswith("\n"):
+        fragment += "\n"
+
+    new = (
+        "".join(original[: begin_idx + 1])
+        + fragment
+        + "".join(original[end_idx:])
+    )
+
+    if new == "".join(original):
+        return 0
+
+    CONFIG.write_text(new)
+    print(f"spliced Noctalia theme into {CONFIG}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

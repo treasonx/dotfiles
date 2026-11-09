@@ -46,6 +46,7 @@ RESET = "\033[0m"
 # ── Script registry ───────────────────────────────────────────────────
 # Format: "command_name:Short description"
 SCRIPTS = [
+    "restore_laptop:Preview or restore the minimal laptop desktop",
     "backup_home:Back up home directory to UGreen NAS",
     "copy_album:Copy audio files by album using metadata tags",
     "convert_webp:Convert WebP images to other formats",
@@ -56,14 +57,18 @@ SCRIPTS = [
     "ga:Git add with fuzzy matching",
     "gco:Git checkout file with fuzzy matching",
     "install_noctalia_deps:Install Noctalia Shell + optional deps",
+    "jzc:Select and delete exited zellij sessions",
+    "jzs:Filter, attach, resurrect, or start zellij sessions",
     "niri_rescue_floating:Recenter floating niri windows after monitor changes",
     "niri_scale:Adjust niri output scale (--step N or --set N)",
+    "packages:Audit, install, and update declared packages",
     "playlist:Create M3U playlists using beets",
     "rsync_upload:Upload files via rsync with bandwidth control",
     "screenrec:Toggle screen recording (region/output, wl-screenrec)",
     "sddm_rollback:Revert display manager from SDDM back to GDM",
     "sync_lazydocker_theme:Splice Noctalia theme fragment into lazydocker config.yml",
     "sync_sddm_wallpaper:Copy current Noctalia wallpaper to SDDM greeter",
+    "sync_zellij_theme:Splice Noctalia theme fragment into Zellij config.kdl",
     "transcode_video:Transcode videos to H.265 1080p MP4 via HandBrake",
     "update_noctalia:Upgrade noctalia-git from COPR and reload the shell",
     "v:Open file in nvim by fuzzy name match",

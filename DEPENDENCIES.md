@@ -1,6 +1,24 @@
 # Fedora Dependencies
 
-Everything needed to set up a fresh Fedora system for this dotfiles repo. Organized by install method so you can run through each section in order.
+For a minimal Framework laptop rebuild, follow
+[the recovery checklist](docs/fedora-laptop-recovery.md). Its reviewed package
+and file selection lives in `.chezmoidata/laptop-restore.toml`; the full
+inventory below is broader and includes optional desktop/development tools.
+
+Everything needed to set up a fresh Fedora system for this dotfiles repo.
+
+The source of truth is `.chezmoidata/packages.toml`. Use the `packages` helper
+to audit, install, and update declared packages:
+
+```bash
+packages audit             # Report missing and undeclared packages
+packages install           # Install missing declared packages, prompting first
+packages update            # Walk through updates for DNF, Brew, Flatpak, etc.
+packages snapshot          # Print current installed state by manager
+```
+
+The sections below explain the package groups and manual caveats. When adding or
+removing packages, update `.chezmoidata/packages.toml` first.
 
 ## Prerequisites
 
@@ -20,7 +38,7 @@ These third-party repos provide packages not in the official Fedora repos.
 
 ```bash
 # Ghostty terminal
-sudo dnf copr enable pgdev/ghostty
+sudo dnf copr enable scottames/ghostty
 
 # Lazygit TUI
 sudo dnf copr enable atim/lazygit
@@ -31,9 +49,8 @@ sudo dnf copr enable dulikiles/vicinae
 # nwg-shell utilities (nwg-look, nwg-displays)
 sudo dnf copr enable tofik/nwg-shell
 
-# Terra (for Noctalia Shell + Quickshell — bootstrapped automatically by
-# install_noctalia_deps, listed here for reference)
-# sudo dnf install --repofrompath terra,https://repos.fyralabs.com/terra$releasever terra-release
+# Noctalia v5 (native binary; no Quickshell)
+sudo dnf copr enable lionheartp/Hyprland
 ```
 
 ## Third-Party Repos
@@ -70,7 +87,7 @@ install_noctalia_deps
 
 **What these do:**
 - `niri` — Scrollable-tiling Wayland compositor
-- `noctalia-shell` + `noctalia-qs` — Quickshell-based desktop shell (bar,
+- `noctalia-git` — Native Noctalia v5 desktop shell (bar,
   launcher, notifications, control center, lock screen, wallpaper, session
   menu) — installed via `install_noctalia_deps`
 - `xdg-desktop-portal-*` — Desktop integration (file dialogs, screen sharing)

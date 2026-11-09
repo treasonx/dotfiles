@@ -1,0 +1,202 @@
+# Central package inventory for this dotfiles repo.
+#
+# The `packages` helper reads this file for audit, install, and update flows.
+# Keep package-manager specific names here; keep explanations in DEPENDENCIES.md.
+
+[dnf]
+repos = [
+  "rpmfusion-free",
+  "rpmfusion-nonfree",
+  "scottames/ghostty",
+  "atim/lazygit",
+  "dulikiles/vicinae",
+  "tofik/nwg-shell",
+  "terra",
+]
+
+packages = [
+  "1password",
+  "alsa-utils",
+  "akmod-nvidia",
+  "bat",
+  "baobab",
+  "beets",
+  "blueman",
+  "bluez",
+  "btop",
+  "cargo",
+  "chezmoi",
+  "cliphist",
+  "ddccontrol",
+  "ddcutil",
+  "docker-buildx-plugin",
+  "docker-ce",
+  "docker-ce-cli",
+  "docker-compose-plugin",
+  "eog",
+  "fastfetch",
+  "fd-find",
+  "file-roller",
+  "fzf",
+  "ghostty",
+  "git",
+  "git-delta",
+  "git-lfs",
+  "golang",
+  "grim",
+  "jetbrains-mono-fonts",
+  "jq",
+  "kitty",
+  "kvantum",
+  "lazygit",
+  "libnotify",
+  "mpv",
+  "neovim",
+  "NetworkManager",
+  "network-manager-applet",
+  "niri",
+  "noctalia-git",
+  "nodejs22-npm",
+  "nvtop",
+  "nwg-displays",
+  "nwg-look",
+  "pamixer",
+  "pavucontrol",
+  "pipewire",
+  "pipewire-alsa",
+  "pipewire-pulseaudio",
+  "polkit-gnome",
+  "python3",
+  "python3-pip",
+  "python3.12",
+  "pipx",
+  "qalculate-gtk",
+  "qt5ct",
+  "qt6ct",
+  "rsync",
+  "rust",
+  "slurp",
+  "swappy",
+  "telegram-desktop",
+  "terra-release",
+  "Thunar",
+  "thunar-archive-plugin",
+  "thunar-volman",
+  "vivaldi-stable",
+  "wireplumber",
+  "wl-clipboard",
+  "xorg-x11-drv-nvidia-cuda",
+  "xorg-x11-server-Xwayland",
+  "yad",
+  "zellij",
+  "zoxide",
+  "zsh",
+]
+
+desktop_only = [
+  "akmod-nvidia",
+  "xorg-x11-drv-nvidia-cuda",
+]
+
+laptop_only = []
+
+[brew]
+formulae = [
+  "bat",
+  "duf",
+  "dust",
+  "eza",
+  "fnm",
+  "procs",
+  "vivid",
+  "worktrunk",
+]
+
+[flatpak]
+apps = [
+  "com.discordapp.Discord",
+  "com.github.PintaProject.Pinta",
+  "com.github.jeromerobert.pdfarranger",
+  "com.github.tchx84.Flatseal",
+  "com.mastermindzh.tidal-hifi",
+  "com.mattjakeman.ExtensionManager",
+  "com.prusa3d.PrusaSlicer",
+  "com.slack.Slack",
+  "com.transmissionbt.Transmission",
+  "com.visualstudio.code",
+  "io.bassi.Amberol",
+  "io.dbeaver.DBeaverCommunity",
+  "io.github.Hexchat",
+  "io.github.mhogomchungu.media-downloader",
+  "io.github.seadve.Kooha",
+  "io.gitlab.adhami3310.Footage",
+  "io.gitlab.theevilskeleton.Upscaler",
+  "io.httpie.Httpie",
+  "io.kapsa.drive",
+  "it.mijorus.gearlever",
+  "org.audacityteam.Audacity",
+  "org.gnome.SoundRecorder",
+  "org.gnome.gitlab.YaLTeR.VideoTrimmer",
+  "org.kde.kdenlive",
+  "org.kde.konversation",
+  "org.mozilla.firefox",
+  "org.nickvision.tubeconverter",
+  "org.remmina.Remmina",
+]
+
+[cargo]
+crates = [
+  "envex",
+  "eza",
+  "hyprshell",
+  "jiq",
+  "jj-cli",
+  "just",
+  "mcp-cli",
+  "monitui",
+  "qmassa",
+  "rustormy",
+  "tauri-cli",
+]
+
+git = [
+  "https://github.com/neovide/neovide.git",
+]
+
+local = [
+  "/home/james/projects/agenticflow/jane/crates/jane-app",
+]
+
+[npm]
+global = [
+  "@ast-grep/cli",
+  "@augmentcode/auggie",
+  "@earendil-works/pi-coding-agent",
+  "@google/gemini-cli",
+  "@mermaid-js/mermaid-cli",
+  "@openai/codex",
+  "@salesforce/cli",
+  "@typespec/compiler",
+  "agent-browser",
+  "neovim",
+  "sass",
+]
+
+[[go.tools]]
+module = "github.com/james-treacy/redthread"
+binary = "redthread"
+version = "latest"
+
+[bun]
+tools = []
+
+[pipx]
+packages = []
+
+[manual]
+notes = [
+  "Oh My Zsh is managed through chezmoi externals and zsh plugin hooks.",
+  "Bun is installed with its upstream installer and updated by bun itself.",
+  "Nerd Fonts may still need manual installation when Fedora packages are insufficient.",
+  "Some one-off Python CLIs in ~/.local/bin appear to come from pip --user or uv tool installs; use `packages snapshot` to decide which should be promoted into this manifest.",
+]
