@@ -12,6 +12,7 @@ repos = [
   "dulikiles/vicinae",
   "tofik/nwg-shell",
   "terra",
+  "rex",  # Superlogical Rex server: pkgs.superlogical.com (added by its install.sh)
 ]
 
 packages = [
@@ -75,6 +76,7 @@ packages = [
   "qalculate-gtk",
   "qt5ct",
   "qt6ct",
+  "rex",
   "rsync",
   "rust",
   "slurp",
@@ -199,6 +201,7 @@ packages = []
 notes = [
   "Oh My Zsh is managed through chezmoi externals and zsh plugin hooks.",
   "Bun is installed with its upstream installer and updated by bun itself.",
+  "Rex Rune (unofficial Rex GUI client) is a user install in ~/.local/bin: curl -fsSL https://github.com/shuv1337/rex-rune/releases/latest/download/install.sh | sh -- it self-updates; config in ~/.config/rex-rune/.",
   "Nerd Fonts may still need manual installation when Fedora packages are insufficient.",
   "Some one-off Python CLIs in ~/.local/bin appear to come from pip --user or uv tool installs; use `packages snapshot` to decide which should be promoted into this manifest.",
 ]

@@ -1,0 +1,34 @@
+{
+  "shortcuts": [
+    {"keys": "ctrl+shift+h", "action": "pane.focus", "args": {"direction": "left"}},
+    {"keys": "ctrl+shift+j", "action": "pane.focus", "args": {"direction": "down"}},
+    {"keys": "ctrl+shift+k", "action": "pane.focus", "args": {"direction": "up"}},
+    {"keys": "ctrl+shift+l", "action": "pane.focus", "args": {"direction": "right"}},
+
+    {"keys": "ctrl+shift+[Minus]", "action": "pane.split", "args": {"direction": "down"}},
+    {"keys": "ctrl+shift+[Backslash]", "action": "pane.split", "args": {"direction": "right"}},
+    {"keys": "ctrl+shift+e", "action": "pane.split", "args": {"direction": "down"}},
+    {"keys": "ctrl+shift+o", "action": "pane.split", "args": {"direction": "right"}},
+
+    {"keys": "shift+enter", "action": "pane.send_key", "args": {"key": "ctrl+j"}},
+
+    {"keys": "ctrl+k", "action": null},
+    {"keys": "ctrl+shift+s", "action": "session.switch"},
+
+    {"keys": "ctrl+=", "action": "client.font.increase"},
+    {"keys": "ctrl+-", "action": "client.font.decrease"},
+    {"keys": "ctrl+0", "action": "client.font.reset"},
+
+    {"keys": "shift+pageup", "action": "client.scroll.page_up"},
+    {"keys": "shift+pagedown", "action": "client.scroll.page_down"},
+
+    {"keys": "alt+1", "action": "client.tab.goto", "args": {"index": 1}},
+    {"keys": "alt+2", "action": "client.tab.goto", "args": {"index": 2}},
+    {"keys": "alt+3", "action": "client.tab.goto", "args": {"index": 3}},
+    {"keys": "alt+4", "action": "client.tab.goto", "args": {"index": 4}},
+    {"keys": "alt+5", "action": "client.tab.goto", "args": {"index": 5}},
+    {"keys": "alt+6", "action": "client.tab.goto", "args": {"index": 6}},
+    {"keys": "alt+7", "action": "client.tab.goto", "args": {"index": 7}},
+    {"keys": "alt+8", "action": "client.tab.goto", "args": {"index": 8}}
+  ]
+}
