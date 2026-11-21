@@ -1,15 +1,6 @@
 {
-  "alwaysThinkingEnabled": true,
-  "skipAutoPermissionPrompt": true,
-  "editorMode": "vim",
-  "verbose": true,
   "permissions": {
     "defaultMode": "auto"
-  },
-  "enabledPlugins": {
-    "coderabbit@claude-plugins-official": true,
-    "compound-engineering@every-marketplace": true,
-    "rust-analyzer-lsp@claude-plugins-official": true
   },
   "hooks": {
     "SessionStart": [
@@ -20,6 +11,15 @@
             "type": "command",
             "command": "$HOME/.local/bin/agent_session_hook --agent claude",
             "timeout": 3
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh -c 'rex __internal session-start --agent claude --feature-session-naming=false 2>/dev/null || true'",
+            "timeout": 5
           }
         ]
       }
@@ -132,5 +132,23 @@
         ]
       }
     ]
-  }
+  },
+  "enabledPlugins": {
+    "coderabbit@claude-plugins-official": true,
+    "compound-engineering@every-marketplace": true,
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "compound-engineering@compound-engineering-plugin": true
+  },
+  "extraKnownMarketplaces": {
+    "compound-engineering-plugin": {
+      "source": {
+        "source": "github",
+        "repo": "EveryInc/compound-engineering-plugin"
+      }
+    }
+  },
+  "alwaysThinkingEnabled": true,
+  "editorMode": "vim",
+  "verbose": true,
+  "skipAutoPermissionPrompt": true
 }

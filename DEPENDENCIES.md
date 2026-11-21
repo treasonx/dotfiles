@@ -429,6 +429,12 @@ sudo systemctl enable --now bluetooth
 
 # Rex personal server: socket-activated systemd user unit, survives logout (no sudo)
 rex server install
+
+# Rex agent skill for Claude Code, Codex, OpenCode, Pi. The SessionStart hooks are
+# already in chezmoi (dot_claude/settings.json, dot_codex/hooks.json.tmpl), so this
+# only writes the skill stubs (~/.claude/skills/rex, ~/.agents/skills/rex) and
+# reports the hooks as unchanged.
+rex skill setup
 ```
 
 ## Summary by Category
