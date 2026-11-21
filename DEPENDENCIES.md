@@ -65,6 +65,10 @@ sudo rpm --import https://downloads.1password.com/linux/keys/1password.asc
 
 # Vivaldi — see https://vivaldi.com/download/
 # (follow vivaldi docs for repo setup)
+
+# Rex server (Superlogical) — adds /etc/yum.repos.d/rex.repo and installs `rex`
+# Fedora's unrelated Perl `Rex` package also owns /usr/bin/rex: `sudo dnf remove Rex` first if present
+curl -fsSL https://pkgs.superlogical.com/rex/install.sh | sh
 ```
 
 ## DNF Packages
@@ -365,6 +369,17 @@ go install github.com/jesseduffield/lazydocker@latest
 # or download binary from GitHub releases
 ```
 
+### Rex Rune (unofficial Linux GUI client for Rex)
+
+No RPM is published, so it's a signed user install into `~/.local/bin` (no sudo);
+it updates itself from Settings → Updates. Config lives in
+`dot_config/rex-rune/` (`shortcuts.json` mirrors the Ghostty keybindings;
+`create_workspace.json.tmpl` seeds the UI once and the app owns it afterwards).
+
+```bash
+curl --proto '=https' --tlsv1.2 -fsSL https://github.com/shuv1337/rex-rune/releases/latest/download/install.sh | sh
+```
+
 ## Fonts
 
 ```bash
@@ -411,6 +426,9 @@ sudo usermod -aG docker $USER
 
 # Enable Bluetooth
 sudo systemctl enable --now bluetooth
+
+# Rex personal server: socket-activated systemd user unit, survives logout (no sudo)
+rex server install
 ```
 
 ## Summary by Category
@@ -418,7 +436,7 @@ sudo systemctl enable --now bluetooth
 | Category | Packages |
 |----------|----------|
 | Desktop (niri + Noctalia) | niri, noctalia-shell, noctalia-qs, vicinae, polkit-gnome |
-| Terminals | ghostty, kitty |
+| Terminals | ghostty, kitty, rex (server) + rex-rune (client) |
 | Shell | zsh, oh-my-zsh, fzf, fd-find, zoxide, eza |
 | Editors | neovim (LazyVim), lazygit, zellij |
 | Screenshot | grim, slurp, swappy, wl-clipboard, cliphist |
